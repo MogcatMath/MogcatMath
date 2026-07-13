@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triangle Rule Trainer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;padding:1rem;color:#e0e0e0;background:#2b2b2b}
+h2{font-size:18px;font-weight:500;text-align:center;margin-bottom:1rem;color:#f0f0f0}
+.rule-btns{display:flex;gap:8px;justify-content:center;margin-bottom:1rem}
+.rule-btns button{padding:6px 16px;border-radius:20px;border:1.5px solid #555;background:#3a3a3a;cursor:pointer;font-size:14px;color:#ddd}
+.rule-btns button.active{background:#f0f0f0;color:#2b2b2b;border-color:#f0f0f0}
+.scores{display:flex;gap:12px;justify-content:center;margin-bottom:1rem}
+.score-box{flex:1;max-width:140px;background:#3a3a3a;border-radius:10px;border:1px solid #444;padding:.75rem;text-align:center}
+.score-box .slabel{font-size:12px;color:#999;margin-bottom:4px}
+.score-box .sval{font-size:28px;font-weight:500}
+#score-correct .sval{color:#2ec98a}
+#score-wrong .sval{color:#e05555}
+.card{background:#3a3a3a;border-radius:12px;border:1px solid #444;padding:1.25rem;margin-bottom:1rem}
+#q-label{text-align:center;font-size:15px;font-weight:500;margin-bottom:.5rem;color:#f0f0f0}
+canvas{display:block;margin:0 auto;max-width:100%;background:#fff;border-radius:8px}
+.input-row{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:.75rem}
+#ans-input{width:110px;padding:7px 10px;border:1px solid #555;border-radius:8px;font-size:15px;text-align:center;background:#2b2b2b;color:#f0f0f0}
+button.action{padding:7px 16px;border-radius:8px;border:1px solid #555;background:#3a3a3a;cursor:pointer;font-size:14px;color:#ddd}
+#response{text-align:center;font-size:15px;font-weight:500;min-height:22px;margin-top:.5rem}
+.ok{color:#2ec98a}.no{color:#e05555}
+#worked-toggle{display:block;margin:.75rem auto 0;padding:7px 18px;border-radius:8px;border:1px solid #555;background:#3a3a3a;cursor:pointer;font-size:14px;color:#ddd}
+#worked-box{margin-top:.75rem;display:none;font-size:14px;line-height:1.7;color:#bbb;border-top:1px solid #555;padding-top:.75rem}
+#worked-box .math{font-family:monospace;background:#2b2b2b;padding:1px 5px;border-radius:3px;color:#e0e0e0}
+#next-btn{display:block;margin:.75rem auto 0;padding:7px 20px;border-radius:8px;border:1px solid #555;background:#3a3a3a;cursor:pointer;font-size:14px;color:#ddd}
+</style>
+</head>
+<body>
+<h2>Triangle Rule Trainer</h2>
+<div class="rule-btns">
+  <button id="btn-sine" class="active" onclick="setMode('sine')">Sine rule</button>
+  <button id="btn-cosine" onclick="setMode('cosine')">Cosine rule</button>
+  <button id="btn-both" onclick="setMode('both')">Both</button>
+</div>
+<div class="scores">
+  <div class="score-box" id="score-correct"><div class="slabel">Correct</div><div class="sval" id="n-correct">0</div></div>
+  <div class="score-box" id="score-wrong"><div class="slabel">Incorrect</div><div class="sval" id="n-wrong">0</div></div>
+</div>
+<div class="card">
+  <div id="q-label"></div>
+  <canvas id="c" width="540" height="330"></canvas>
+</div>
+<div class="card">
+  <div class="input-row">
+    <label style="font-size:14px;color:#999">Answer:</label>
+    <input id="ans-input" type="number" step="0.1" placeholder="0.0"/>
+    <button class="action" onclick="checkAnswer()">Check</button>
+  </div>
+  <div id="response"></div>
+  <button id="worked-toggle" onclick="toggleWorked()">Show worked solution</button>
+  <div id="worked-box"></div>
+  <button id="next-btn" onclick="newQuestion()">Next question</button>
+</div>
+<script>
+function toRad(d){return d*Math.PI/180;}
+function toDeg(r){return r*180/Math.PI;}
+function rnd(a,b,dp){if(dp===undefined){dp=1;}return parseFloat((Math.random()*(b-a)+a).toFixed(dp));}
+function f1(v){return parseFloat(v.toFixed(1));}
+
+var mode='sine', Q=null, nCorrect=0, nWrong=0, answered=false;
+
+function setMode(m){
+  mode=m;
+  var ids=['sine','cosine','both'];
+  for(var i=0;i<ids.length;i++){document.getElementById('btn-'+ids[i]).classList.remove('active');}
+  document.getElementById('btn-'+m).classList.add('active');
+  newQuestion();
+}
+
+function genSine(){
+  if(Math.random()<0.28){return genAmb();}
+  var A=rnd(30,80,0), B=rnd(30,80,0);
+  while(A+B>160||A===B){A=rnd(30,80,0);B=rnd(30,80,0);}
+  var a=rnd(4,12,1);
+  var sinA=f1(Math.sin(toRad(A)));
+  var sinB=f1(Math.sin(toRad(B)));
+  if(Math.random()<0.5){
+    var bans=f1(a*sinB/sinA);
+    return {rule:'sine',angA:A,angB:B,angC:null,sideA:a,sideB:null,sideC:null,
+      unk:'b',answers:[bans],label:'Find x',
+      worked:'<b>Sine rule:</b> <span class="math">a / sin A = b / sin B</span><br>'
+        +'<span class="math">'+a+' / sin'+A+'° = x / sin'+B+'°</span><br>'
+        +'<span class="math">x = '+a+' x sin'+B+'° / sin'+A+'°</span><br>'
+        +'<span class="math">x = '+a+' x '+sinB+' / '+sinA+'</span><br>'
+        +'<span class="math">x = <b>'+bans+'</b></span>'};
+  }
+  var b=f1(a*Math.sin(toRad(B))/Math.sin(toRad(A)));
+  var sinB2=f1(b*sinA/a);
+  var Bans=f1(toDeg(Math.asin(sinB2)));
+  return {rule:'sine',angA:A,angB:null,angC:null,sideA:a,sideB:b,sideC:null,
+    unk:'B',answers:[Bans],label:'Find x',
+    worked:'<b>Sine rule:</b> <span class="math">sin B / b = sin A / a</span><br>'
+      +'<span class="math">sin x = '+b+' x sin'+A+'° / '+a+'</span><br>'
+      +'<span class="math">sin x = '+b+' x '+sinA+' / '+a+'</span><br>'
+      +'<span class="math">sin x = '+sinB2+'</span><br>'
+      +'<span class="math">x = sin&#8315;&#185;('+sinB2+') = <b>'+Bans+'°</b></span>'};
+}
+
+function genAmb(){
+  var A=rnd(20,55,0), b=rnd(5,10,1);
+  var sA=Math.sin(toRad(A));
+  var aMin=f1(b*sA+0.3), aMax=f1(b-0.3);
+  if(aMin>=aMax){return genSine();}
+  var a=rnd(aMin,aMax,1);
+  var sB=b*sA/a;
+  if(sB>=1){return genSine();}
+  var B1=f1(toDeg(Math.asin(sB)));
+  var B2=f1(180-B1);
+  var valid2=(A+B2)<180;
+  var answers=valid2?[B1,B2]:[B1];
+  var sinA=f1(sA), sBr=f1(sB);
+  var w='<b>Ambiguous case (SSA):</b><br>'
+    +'<span class="math">sin x = b x sin A / a</span><br>'
+    +'<span class="math">sin x = '+b+' x sin'+A+'° / '+a+'</span><br>'
+    +'<span class="math">sin x = '+b+' x '+sinA+' / '+a+' = '+sBr+'</span><br>'
+    +'<span class="math">x = sin&#8315;&#185;('+sBr+') = '+B1+'°</span><br>';
+  if(valid2){
+    w+='Also <span class="math">x = 180° - '+B1+'° = '+B2+'°</span> and '+A+'° + '+B2+'° = '+(A+B2)+'° &lt; 180° &#10003;<br>'
+      +'<b>Two solutions: '+B1+'° or '+B2+'°</b>';
+  } else {
+    w+='<span class="math">180° - '+B1+'° = '+B2+'°</span> but '+A+'° + '+B2+'° = '+(A+B2)+'° &ge; 180° so only one solution.<br>'
+      +'<b>x = '+B1+'°</b>';
+  }
+  return {rule:'sine-amb',angA:A,angB:null,angC:null,sideA:a,sideB:b,sideC:null,
+    unk:'B',answers:answers,
+    label:'Ambiguous case - find x'+(valid2?' (2 solutions, enter either)':''),
+    worked:w};
+}
+
+function genCosine(){
+  if(Math.random()<0.5){
+    var A=rnd(25,135,0), b=rnd(4,11,1), c=rnd(4,11,1);
+    var a=f1(Math.sqrt(b*b+c*c-2*b*c*Math.cos(toRad(A))));
+    if(a<=0){return genCosine();}
+    var b2=f1(b*b), c2=f1(c*c), twobc=f1(2*b*c), cosA=f1(Math.cos(toRad(A)));
+    var twobccosA=f1(twobc*cosA), a2val=f1(b2+c2-twobccosA);
+    return {rule:'cosine',angA:A,angB:null,angC:null,sideA:null,sideB:b,sideC:c,
+      unk:'a',answers:[a],label:'Find x',
+      worked:'<b>Cosine rule:</b> <span class="math">a&sup2; = b&sup2; + c&sup2; - 2bc cos A</span><br>'
+        +'<span class="math">x&sup2; = '+b+'&sup2; + '+c+'&sup2; - 2 x '+b+' x '+c+' x cos'+A+'°</span><br>'
+        +'<span class="math">x&sup2; = '+b2+' + '+c2+' - '+twobc+' x '+cosA+'</span><br>'
+        +'<span class="math">x&sup2; = '+b2+' + '+c2+' - '+twobccosA+'</span><br>'
+        +'<span class="math">x&sup2; = '+a2val+'</span><br>'
+        +'<span class="math">x = <b>'+a+'</b></span>'};
+  }
+  var b=rnd(4,11,1), c=rnd(4,11,1), A=rnd(25,135,0);
+  var a=f1(Math.sqrt(b*b+c*c-2*b*c*Math.cos(toRad(A))));
+  if(a<=0){return genCosine();}
+  var a2=f1(a*a), b2=f1(b*b), c2=f1(c*c), twobc=f1(2*b*c);
+  var num=f1(b2+c2-a2), cosVal=f1(num/twobc);
+  var Aans=f1(toDeg(Math.acos(cosVal)));
+  return {rule:'cosine',angA:null,angB:null,angC:null,sideA:a,sideB:b,sideC:c,
+    unk:'A',answers:[Aans],label:'Find x',
+    worked:'<b>Cosine rule:</b> <span class="math">cos A = (b&sup2; + c&sup2; - a&sup2;) / 2bc</span><br>'
+      +'<span class="math">cos x = ('+b+'&sup2; + '+c+'&sup2; - '+a+'&sup2;) / (2 x '+b+' x '+c+')</span><br>'
+      +'<span class="math">cos x = ('+b2+' + '+c2+' - '+a2+') / '+twobc+'</span><br>'
+      +'<span class="math">cos x = '+num+' / '+twobc+'</span><br>'
+      +'<span class="math">cos x = '+cosVal+'</span><br>'
+      +'<span class="math">x = cos&#8315;&#185;('+cosVal+') = <b>'+Aans+'°</b></span>'};
+}
+
+function drawTriangle(q){
+  var canvas=document.getElementById('c');
+  var ctx=canvas.getContext('2d');
+  var W=540, H=330;
+  ctx.clearRect(0,0,W,H);
+  var pts={A:{x:90,y:262},B:{x:450,y:262},C:{x:315,y:68}};
+  ctx.beginPath();
+  ctx.moveTo(pts.A.x,pts.A.y);
+  ctx.lineTo(pts.B.x,pts.B.y);
+  ctx.lineTo(pts.C.x,pts.C.y);
+  ctx.closePath();
+  ctx.strokeStyle='#333';
+  ctx.lineWidth=2.5;
+  ctx.stroke();
+
+  function lbl(text,x,y,color,size,bold){
+    ctx.font=(bold?'bold ':'')+size+'px system-ui,sans-serif';
+    ctx.fillStyle=color;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(text,x,y);
+  }
+  function drawX(x,y){
+    ctx.font='bold 24px system-ui,sans-serif';
+    ctx.fillStyle='#900020';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText('x',x,y);
+  }
+
+  var KNW='#333', VTX='#111';
+  lbl('A',pts.A.x-22,pts.A.y+20,VTX,18,true);
+  lbl('B',pts.B.x+22,pts.B.y+20,VTX,18,true);
+  lbl('C',pts.C.x,pts.C.y-22,VTX,18,true);
+
+  var cx2=(pts.A.x+pts.B.x+pts.C.x)/3;
+  var cy2=(pts.A.y+pts.B.y+pts.C.y)/3;
+
+  function mid(p1,p2,d){
+    var mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+    var dx=p2.x-p1.x, dy=p2.y-p1.y, len=Math.sqrt(dx*dx+dy*dy);
+    var nx=-dy/len, ny=dx/len;
+    if((mx+nx*5-cx2)*nx+(my+ny*5-cy2)*ny<0){nx=-nx;ny=-ny;}
+    return {x:mx+nx*d,y:my+ny*d};
+  }
+
+  var SIDE_OFF=28, FS=19;
+  var ma=mid(pts.B,pts.C,SIDE_OFF);
+  if(q.unk==='a'){drawX(ma.x,ma.y);}else if(q.sideA!=null){lbl(''+q.sideA,ma.x,ma.y,KNW,FS,false);}
+  var mb=mid(pts.C,pts.A,SIDE_OFF);
+  if(q.unk==='b'){drawX(mb.x,mb.y);}else if(q.sideB!=null){lbl(''+q.sideB,mb.x,mb.y,KNW,FS,false);}
+  var mc=mid(pts.A,pts.B,SIDE_OFF);
+  if(q.unk==='c'){drawX(mc.x,mc.y);}else if(q.sideC!=null){lbl(''+q.sideC,mc.x,mc.y,KNW,FS,false);}
+
+  function drawAngle(vtx,p1,p2,val,isUnk){
+    if(val==null&&!isUnk){return;}
+    var a1=Math.atan2(p1.y-vtx.y,p1.x-vtx.x);
+    var a2=Math.atan2(p2.y-vtx.y,p2.x-vtx.x);
+    var R=30;
+    var diff=a2-a1;
+    while(diff>Math.PI){diff-=2*Math.PI;}
+    while(diff<-Math.PI){diff+=2*Math.PI;}
+    var midAng=a1+diff/2;
+    var testX=vtx.x+Math.cos(midAng)*R;
+    var testY=vtx.y+Math.sin(midAng)*R;
+    var dcx=cx2-vtx.x, dcy=cy2-vtx.y;
+    var dtx=testX-vtx.x, dty=testY-vtx.y;
+    if(dcx*dtx+dcy*dty<0){diff=diff>0?diff-2*Math.PI:diff+2*Math.PI;}
+    var midAngFinal=a1+diff/2;
+    ctx.beginPath();
+    ctx.arc(vtx.x,vtx.y,R,a1,a1+diff,diff<0);
+    ctx.strokeStyle=isUnk?'#900020':'#555';
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+    var LR=R+20;
+    var lx=vtx.x+Math.cos(midAngFinal)*LR;
+    var ly=vtx.y+Math.sin(midAngFinal)*LR;
+    if(isUnk){drawX(lx,ly);}else{lbl(val+'°',lx,ly,'#333',FS,false);}
+  }
+
+  drawAngle(pts.A,pts.B,pts.C,q.angA,q.unk==='A');
+  drawAngle(pts.B,pts.A,pts.C,q.angB,q.unk==='B');
+  drawAngle(pts.C,pts.A,pts.B,q.angC,q.unk==='C');
+}
+
+function newQuestion(){
+  var q;
+  if(mode==='sine'){q=genSine();}
+  else if(mode==='cosine'){q=genCosine();}
+  else{q=Math.random()<0.5?genSine():genCosine();}
+  Q=q; answered=false;
+  document.getElementById('ans-input').value='';
+  document.getElementById('response').textContent='';
+  document.getElementById('response').className='';
+  document.getElementById('worked-box').style.display='none';
+  document.getElementById('worked-box').innerHTML='';
+  document.getElementById('worked-toggle').textContent='Show worked solution';
+  document.getElementById('q-label').textContent=q.label;
+  drawTriangle(q);
+}
+
+function checkAnswer(){
+  if(answered){return;}
+  var raw=parseFloat(document.getElementById('ans-input').value);
+  var v=parseFloat(raw.toFixed(1));
+  var r=document.getElementById('response');
+  if(isNaN(v)){r.textContent='Please enter a number.';r.className='';return;}
+  var ok=false;
+  for(var i=0;i<Q.answers.length;i++){
+    if(Math.abs(v-f1(Q.answers[i]))<=0.05){ok=true;break;}
+  }
+  answered=true;
+  if(ok){
+    nCorrect++;
+    document.getElementById('n-correct').textContent=nCorrect;
+    r.textContent='Correct!';r.className='ok';
+  } else {
+    nWrong++;
+    document.getElementById('n-wrong').textContent=nWrong;
+    r.textContent='Incorrect - check the worked solution.';r.className='no';
+  }
+}
+
+function toggleWorked(){
+  var wb=document.getElementById('worked-box');
+  var btn=document.getElementById('worked-toggle');
+  if(wb.style.display==='block'){
+    wb.style.display='none';btn.textContent='Show worked solution';
+  } else {
+    wb.innerHTML=Q.worked;wb.style.display='block';btn.textContent='Hide worked solution';
+  }
+}
+
+document.getElementById('ans-input').addEventListener('keydown',function(e){if(e.key==='Enter'){checkAnswer();}});
+newQuestion();
+</script>
+</body>
+</html>

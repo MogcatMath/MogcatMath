@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="3D Trig">
+<meta name="theme-color" content="#2b2b2b">
+<title>3D Trigonometry Explorer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{color:#1a1a1a;padding:10px;background:#2b2b2b;font-size:16px}
+h1{font-size:22px;font-weight:500;text-align:center;margin-bottom:12px;color:#f0f0f0}
+.wrap{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.left{flex:0 0 534px;background:#fff;border:0.5px solid rgba(0,0,0,0.15);border-radius:12px;padding:12px}
+.right{flex:1;min-width:280px;background:#fff;border:0.5px solid rgba(0,0,0,0.15);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+canvas#cube{display:block;cursor:grab;touch-action:none;width:100%;height:auto}
+.dims{font-size:13px;color:#888;text-align:center;margin-top:6px}
+.rotate-hint{font-size:12px;color:#aaa;text-align:center;margin-top:2px}
+.plabel{font-size:15px;color:#888;margin-bottom:4px}
+.ptext{font-size:16px;font-weight:500;line-height:1.7}
+button{border:1px solid rgba(0,0,0,0.2);border-radius:10px;background:transparent;padding:14px 12px;font-size:16px;cursor:pointer;width:100%;color:#1a1a1a;min-height:52px;user-select:none}
+button:active{background:rgba(0,0,0,0.08)}
+.bp{background:#e6f1fb;border-color:#378add;color:#185fa5}
+.mode-row{display:flex;gap:0;border:1px solid rgba(0,0,0,0.2);border-radius:10px;overflow:hidden}
+.mode-btn{border:none;border-radius:0;background:transparent;padding:14px 10px;font-size:16px;cursor:pointer;flex:1;color:#555;min-height:52px}
+.mode-btn:active{background:rgba(0,0,0,0.08)}
+.mode-btn.active{background:#1a1a1a;color:#fff}
+.mode-btn+.mode-btn{border-left:1px solid rgba(0,0,0,0.2)}
+.badge{display:inline-block;font-size:13px;font-weight:600;padding:2px 8px;border-radius:10px;margin-left:4px;vertical-align:middle}
+.badge-std{background:#e6f1fb;color:#185fa5}
+.badge-adv{background:#fdebd0;color:#b7520a}
+.badge-hard{background:#fde8e8;color:#a01010}
+.hint-box{display:none;opacity:0;background:#fffbea;border:1px solid #e6c84a;border-radius:10px;padding:12px 14px;font-size:15px;line-height:1.7;transition:opacity 0.4s ease}
+.sol{display:none;border-top:1px solid rgba(0,0,0,0.1);padding-top:12px}
+.sol.open{display:block}
+.step{font-size:15px;line-height:1.7;margin-bottom:8px;padding:10px;background:#f5f5f3;border-radius:8px}
+canvas#tri{display:block;margin:10px auto 0;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px}
+#wsModal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);z-index:1000;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#wsModal.open{display:block}
+.wm-inner{max-width:1040px;margin:0 auto;padding:16px 16px 60px}
+.wm-bar{display:flex;justify-content:space-between;align-items:center;padding:10px 0 14px;position:sticky;top:0;background:rgba(0,0,0,0.88);z-index:10}
+.wm-bar h2{color:#fff;font-size:16px;font-weight:500;margin:0}
+.wm-close{background:#555;border:none;color:#fff;padding:12px 20px;border-radius:10px;cursor:pointer;font-size:16px;min-height:48px}
+.wm-close:active{background:#777}
+.wm-tip{background:#fffbea;border:1px solid #e6c84a;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:18px;line-height:1.6}
+.wm-lbl{color:#aaa;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin:20px 0 6px}
+.wm-sheet{background:#fff;border-radius:6px;padding:16px;margin-bottom:4px}
+.ws-prob{display:flex;gap:10px;border:1px solid #ccc;border-radius:6px;padding:10px;margin-bottom:10px;align-items:flex-start}
+.ws-qnum{color:#185fa5;font-weight:bold;font-size:14px;min-width:28px}
+.ws-body{flex:1;font-size:13px;line-height:1.5}
+.ws-img{width:260px;height:200px;object-fit:contain;flex-shrink:0;border:1px solid #ddd;border-radius:4px}
+.ws-step{font-size:11px;background:#f5f5f3;border-radius:4px;padding:4px 7px;margin-top:4px}
+.ws-ans{margin-top:16px;font-size:13px}
+@media(max-width:600px){.left,.right{flex:0 0 100%}}
+</style>
+</head>
+<body>
+<div id="wsModal">
+  <div class="wm-inner">
+    <div class="wm-bar">
+      <h2>Worksheet — press and hold each image to save</h2>
+      <button class="wm-close" id="wsClose">&#10005; Close</button>
+    </div>
+    <div class="wm-tip"><strong>To save:</strong> press and hold (or right-click) each image and choose <strong>"Save image as&hellip;"</strong></div>
+    <div class="wm-lbl">Questions sheet</div>
+    <div class="wm-sheet" id="wsQSheet"></div>
+    <div class="wm-lbl">Solutions sheet</div>
+    <div class="wm-sheet" id="wsSSheet"></div>
+  </div>
+</div>
+
+<h1>3D Trigonometry Explorer</h1>
+<div class="wrap">
+  <div class="left">
+    <canvas id="cube" width="534" height="534"></canvas>
+    <p class="dims" id="dims"></p>
+    <p class="rotate-hint">&#x21BA; Drag or swipe to rotate</p>
+  </div>
+  <div class="right">
+    <div class="mode-row">
+      <button class="mode-btn active" id="btnStd">Basic</button>
+      <button class="mode-btn" id="btnAdv">Intermediate</button>
+      <button class="mode-btn" id="btnHard">Advanced</button>
+    </div>
+    <div><p class="plabel">Find the value of x <span class="badge" id="modeBadge">Basic</span></p><p class="ptext" id="ptext"></p></div>
+    <button class="bp" id="btnShow">Show worked solution</button>
+    <button id="btnHint">Show hint</button>
+    <div class="hint-box" id="hintBox"></div>
+    <button id="btnNew">New problem</button>
+    <button id="btnWorksheet">Generate worksheet</button>
+    <div class="sol" id="sol">
+      <p class="plabel" style="margin-bottom:6px">Worked solution</p>
+      <div id="steps"></div>
+      <canvas id="tri" width="240" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+function f1(v){return parseFloat(v.toFixed(1));}
+function f2(v){return parseFloat(v.toFixed(2));}
+function f3(v){return parseFloat(v.toFixed(3));}
+function toDeg(r){return f1(r*180/Math.PI);}
+function toRad(d){return d*Math.PI/180;}
+function dist(A,B){return Math.sqrt((A[0]-B[0])*(A[0]-B[0])+(A[1]-B[1])*(A[1]-B[1])+(A[2]-B[2])*(A[2]-B[2]));}
+function triArea(A,B,C){var u=[B[0]-A[0],B[1]-A[1],B[2]-A[2]],v=[C[0]-A[0],C[1]-A[1],C[2]-A[2]];return 0.5*Math.sqrt((u[1]*v[2]-u[2]*v[1])*(u[1]*v[2]-u[2]*v[1])+(u[2]*v[0]-u[0]*v[2])*(u[2]*v[0]-u[0]*v[2])+(u[0]*v[1]-u[1]*v[0])*(u[0]*v[1]-u[1]*v[0]));}
+function rnd1(a,b){return f1(Math.round((Math.random()*(b-a)/0.1))*0.1+a);}
+function stripHtml(s){return s.replace(/<[^>]+>/g,'').replace(/&mdash;/g,'\u2014').replace(/&nbsp;/g,' ');}
+function wrapText(ctx,text,x,y,maxW,lh){var words=text.split(' '),line='';for(var n=0;n<words.length;n++){var test=line+words[n]+' ';if(ctx.measureText(test).width>maxW&&n>0){ctx.fillText(line,x,y);line=words[n]+' ';y+=lh;}else line=test;}ctx.fillText(line,x,y);}
+
+var EDGES=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+
+function angleArc(ctx,vx,vy,p1x,p1y,p2x,p2y,r,col,label,bold){
+  var d1=Math.sqrt((p1x-vx)*(p1x-vx)+(p1y-vy)*(p1y-vy))||1;
+  var d2=Math.sqrt((p2x-vx)*(p2x-vx)+(p2y-vy)*(p2y-vy))||1;
+  var ux1=(p1x-vx)/d1,uy1=(p1y-vy)/d1,ux2=(p2x-vx)/d2,uy2=(p2y-vy)/d2;
+  var dot=Math.max(-1,Math.min(1,ux1*ux2+uy1*uy2)),omega=Math.acos(dot),sinO=Math.sin(omega);
+  ctx.strokeStyle=col;ctx.lineWidth=1.8;ctx.beginPath();
+  for(var i=0;i<=48;i++){var t=i/48,cx2,cy2;if(sinO<1e-6){cx2=ux1;cy2=uy1;}else{var w1=Math.sin((1-t)*omega)/sinO,w2=Math.sin(t*omega)/sinO;cx2=w1*ux1+w2*ux2;cy2=w1*uy1+w2*uy2;}if(i===0)ctx.moveTo(vx+cx2*r,vy+cy2*r);else ctx.lineTo(vx+cx2*r,vy+cy2*r);}
+  ctx.stroke();
+  var mx2,my2;if(sinO<1e-6){mx2=ux1;my2=uy1;}else{var w=Math.sin(0.5*omega)/sinO;mx2=w*(ux1+ux2);my2=w*(uy1+uy2);var ml=Math.sqrt(mx2*mx2+my2*my2)||1;mx2/=ml;my2/=ml;}
+  ctx.fillStyle=col;ctx.font=(bold?'bold ':'')+Math.round(r/3)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,vx+mx2*(r+r/2),vy+my2*(r+r/2));
+}
+
+function triDefs(w,h,d){return[
+  {A:[0,0,0],B:[w,0,0],C:[w,0,h],rightAt:'B'},{A:[0,0,0],B:[0,d,0],C:[0,d,h],rightAt:'B'},
+  {A:[w,0,0],B:[w,d,0],C:[w,d,h],rightAt:'B'},{A:[0,d,0],B:[w,d,0],C:[w,d,h],rightAt:'B'},
+  {A:[0,0,0],B:[w,0,0],C:[w,d,0],rightAt:'B'},{A:[0,0,0],B:[0,d,0],C:[w,d,0],rightAt:'B'},
+  {A:[0,0,h],B:[w,0,h],C:[w,d,h],rightAt:'B'},{A:[0,0,h],B:[0,d,h],C:[w,d,h],rightAt:'B'},
+  {A:[0,0,0],B:[0,0,h],C:[w,0,h],rightAt:'B'},{A:[0,0,0],B:[0,0,h],C:[0,d,h],rightAt:'B'},
+  {A:[0,0,0],B:[w,d,0],C:[w,0,h]},{A:[0,0,0],B:[w,0,h],C:[0,d,h]},
+  {A:[w,0,0],B:[0,d,0],C:[0,0,h]},{A:[0,0,0],B:[w,d,0],C:[0,d,h]},
+  {A:[0,0,0],B:[w,0,0],C:[w,d,h]},{A:[0,d,0],B:[w,0,0],C:[w,d,h]},
+  {A:[0,0,h],B:[w,0,h],C:[w,d,0]}
+];}
+
+function advDefs(w,h,d){
+  var fb=f2(Math.sqrt(w*w+d*d)),ff=f2(Math.sqrt(w*w+h*h)),fs=f2(Math.sqrt(d*d+h*h)),sp=f2(Math.sqrt(w*w+d*d+h*h));
+  return[
+    {triA:[0,0,0],triB:[w,d,0],triC:[w,d,h],findWhat:'angle between space diagonal and base',
+     step1:{desc:'Find the base face diagonal using Pythagoras:',leg1:{name:'width (w)',val:w},leg2:{name:'depth (d)',val:d},result:{name:'AG',val:fb}},
+     step2:{type:'angle',desc:'Now use SOHCAHTOA in triangle AGH (right angle at G):',opp:{name:'GH (height)',val:h},adj:{name:'AG',val:fb},hyp:{name:'AH',val:sp}}},
+    {triA:[0,0,0],triB:[w,0,h],triC:[w,d,h],findWhat:'angle between space diagonal and front face diagonal',
+     step1:{desc:'Find the front face diagonal using Pythagoras:',leg1:{name:'width (w)',val:w},leg2:{name:'height (h)',val:h},result:{name:'AF',val:ff}},
+     step2:{type:'angle',desc:'Now use SOHCAHTOA in triangle AFC (right angle at F):',opp:{name:'FC (depth)',val:d},adj:{name:'AF',val:ff},hyp:{name:'AC',val:sp}}},
+    {triA:[0,0,0],triB:[w,d,0],triC:[w,d,h],findWhat:'length of the space diagonal',
+     step1:{desc:'Find the base face diagonal using Pythagoras:',leg1:{name:'width (w)',val:w},leg2:{name:'depth (d)',val:d},result:{name:'base diagonal',val:fb}},
+     step2:{type:'side',desc:'Now use Pythagoras again to find the space diagonal:',leg1:{name:'base diagonal',val:fb},leg2:{name:'height (h)',val:h},result:{name:'space diagonal',val:sp}}},
+    {triA:[0,0,0],triB:[0,d,h],triC:[w,d,h],findWhat:'angle between space diagonal and side face diagonal',
+     step1:{desc:'Find the side face diagonal using Pythagoras:',leg1:{name:'depth (d)',val:d},leg2:{name:'height (h)',val:h},result:{name:'side diagonal',val:fs}},
+     step2:{type:'angle',desc:'Now use SOHCAHTOA in the triangle (right angle at B):',opp:{name:'width (w)',val:w},adj:{name:'side diagonal',val:fs},hyp:{name:'space diagonal',val:sp}}},
+    {triA:[w,d,h],triB:[w,d,0],triC:[0,0,0],findWhat:'angle between space diagonal and vertical edge',
+     step1:{desc:'Find the base face diagonal using Pythagoras:',leg1:{name:'width (w)',val:w},leg2:{name:'depth (d)',val:d},result:{name:'base diagonal',val:fb}},
+     step2:{type:'angle',desc:'Now use SOHCAHTOA in triangle with right angle at B:',opp:{name:'base diagonal',val:fb},adj:{name:'height (h)',val:h},hyp:{name:'space diagonal',val:sp}}}
+  ];
+}
+
+function pyrDefs(w,l,h){
+  var hw=f2(w/2),hl=f2(l/2);
+  var slW=f2(Math.sqrt(hw*hw+h*h)),slL=f2(Math.sqrt(hl*hl+h*h));
+  var hd=f2(Math.sqrt(hw*hw+hl*hl)),ae=f2(Math.sqrt(hw*hw+hl*hl+h*h));
+  return[
+    {id:'angCorner',findWhat:'angle between the slant edge AP and the base',xType:'angle',
+     step1:{desc:'Find the distance from centre of base to corner A:',leg1:{name:'w/2',val:hw},leg2:{name:'l/2',val:hl},result:{name:'centre to A',val:hd}},
+     step2:{type:'angle',desc:'Use tan (right angle at centre of base):',opp:{name:'height h',val:h},adj:{name:'centre to A',val:hd}}},
+    {id:'angFaceW',findWhat:'angle between the face over the width and the base',xType:'angle',
+     step1:{desc:'The slant height is perpendicular from apex to midpoint of width edge:',leg1:{name:'w/2',val:hw},leg2:{name:'height h',val:h},result:{name:'slant height',val:slW}},
+     step2:{type:'angle',desc:'Use tan (right angle at midpoint of width edge):',opp:{name:'height h',val:h},adj:{name:'w/2',val:hw}}},
+    {id:'angFaceL',findWhat:'angle between the face over the length and the base',xType:'angle',
+     step1:{desc:'The slant height is perpendicular from apex to midpoint of length edge:',leg1:{name:'l/2',val:hl},leg2:{name:'height h',val:h},result:{name:'slant height',val:slL}},
+     step2:{type:'angle',desc:'Use tan (right angle at midpoint of length edge):',opp:{name:'height h',val:h},adj:{name:'l/2',val:hl}}},
+    {id:'slantW',findWhat:'slant height of the face over the width',xType:'side',
+     step1:{desc:'Use Pythagoras with height h and half-width w/2:',leg1:{name:'height h',val:h},leg2:{name:'w/2',val:hw},result:{name:'slant height',val:slW}},
+     step2:null},
+    {id:'slantL',findWhat:'slant height of the face over the length',xType:'side',
+     step1:{desc:'Use Pythagoras with height h and half-length l/2:',leg1:{name:'height h',val:h},leg2:{name:'l/2',val:hl},result:{name:'slant height',val:slL}},
+     step2:null},
+    {id:'apexEdge',findWhat:'length of the slant edge from apex to base corner',xType:'side',
+     step1:{desc:'Find distance from centre of base to corner A:',leg1:{name:'w/2',val:hw},leg2:{name:'l/2',val:hl},result:{name:'centre to A',val:hd}},
+     step2:{type:'side',desc:'Apply Pythagoras again with the height:',leg1:{name:'centre to A',val:hd},leg2:{name:'height h',val:h},result:{name:'slant edge',val:ae}}}
+  ];
+}
+
+var mode='standard';
+function makeProblem(){if(mode==='hard')return makePyrProblem();if(mode==='advanced')return makeAdvProblem();return makeStdProblem();}
+
+function makePyrProblem(){
+  for(var t=0;t<300;t++){
+    var w=rnd1(3,9),l=rnd1(3,9),h=rnd1(3,9);
+    if(w>3*l||l>3*w) continue;
+    var defs=pyrDefs(w,l,h),def=defs[Math.floor(Math.random()*defs.length)];
+    var A=[0,0,0],B=[w,0,0],C=[w,l,0],D=[0,l,0],P=[w/2,l/2,h];
+    return{isPyramid:true,w:w,l:l,h:h,w2:f2(w/2),l2:f2(l/2),
+      pyrVerts:{A:A,B:B,C:C,D:D,P:P},
+      xType:def.xType,xLabel:def.xType==='angle'?'angle x':'length x',
+      solveAt:'A',isRightAngled:true,isAdvanced:false,isPyrDef:def,findWhat:def.findWhat};
+  }
+  return makeAdvProblem();
+}
+
+function makeAdvProblem(){
+  for(var t=0;t<200;t++){
+    var w=rnd1(3,9),h=rnd1(3,9),d=rnd1(3,9);
+    var defs=advDefs(w,h,d),def=defs[Math.floor(Math.random()*defs.length)];
+    var tA=def.triA,tB=def.triB,tC=def.triC;
+    if(triArea(tA,tB,tC)<2) continue;
+    var ab=f2(dist(tA,tB)),bc=f2(dist(tB,tC)),ca=f2(dist(tC,tA));
+    return{w:w,h:h,d:d,corners:[[0,0,0],[w,0,0],[w,d,0],[0,d,0],[0,0,h],[w,0,h],[w,d,h],[0,d,h]],
+      A:tA,B:tB,C:tC,sides:{AB:ab,BC:bc,CA:ca},xType:def.step2.type,
+      xLabel:def.step2.type==='angle'?'angle A':'length of '+def.step2.result.name,
+      known1:{label:'cuboid dimensions',val:w+' x '+d+' x '+h},known2:{label:'',val:''},
+      solveAt:'A',isRightAngled:true,rightAt:'B',isAdvanced:true,advDef:def,findWhat:def.findWhat};
+  }
+  return makeStdProblem();
+}
+
+function makeStdProblem(){
+  for(var t=0;t<400;t++){
+    var w=rnd1(3,9),h=rnd1(3,9),d=rnd1(3,9);
+    var defs=triDefs(w,h,d),def=defs[Math.floor(Math.random()*defs.length)];
+    var A=def.A,B=def.B,C=def.C;
+    if(triArea(A,B,C)<3) continue;
+    var ab=f2(dist(A,B)),bc=f2(dist(B,C)),ca=f2(dist(C,A));
+    if(Math.min(ab,bc,ca)<1.5) continue;
+    var cA=(ab*ab+ca*ca-bc*bc)/(2*ab*ca),cB=(ab*ab+bc*bc-ca*ca)/(2*ab*bc),cC=(bc*bc+ca*ca-ab*ab)/(2*bc*ca);
+    if(Math.abs(cA)>0.9998||Math.abs(cB)>0.9998||Math.abs(cC)>0.9998) continue;
+    var angA=toDeg(Math.acos(cA)),angB=toDeg(Math.acos(cB)),angC=toDeg(Math.acos(cC));
+    if(angA<10||angA>170||angB<10||angB>170||angC<10||angC>170) continue;
+    var isRA=!!def.rightAt,fa=Math.random()<0.5,k1,k2,xType,xLabel,solveAt;
+    if(isRA){
+      var ac=[];if(angA>10&&angA<80)ac.push({v:'A',ang:angA});if(angC>10&&angC<80)ac.push({v:'C',ang:angC});
+      if(!ac.length) continue;
+      var ap=ac[Math.floor(Math.random()*ac.length)];
+      if(fa){solveAt=ap.v;xType='angle';xLabel='angle '+ap.v;k1={label:'AB',val:ab};k2={label:'BC',val:bc};}
+      else{var allS=[{l:'AB',v:ab},{l:'BC',v:bc},{l:'CA',v:ca}],sp=allS[Math.floor(Math.random()*allS.length)];solveAt=ap.v;xType='side';xLabel='length '+sp.l;k1={label:'angle '+ap.v,val:ap.ang,isAngle:true};var ot=allS.filter(function(s){return s.l!==sp.l;}),pk=ot[Math.floor(Math.random()*ot.length)];k2={label:pk.l,val:pk.v};}
+    } else {
+      if(fa){
+        var ca2=[];
+        if(Math.abs(angA-90)>8)ca2.push({v:'A',ang:angA,s1:ab,s2:ca,l1:'AB',l2:'CA'});
+        if(Math.abs(angB-90)>8)ca2.push({v:'B',ang:angB,s1:ab,s2:bc,l1:'AB',l2:'BC'});
+        if(Math.abs(angC-90)>8)ca2.push({v:'C',ang:angC,s1:bc,s2:ca,l1:'BC',l2:'CA'});
+        if(!ca2.length) continue;
+        var p2=ca2[Math.floor(Math.random()*ca2.length)];
+        solveAt=p2.v;xType='angle';xLabel='angle '+p2.v;k1={label:p2.l1,val:p2.s1};k2={label:p2.l2,val:p2.s2};
+      } else {
+        var allS2=[{l:'AB',v:ab},{l:'BC',v:bc},{l:'CA',v:ca}],sp2=allS2[Math.floor(Math.random()*allS2.length)];
+        var ac2=[];
+        if(Math.abs(angA-90)>8)ac2.push({v:'A',ang:angA});if(Math.abs(angB-90)>8)ac2.push({v:'B',ang:angB});if(Math.abs(angC-90)>8)ac2.push({v:'C',ang:angC});
+        if(!ac2.length) continue;
+        var ap2=ac2[Math.floor(Math.random()*ac2.length)];
+        solveAt=ap2.v;xType='side';xLabel='length '+sp2.l;k1={label:'angle '+ap2.v,val:ap2.ang,isAngle:true};
+        var ot2=allS2.filter(function(s){return s.l!==sp2.l;}),pk2=ot2[Math.floor(Math.random()*ot2.length)];k2={label:pk2.l,val:pk2.v};
+      }
+    }
+    return{w:w,h:h,d:d,corners:[[0,0,0],[w,0,0],[w,d,0],[0,d,0],[0,0,h],[w,0,h],[w,d,h],[0,d,h]],
+      A:A,B:B,C:C,sides:{AB:ab,BC:bc,CA:ca},angles:{A:angA,B:angB,C:angC},
+      xType:xType,xLabel:xLabel,known1:k1,known2:k2,solveAt:solveAt,
+      isRightAngled:isRA,rightAt:def.rightAt||null,isAdvanced:false};
+  }
+  var w=6,h=4,d=5,A=[0,0,0],B=[6,0,0],C=[6,0,4];
+  return{w:w,h:h,d:d,corners:[[0,0,0],[6,0,0],[6,5,0],[0,5,0],[0,0,4],[6,0,4],[6,5,4],[0,5,4]],A:A,B:B,C:C,
+    sides:{AB:6,BC:4,CA:f2(dist(A,C))},angles:{A:toDeg(Math.atan2(4,6)),B:90,C:toDeg(Math.atan2(6,4))},
+    xType:'angle',xLabel:'angle A',known1:{label:'AB',val:6},known2:{label:'CA',val:f2(dist(A,C))},
+    solveAt:'A',isRightAngled:true,rightAt:'B',isAdvanced:false};
+}
+
+// ── draw cuboid ───────────────────────────────────────────────────────────
+function drawCubeToCtx(ctx,W,H,p,rx,ry){
+  if(!p||!p.corners) return;
+  if(rx===undefined){rx=0.38;ry=0.52;}
+  function pj(pt){var x=pt[0],y=pt[1],z=pt[2];var x1=x*Math.cos(ry)+z*Math.sin(ry),z1=-x*Math.sin(ry)+z*Math.cos(ry);return[x1,y*Math.cos(rx)-z1*Math.sin(rx)];}
+  var raw=p.corners.map(pj);
+  var xs=raw.map(function(r){return r[0];}),ys=raw.map(function(r){return r[1];});
+  var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs),y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
+  var span=Math.max(x1-x0,y1-y0,0.1),mg=40,sc=(Math.min(W,H)-mg*2)/span;
+  var ox=W/2-(x0+x1)/2*sc,oy=H/2-(y0+y1)/2*sc;
+  function px(pt){var r=pj(pt);return[r[0]*sc+ox,r[1]*sc+oy];}
+  ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.lineWidth=1.5;
+  EDGES.forEach(function(e){var a=px(p.corners[e[0]]),b=px(p.corners[e[1]]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();});
+  var pa=px(p.A),pb=px(p.B),pc=px(p.C);
+  ctx.beginPath();ctx.moveTo(pa[0],pa[1]);ctx.lineTo(pb[0],pb[1]);ctx.lineTo(pc[0],pc[1]);ctx.closePath();
+  ctx.fillStyle='rgba(55,138,221,0.13)';ctx.fill();ctx.strokeStyle='#378add';ctx.lineWidth=2;ctx.stroke();
+  var gcx=(pa[0]+pb[0]+pc[0])/3,gcy=(pa[1]+pb[1]+pc[1])/3;
+  function vlbl(lbl,pt){var dx=pt[0]-gcx,dy=pt[1]-gcy,l=Math.sqrt(dx*dx+dy*dy)||1;ctx.fillStyle='#185fa5';ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,pt[0]+dx/l*18,pt[1]+dy/l*18);}
+  vlbl('A',pa);vlbl('B',pb);vlbl('C',pc);
+  function slbl(val,p1,p2){var mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2,dx=p2[0]-p1[0],dy=p2[1]-p1[1],l=Math.sqrt(dx*dx+dy*dy)||1;ctx.fillStyle='rgba(0,0,0,0.6)';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(val,mx-dy/l*13,my+dx/l*13);}
+  var xl=p.xLabel,xt=p.xType,sides=p.sides;
+  var isXAB=xl==='length AB'||xl==='length BA',isXBC=xl==='length BC'||xl==='length CB',isXCA=xl==='length CA'||xl==='length AC';
+  if(!p.isAdvanced){if(xt==='angle'){slbl(sides.AB,pa,pb);slbl(sides.BC,pb,pc);slbl(sides.CA,pc,pa);}else{if(!isXAB)slbl(sides.AB,pa,pb);if(!isXBC)slbl(sides.BC,pb,pc);if(!isXCA)slbl(sides.CA,pc,pa);}}
+  var vMap={A:pa,B:pb,C:pc},vp=vMap[p.solveAt],op=p.solveAt==='A'?pb:p.solveAt==='B'?pa:pb,op2=p.solveAt==='A'?pc:p.solveAt==='B'?pc:pa;
+  if(xt==='angle'){angleArc(ctx,vp[0],vp[1],op[0],op[1],op2[0],op2[1],50,'#d85a30','x',true);}
+  else{
+    if(!p.isAdvanced) angleArc(ctx,vp[0],vp[1],op[0],op[1],op2[0],op2[1],40,'rgba(0,0,0,0.6)',p.known1.val+'\u00b0',true);
+    function msx(p1,p2){var mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2,cx2=gcx-mx,cy2=gcy-my,cl=Math.sqrt(cx2*cx2+cy2*cy2)||1;ctx.fillStyle='#d85a30';ctx.font='bold 14px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('x',mx-cx2/cl*18,my-cy2/cl*18);}
+    if(isXAB)msx(pa,pb);else if(isXBC)msx(pb,pc);else if(isXCA)msx(pc,pa);
+    else{var lens=[{p1:pa,p2:pb,l:Math.sqrt((pb[0]-pa[0])*(pb[0]-pa[0])+(pb[1]-pa[1])*(pb[1]-pa[1]))},{p1:pb,p2:pc,l:Math.sqrt((pc[0]-pb[0])*(pc[0]-pb[0])+(pc[1]-pb[1])*(pc[1]-pb[1]))},{p1:pc,p2:pa,l:Math.sqrt((pa[0]-pc[0])*(pa[0]-pc[0])+(pa[1]-pc[1])*(pa[1]-pc[1]))}];var best=lens[0];for(var ii=1;ii<lens.length;ii++){if(lens[ii].l>best.l)best=lens[ii];}msx(best.p1,best.p2);}
+  }
+  if(p.isAdvanced){[{i:0,j:1,lbl:''+p.w,col:'#c0392b'},{i:1,j:2,lbl:''+p.d,col:'#27ae60'},{i:0,j:4,lbl:''+p.h,col:'#2471a3'}].forEach(function(e){var a=px(p.corners[e.i]),b=px(p.corners[e.j]);ctx.strokeStyle=e.col;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();var mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,dx=b[0]-a[0],dy=b[1]-a[1],len=Math.sqrt(dx*dx+dy*dy)||1;ctx.fillStyle=e.col;ctx.font='bold 12px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(e.lbl,mx-dy/len*15,my+dx/len*15);});}
+}
+
+// ── draw pyramid ──────────────────────────────────────────────────────────
+function drawPyramid(ctx,W,H,p,rxA,ryA){
+  if(!ctx||!p||!p.pyrVerts) return;
+  if(rxA===undefined){rxA=0.5;ryA=0.55;}
+  var verts=p.pyrVerts;
+  function pj(pt){
+    var x=pt[0],y=pt[1],z=pt[2];
+    var x1=x*Math.cos(ryA)-y*Math.sin(ryA),y1=x*Math.sin(ryA)+y*Math.cos(ryA);
+    var y2=y1*Math.cos(rxA)+z*Math.sin(rxA),z2=-y1*Math.sin(rxA)+z*Math.cos(rxA);
+    return[x1,-z2];
+  }
+  var pts=[verts.A,verts.B,verts.C,verts.D,verts.P];
+  var raw=pts.map(pj);
+  var xs=raw.map(function(r){return r[0];}),ys=raw.map(function(r){return r[1];});
+  var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs),y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
+  var span=Math.max(x1-x0,y1-y0,0.1),mg=50,sc=(Math.min(W,H)-mg*2)/span;
+  var ox=W/2-(x0+x1)/2*sc,oy=H/2-(y0+y1)/2*sc;
+  function px(pt){var r=pj(pt);return[r[0]*sc+ox,r[1]*sc+oy];}
+  var pA=px(verts.A),pB=px(verts.B),pC=px(verts.C),pD=px(verts.D),pP=px(verts.P);
+
+  ctx.lineWidth=2.5;
+  ctx.strokeStyle='#c0392b';
+  [[pA,pB],[pD,pC]].forEach(function(e){ctx.beginPath();ctx.moveTo(e[0][0],e[0][1]);ctx.lineTo(e[1][0],e[1][1]);ctx.stroke();});
+  ctx.strokeStyle='#27ae60';
+  [[pB,pC],[pA,pD]].forEach(function(e){ctx.beginPath();ctx.moveTo(e[0][0],e[0][1]);ctx.lineTo(e[1][0],e[1][1]);ctx.stroke();});
+  ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=2;
+  [pA,pB,pC,pD].forEach(function(corner){ctx.beginPath();ctx.moveTo(corner[0],corner[1]);ctx.lineTo(pP[0],pP[1]);ctx.stroke();});
+
+  var bc=[(pA[0]+pB[0]+pC[0]+pD[0])/4,(pA[1]+pB[1]+pC[1]+pD[1])/4];
+  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  function edgeLbl(val,p1,p2,col){var mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2,dx=p2[0]-p1[0],dy=p2[1]-p1[1],l=Math.sqrt(dx*dx+dy*dy)||1;ctx.fillStyle=col;ctx.fillText(val,mx-dy/l*14,my+dx/l*14);}
+  edgeLbl('w='+p.w,pA,pB,'#c0392b');
+  edgeLbl('l='+p.l,pB,pC,'#27ae60');
+  edgeLbl('h='+p.h,pP,bc,'#2471a3');
+  ctx.setLineDash([4,4]);ctx.strokeStyle='#2471a3';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(pP[0],pP[1]);ctx.lineTo(bc[0],bc[1]);ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.font='bold 14px Arial';
+  function vlbl(lbl,pt,off){ctx.fillStyle='#185fa5';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,pt[0]+off[0],pt[1]+off[1]);}
+  vlbl('A',pA,[-10,8]);vlbl('B',pB,[10,8]);vlbl('C',pC,[10,8]);vlbl('D',pD,[-10,8]);vlbl('P',pP,[0,-12]);
+
+  var def=p.isPyrDef;
+  if(def.xType==='angle'){
+    var basePt,h1,h2;
+    if(def.id==='angCorner'){basePt=px([p.w2,p.l2,0]);h1=pP;h2=pA;}
+    else if(def.id==='angFaceW'){basePt=px([p.w2,0,0]);h1=pP;h2=pA;}
+    else{basePt=px([0,p.l2,0]);h1=pP;h2=pA;}
+    ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(basePt[0],basePt[1]);ctx.lineTo(h1[0],h1[1]);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(basePt[0],basePt[1]);ctx.lineTo(h2[0],h2[1]);ctx.stroke();
+    ctx.setLineDash([]);
+    angleArc(ctx,basePt[0],basePt[1],h1[0],h1[1],h2[0],h2[1],40,'#111','x',true);
+  } else {
+    var ep1,ep2;
+    if(def.id==='slantW'){ep1=pP;ep2=px([p.w2,0,0]);}
+    else if(def.id==='slantL'){ep1=pP;ep2=px([0,p.l2,0]);}
+    else{ep1=pP;ep2=pA;}
+    ctx.strokeStyle='#111';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(ep1[0],ep1[1]);ctx.lineTo(ep2[0],ep2[1]);ctx.stroke();
+    var gcx2=(pA[0]+pB[0]+pC[0]+pD[0]+pP[0])/5,gcy2=(pA[1]+pB[1]+pC[1]+pD[1]+pP[1])/5;
+    var mx2=(ep1[0]+ep2[0])/2,my2=(ep1[1]+ep2[1])/2;
+    var cx2=gcx2-mx2,cy2=gcy2-my2,cl=Math.sqrt(cx2*cx2+cy2*cy2)||1;
+    ctx.fillStyle='#111';ctx.font='bold 16px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('x',mx2-cx2/cl*20,my2-cy2/cl*20);
+  }
+}
+
+// ── draw 2D triangle ──────────────────────────────────────────────────────
+function drawTriToCtx(ctx,W,H,p){
+  if(!p||p.isPyramid||!p.sides) return;
+  var pad=28,AB=p.sides.AB,BC=p.sides.BC,CA=p.sides.CA,angA=(p.angles&&p.angles.A)||30;
+  var Ap,Bp,Cp;
+  if(p.isRightAngled){var sc=Math.min((W-pad*2)/Math.max(AB,0.1),(H-pad*2)/Math.max(BC,0.1),18);Bp=[W-pad,H-pad];Ap=[W-pad-AB*sc,H-pad];Cp=[W-pad,H-pad-BC*sc];}
+  else{var sc2=Math.min((W-pad*2)/Math.max(AB,0.1),(H-pad*2)/Math.max(CA*Math.sin(toRad(angA)),1),16);Ap=[pad,H-pad];Bp=[pad+AB*sc2,H-pad];Cp=[Ap[0]+CA*sc2*Math.cos(toRad(angA)),Ap[1]-CA*sc2*Math.sin(toRad(angA))];}
+  ctx.beginPath();ctx.moveTo(Ap[0],Ap[1]);ctx.lineTo(Bp[0],Bp[1]);ctx.lineTo(Cp[0],Cp[1]);ctx.closePath();
+  ctx.fillStyle='rgba(55,138,221,0.09)';ctx.fill();ctx.strokeStyle='#378add';ctx.lineWidth=1.5;ctx.stroke();
+  if(p.isRightAngled){var sq=8,dax=Ap[0]-Bp[0],day=Ap[1]-Bp[1],da=Math.sqrt(dax*dax+day*day)||1,dcx=Cp[0]-Bp[0],dcy=Cp[1]-Bp[1],dc=Math.sqrt(dcx*dcx+dcy*dcy)||1,ux=dax/da,uy=day/da,vx=dcx/dc,vy=dcy/dc;ctx.strokeStyle='#378add';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(Bp[0]+ux*sq,Bp[1]+uy*sq);ctx.lineTo(Bp[0]+ux*sq+vx*sq,Bp[1]+uy*sq+vy*sq);ctx.lineTo(Bp[0]+vx*sq,Bp[1]+vy*sq);ctx.stroke();}
+  var gcx=(Ap[0]+Bp[0]+Cp[0])/3,gcy=(Ap[1]+Bp[1]+Cp[1])/3;
+  ctx.font='bold 11px Arial';ctx.fillStyle='#185fa5';ctx.textAlign='center';ctx.textBaseline='middle';
+  [['A',Ap],['B',Bp],['C',Cp]].forEach(function(lp){var dx=lp[1][0]-gcx,dy=lp[1][1]-gcy,len=Math.sqrt(dx*dx+dy*dy)||1;ctx.fillText(lp[0],lp[1][0]+dx/len*13,lp[1][1]+dy/len*13);});
+  function tsl(val,p1,p2){var mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2,dx=p2[0]-p1[0],dy=p2[1]-p1[1],l=Math.sqrt(dx*dx+dy*dy)||1;ctx.fillStyle='rgba(0,0,0,0.65)';ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(val,mx-dy/l*11,my+dx/l*11);}
+  if(!p.isAdvanced){var xl=p.xLabel,isXAB=xl==='length AB'||xl==='length BA',isXBC=xl==='length BC'||xl==='length CB',isXCA=xl==='length CA'||xl==='length AC';if(p.xType==='angle'){tsl(p.sides.AB,Ap,Bp);tsl(p.sides.BC,Bp,Cp);tsl(p.sides.CA,Cp,Ap);}else{if(!isXAB)tsl(p.sides.AB,Ap,Bp);if(!isXBC)tsl(p.sides.BC,Bp,Cp);if(!isXCA)tsl(p.sides.CA,Cp,Ap);}}
+  var vm={A:Ap,B:Bp,C:Cp},vp2=vm[p.solveAt],op2d=p.solveAt==='A'?Bp:p.solveAt==='B'?Ap:Bp,op22d=p.solveAt==='A'?Cp:p.solveAt==='B'?Cp:Ap;
+  if(p.xType==='angle'){angleArc(ctx,vp2[0],vp2[1],op2d[0],op2d[1],op22d[0],op22d[1],32,'#d85a30','x',true);}
+  else if(!p.isAdvanced){
+    angleArc(ctx,vp2[0],vp2[1],op2d[0],op2d[1],op22d[0],op22d[1],26,'rgba(0,0,0,0.55)',p.known1.val+'\u00b0',true);
+    var xl2=p.xLabel,xAB=xl2==='length AB'||xl2==='length BA',xBC=xl2==='length BC'||xl2==='length CB',xCA=xl2==='length CA'||xl2==='length AC';
+    function mx2(p1,p2){var mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2,cx2=gcx-mx,cy2=gcy-my,cl=Math.sqrt(cx2*cx2+cy2*cy2)||1;ctx.fillStyle='#d85a30';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('x',mx-cx2/cl*14,my-cy2/cl*14);}
+    if(xAB)mx2(Ap,Bp);else if(xBC)mx2(Bp,Cp);else if(xCA)mx2(Cp,Ap);
+  }
+}
+
+// ── main canvas ───────────────────────────────────────────────────────────
+var cubeCanvas=document.getElementById('cube'),cc=cubeCanvas.getContext('2d');
+var triCanvas=document.getElementById('tri'),tc=triCanvas.getContext('2d');
+var SIZE=534,rx=0.38,ry=0.52,pyrRx=0.5,pyrRy=0.55,drag=false,lx,ly,prob;
+
+function drawCube(){
+  cc.clearRect(0,0,SIZE,SIZE);
+  if(!prob) return;
+  if(prob.isPyramid){if(prob.pyrVerts) drawPyramid(cc,SIZE,SIZE,prob,pyrRx,pyrRy);return;}
+  var p=prob;
+  function pj(pt){var x=pt[0],y=pt[1],z=pt[2];var x1=x*Math.cos(ry)+z*Math.sin(ry),z1=-x*Math.sin(ry)+z*Math.cos(ry);return[x1,y*Math.cos(rx)-z1*Math.sin(rx)];}
+  var raw=p.corners.map(pj);
+  var xs=raw.map(function(r){return r[0];}),ys=raw.map(function(r){return r[1];});
+  var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs),y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
+  var span=Math.max(x1-x0,y1-y0,0.1),mg=60,sc=(SIZE-mg*2)/span;
+  var ox=SIZE/2-(x0+x1)/2*sc,oy=SIZE/2-(y0+y1)/2*sc;
+  function px(pt){var r=pj(pt);return[r[0]*sc+ox,r[1]*sc+oy];}
+  cc.strokeStyle='rgba(0,0,0,0.22)';cc.lineWidth=2;
+  EDGES.forEach(function(e){var a=px(p.corners[e[0]]),b=px(p.corners[e[1]]);cc.beginPath();cc.moveTo(a[0],a[1]);cc.lineTo(b[0],b[1]);cc.stroke();});
+  var pa=px(p.A),pb=px(p.B),pc=px(p.C);
+  cc.beginPath();cc.moveTo(pa[0],pa[1]);cc.lineTo(pb[0],pb[1]);cc.lineTo(pc[0],pc[1]);cc.closePath();
+  cc.fillStyle='rgba(55,138,221,0.13)';cc.fill();cc.strokeStyle='#378add';cc.lineWidth=2.5;cc.stroke();
+  var gcx=(pa[0]+pb[0]+pc[0])/3,gcy=(pa[1]+pb[1]+pc[1])/3;
+  function vl(lbl,pt){var dx=pt[0]-gcx,dy=pt[1]-gcy,l=Math.sqrt(dx*dx+dy*dy)||1;cc.fillStyle='#185fa5';cc.font='bold 16px Arial';cc.textAlign='center';cc.textBaseline='middle';cc.fillText(lbl,pt[0]+dx/l*22,pt[1]+dy/l*22);}
+  vl('A',pa);vl('B',pb);vl('C',pc);
+  function slbl(val,p1,p2){var mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2,dx=p2[0]-p1[0],dy=p2[1]-p1[1],l=Math.sqrt(dx*dx+dy*dy)||1;cc.fillStyle='rgba(0,0,0,0.55)';cc.font='bold 14px Arial';cc.textAlign='center';cc.textBaseline='middle';cc.fillText(val,mx-dy/l*16,my+dx/l*16);}
+  var xl=p.xLabel,xt=p.xType,sides=p.sides;
+  var isXAB=xl==='length AB'||xl==='length BA',isXBC=xl==='length BC'||xl==='length CB',isXCA=xl==='length CA'||xl==='length AC';
+  if(!p.isAdvanced){if(xt==='angle'){slbl(sides.AB,pa,pb);slbl(sides.BC,pb,pc);slbl(sides.CA,pc,pa);}else{if(!isXAB)slbl(sides.AB,pa,pb);if(!isXBC)slbl(sides.BC,pb,pc);if(!isXCA)slbl(sides.CA,pc,pa);}}
+  var vMap={A:pa,B:pb,C:pc},vp=vMap[p.solveAt],op=p.solveAt==='A'?pb:p.solveAt==='B'?pa:pb,op2=p.solveAt==='A'?pc:p.solveAt==='B'?pc:pa;
+  if(xt==='angle'){angleArc(cc,vp[0],vp[1],op[0],op[1],op2[0],op2[1],66,'#d85a30','x',true);}
+  else{
+    if(!p.isAdvanced) angleArc(cc,vp[0],vp[1],op[0],op[1],op2[0],op2[1],54,'rgba(0,0,0,0.55)',p.known1.val+'\u00b0',true);
+    function msx(p1,p2){var mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2,cx2=gcx-mx,cy2=gcy-my,cl=Math.sqrt(cx2*cx2+cy2*cy2)||1;cc.fillStyle='#d85a30';cc.font='bold 17px Arial';cc.textAlign='center';cc.textBaseline='middle';cc.fillText('x',mx-cx2/cl*22,my-cy2/cl*22);}
+    if(isXAB)msx(pa,pb);else if(isXBC)msx(pb,pc);else if(isXCA)msx(pc,pa);
+    else{var lens=[{p1:pa,p2:pb,l:Math.sqrt((pb[0]-pa[0])*(pb[0]-pa[0])+(pb[1]-pa[1])*(pb[1]-pa[1]))},{p1:pb,p2:pc,l:Math.sqrt((pc[0]-pb[0])*(pc[0]-pb[0])+(pc[1]-pb[1])*(pc[1]-pb[1]))},{p1:pc,p2:pa,l:Math.sqrt((pa[0]-pc[0])*(pa[0]-pc[0])+(pa[1]-pc[1])*(pa[1]-pc[1]))}];var best=lens[0];for(var ii=1;ii<lens.length;ii++){if(lens[ii].l>best.l)best=lens[ii];}msx(best.p1,best.p2);}
+  }
+  if(p.isAdvanced){[{i:0,j:1,lbl:''+p.w,col:'#c0392b'},{i:1,j:2,lbl:''+p.d,col:'#27ae60'},{i:0,j:4,lbl:''+p.h,col:'#2471a3'}].forEach(function(e){var a=px(p.corners[e.i]),b=px(p.corners[e.j]);cc.strokeStyle=e.col;cc.lineWidth=3.5;cc.beginPath();cc.moveTo(a[0],a[1]);cc.lineTo(b[0],b[1]);cc.stroke();var mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,dx=b[0]-a[0],dy=b[1]-a[1],len=Math.sqrt(dx*dx+dy*dy)||1;cc.fillStyle=e.col;cc.font='bold 15px Arial';cc.textAlign='center';cc.textBaseline='middle';cc.fillText(e.lbl,mx-dy/len*18,my+dx/len*18);});}
+}
+
+function drawTri(){
+  tc.clearRect(0,0,240,200);tc.fillStyle='#f5f5f3';tc.fillRect(0,0,240,200);
+  if(!prob||prob.isPyramid) return;
+  drawTriToCtx(tc,240,200,prob);
+}
+
+// ── text helpers ──────────────────────────────────────────────────────────
+function probText(p){
+  if(p.isPyramid) return 'A rectangular-based pyramid has base '+p.w+' \u00d7 '+p.l+' units and height '+p.h+' units. Find the '+p.findWhat+' (marked x).';
+  if(p.isAdvanced) return 'The cuboid has width '+p.w+', depth '+p.d+' and height '+p.h+' units. Find the '+p.findWhat+' (marked x). Use Pythagoras\u2019 theorem first.';
+  if(p.xType==='angle') return 'In the cuboid ('+p.w+' \u00d7 '+p.d+' \u00d7 '+p.h+' units), triangle ABC has AB = '+p.sides.AB+', BC = '+p.sides.BC+', CA = '+p.sides.CA+' units. Find '+p.xLabel+'.';
+  return 'In the cuboid ('+p.w+' \u00d7 '+p.d+' \u00d7 '+p.h+' units), triangle ABC has angle '+p.known1.label.replace('angle ','')+' = '+p.known1.val+'\u00b0 and side '+p.known2.label+' = '+p.known2.val+' units. Find '+p.xLabel+'.';
+}
+
+function buildHint(p){
+  if(p.isPyramid){
+    var def=p.isPyrDef;
+    if(def.id==='angCorner') return '<strong>Hint:</strong> First use <strong>Pythagoras</strong> to find the distance from the centre of the base to a corner, then use <strong>tan</strong> to find the angle.';
+    if(def.id==='angFaceW'||def.id==='angFaceL') return '<strong>Hint:</strong> Use <strong>tan</strong>: opposite = height, adjacent = half the relevant base edge.';
+    if(def.id==='slantW'||def.id==='slantL') return '<strong>Hint:</strong> Use <strong>Pythagoras</strong> with the height and half the base edge.';
+    return '<strong>Hint:</strong> Use <strong>Pythagoras twice</strong>: first find centre-to-corner, then find the slant edge.';
+  }
+  if(p.isAdvanced) return '<strong>Hint:</strong> Start with <strong>Pythagoras</strong> to find an intermediate length, then use <strong>SOHCAHTOA</strong>.';
+  if(p.isRightAngled){if(p.xType==='angle') return '<strong>Hint:</strong> Right angle at B. Use <strong>SOHCAHTOA</strong> — identify opposite, adjacent, hypotenuse.';return '<strong>Hint:</strong> Right angle at B. Use <strong>SOHCAHTOA</strong> — rearrange to find the missing side.';}
+  if(p.xType==='angle') return '<strong>Hint:</strong> No right angle. Use the <strong>cosine rule</strong>: cos('+p.solveAt+') = (a\u00b2+b\u00b2\u2212c\u00b2)\u00f7(2ab)';
+  return '<strong>Hint:</strong> No right angle. Use the <strong>cosine rule</strong>: x\u00b2 = a\u00b2+b\u00b2\u22122ab\u00b7cos(C)';
+}
+
+function buildSteps(p){
+  if(!p) return [];
+  if(p.isPyramid) return buildPyrSteps(p);
+  if(p.isAdvanced) return buildAdvSteps(p);
+  return buildStdSteps(p);
+}
+
+function buildPyrSteps(p){
+  var def=p.isPyrDef,s1=def.step1,steps=[];
+  if(def.id==='slantW'||def.id==='slantL'){
+    steps.push('<strong>Step 1 \u2014 Pythagoras:</strong> '+s1.desc+'<br>'+s1.result.name+'\u00b2 = '+s1.leg1.name+'\u00b2 + '+s1.leg2.name+'\u00b2 = '+f2(s1.leg1.val*s1.leg1.val)+' + '+f2(s1.leg2.val*s1.leg2.val)+' = '+f2(s1.leg1.val*s1.leg1.val+s1.leg2.val*s1.leg2.val)+'<br>'+s1.result.name+' = \u221a'+f2(s1.leg1.val*s1.leg1.val+s1.leg2.val*s1.leg2.val)+' = <strong>'+s1.result.val+' units</strong>');
+    return steps;
+  }
+  steps.push('<strong>Step 1 \u2014 Pythagoras:</strong> '+s1.desc+'<br>'+s1.result.name+'\u00b2 = '+s1.leg1.name+'\u00b2 + '+s1.leg2.name+'\u00b2 = '+f2(s1.leg1.val*s1.leg1.val)+' + '+f2(s1.leg2.val*s1.leg2.val)+' = '+f2(s1.leg1.val*s1.leg1.val+s1.leg2.val*s1.leg2.val)+'<br>'+s1.result.name+' = \u221a'+f2(s1.leg1.val*s1.leg1.val+s1.leg2.val*s1.leg2.val)+' = <strong>'+s1.result.val+'</strong>');
+  var s2=def.step2;
+  if(s2&&s2.type==='angle'){
+    var tv=f3(s2.opp.val/s2.adj.val),ans=toDeg(Math.atan2(s2.opp.val,s2.adj.val));
+    steps.push('<strong>Step 2 \u2014 SOHCAHTOA:</strong> '+s2.desc+'<br>Opposite = '+s2.opp.name+' = '+s2.opp.val+'<br>Adjacent = '+s2.adj.name+' = '+s2.adj.val);
+    steps.push('<strong>Step 3:</strong> tan(x) = '+s2.opp.val+' \u00f7 '+s2.adj.val+' = '+tv);
+    steps.push('<strong>Step 4:</strong> x = tan\u207b\u00b9('+tv+') = <strong>'+ans+'\u00b0</strong>');
+  } else if(s2){
+    var l1=s2.leg1,l2=s2.leg2,res=s2.result;
+    steps.push('<strong>Step 2 \u2014 Pythagoras again:</strong> '+s2.desc+'<br>'+res.name+'\u00b2 = '+f2(l1.val*l1.val)+' + '+f2(l2.val*l2.val)+' = '+f2(l1.val*l1.val+l2.val*l2.val)+'<br>'+res.name+' = \u221a'+f2(l1.val*l1.val+l2.val*l2.val)+' = <strong>'+res.val+' units</strong>');
+  }
+  return steps;
+}
+
+function buildAdvSteps(p){
+  if(!p||!p.advDef) return [];
+  var s1=p.advDef.step1,s2=p.advDef.step2,steps=[];
+  steps.push('<strong>Step 1 \u2014 Pythagoras:</strong> '+s1.desc+'<br>'+s1.result.name+'\u00b2 = '+f2(s1.leg1.val*s1.leg1.val)+' + '+f2(s1.leg2.val*s1.leg2.val)+' = '+f2(s1.leg1.val*s1.leg1.val+s1.leg2.val*s1.leg2.val)+'<br>'+s1.result.name+' = <strong>'+s1.result.val+'</strong>');
+  if(s2.type==='angle'){var tv=f3(s2.opp.val/s2.adj.val),ans=toDeg(Math.atan2(s2.opp.val,s2.adj.val));steps.push('<strong>Step 2:</strong> '+s2.desc+'<br>Opp = '+s2.opp.val+', Adj = '+s2.adj.val);steps.push('<strong>Step 3:</strong> tan(x) = '+tv);steps.push('<strong>Step 4:</strong> x = tan\u207b\u00b9('+tv+') = <strong>'+ans+'\u00b0</strong>');}
+  else{var l1=s2.leg1,l2=s2.leg2,res=s2.result;steps.push('<strong>Step 2 \u2014 Pythagoras again:</strong> '+res.name+'\u00b2 = '+f2(l1.val*l1.val)+' + '+f2(l2.val*l2.val)+' = '+f2(l1.val*l1.val+l2.val*l2.val)+'<br>'+res.name+' = <strong>'+res.val+' units</strong>');}
+  return steps;
+}
+
+function buildStdSteps(p){
+  if(!p||!p.sides) return [];
+  var AB=p.sides.AB,BC=p.sides.BC,CA=p.sides.CA,steps=[];
+  if(p.isRightAngled){
+    if(p.xType==='angle'){var opp=p.solveAt==='A'?BC:AB,adj=p.solveAt==='A'?AB:BC,v=p.solveAt,tv=f3(opp/adj),ans=toDeg(Math.atan2(opp,adj));steps.push('<strong>Step 1:</strong> Right angle at B. CA='+CA+' (hyp). AB='+AB+', BC='+BC+'.');steps.push('<strong>Step 2:</strong> Angle '+v+': Opp='+(opp===BC?'BC':'AB')+'='+opp+', Adj='+(adj===AB?'AB':'BC')+'='+adj);steps.push('<strong>Step 3:</strong> tan('+v+') = '+opp+'\u00f7'+adj+' = '+tv);steps.push('<strong>Step 4:</strong> '+v+' = tan\u207b\u00b9('+tv+') = <strong>'+ans+'\u00b0</strong>');}
+    else{var xl=p.xLabel.replace('length ',''),av=p.known1.val,kl=p.known2.label,ks=p.known2.val,ol=p.solveAt==='A'?'BC':'AB',al=p.solveAt==='A'?'AB':'BC',isH=xl==='CA',isO=xl===ol,ratio,formula,ans2;if(isH){if(kl===ol){ratio='sin';formula=xl+'='+ks+'\u00f7sin('+av+'\u00b0)';ans2=f2(ks/Math.sin(toRad(av)));}else{ratio='cos';formula=xl+'='+ks+'\u00f7cos('+av+'\u00b0)';ans2=f2(ks/Math.cos(toRad(av)));}}else if(isO){if(kl==='CA'){ratio='sin';formula=xl+'='+ks+'\u00d7sin('+av+'\u00b0)';ans2=f2(ks*Math.sin(toRad(av)));}else{ratio='tan';formula=xl+'='+ks+'\u00d7tan('+av+'\u00b0)';ans2=f2(ks*Math.tan(toRad(av)));}}else{if(kl==='CA'){ratio='cos';formula=xl+'='+ks+'\u00d7cos('+av+'\u00b0)';ans2=f2(ks*Math.cos(toRad(av)));}else{ratio='tan';formula=xl+'='+ks+'\u00f7tan('+av+'\u00b0)';ans2=f2(ks/Math.tan(toRad(av)));}}steps.push('<strong>Step 1:</strong> Right angle at B. Angle '+p.solveAt+'='+av+'\u00b0, '+kl+'='+ks+'.');steps.push('<strong>Step 2:</strong> Opp='+ol+', Adj='+al+', Hyp=CA.');steps.push('<strong>Step 3:</strong> Use <strong>'+ratio.toUpperCase()+'</strong>: '+formula);steps.push('<strong>Step 4:</strong> '+xl+' = <strong>'+ans2+' units</strong>');}
+  } else {
+    if(p.xType==='angle'){var s1,s2,opp2,l1,l2,lo;if(p.solveAt==='A'){s1=AB;s2=CA;opp2=BC;l1='AB';l2='CA';lo='BC';}else if(p.solveAt==='B'){s1=AB;s2=BC;opp2=CA;l1='AB';l2='BC';lo='CA';}else{s1=BC;s2=CA;opp2=AB;l1='BC';l2='CA';lo='AB';}var cv=f3((s1*s1+s2*s2-opp2*opp2)/(2*s1*s2)),ansA=toDeg(Math.acos(cv));steps.push('<strong>Step 1:</strong> '+l1+'='+s1+', '+l2+'='+s2+', '+lo+'='+opp2+'.');steps.push('<strong>Step 2:</strong> cos('+p.solveAt+')=('+l1+'\u00b2+'+l2+'\u00b2\u2212'+lo+'\u00b2)\u00f7(2\u00d7'+l1+'\u00d7'+l2+')');steps.push('<strong>Step 3:</strong> =('+f2(s1*s1)+'+'+f2(s2*s2)+'\u2212'+f2(opp2*opp2)+')\u00f7'+f2(2*s1*s2)+' = '+cv);steps.push('<strong>Step 4:</strong> '+p.solveAt+'=cos\u207b\u00b9('+cv+')=<strong>'+ansA+'\u00b0</strong>');}
+    else{var xl2=p.xLabel.replace('length ',''),b,c,bl,cl;if(p.solveAt==='A'){b=AB;c=CA;bl='AB';cl='CA';}else if(p.solveAt==='B'){b=AB;c=BC;bl='AB';cl='BC';}else{b=BC;c=CA;bl='BC';cl='CA';}var av2=p.known1.val,cosV=f3(Math.cos(toRad(av2))),xSq=f2(b*b+c*c-2*b*c*cosV);steps.push('<strong>Step 1:</strong> Angle '+p.solveAt+'='+av2+'\u00b0, '+bl+'='+b+', '+cl+'='+c+'.');steps.push('<strong>Step 2:</strong> '+xl2+'\u00b2='+bl+'\u00b2+'+cl+'\u00b2\u22122\u00d7'+bl+'\u00d7'+cl+'\u00d7cos('+p.solveAt+')');steps.push('<strong>Step 3:</strong> ='+f2(b*b)+'+'+f2(c*c)+'\u2212'+f2(2*b*c)+'\u00d7'+cosV+'='+xSq);steps.push('<strong>Step 4:</strong> '+xl2+'=\u221a'+xSq+'=<strong>'+f2(Math.sqrt(Math.abs(xSq)))+' units</strong>');}
+  }
+  return steps;
+}
+
+// ── worksheet — pure HTML, zero drawImage ─────────────────────────────────
+function generateWorksheet(){
+  var problems=[],attempts=0;
+  while(problems.length<4&&attempts<2000){attempts++;var p=makeProblem();if(p)problems.push(p);}
+  var modeLabel=mode==='standard'?'Basic':mode==='advanced'?'Intermediate':'Advanced';
+  var date=new Date().toLocaleDateString('en-GB');
+  var DW=320,DH=260;
+
+  function getDiagURL(p){
+    // draw onto tri canvas, grab dataURL, restore
+    triCanvas.width=DW;triCanvas.height=DH;
+    var fx=triCanvas.getContext('2d');
+    fx.fillStyle='#fff';fx.fillRect(0,0,DW,DH);
+    if(p.isPyramid&&p.pyrVerts) drawPyramid(fx,DW,DH,p,0.5,0.55);
+    else if(p.corners){
+      fx.save();fx.beginPath();fx.rect(0,0,DW*0.55,DH);fx.clip();drawCubeToCtx(fx,DW*0.55,DH,p);fx.restore();
+      fx.save();fx.translate(DW*0.57,0);drawTriToCtx(fx,DW*0.43,DH,p);fx.restore();
+    }
+    var url=triCanvas.toDataURL('image/png');
+    triCanvas.width=240;triCanvas.height=200;
+    return url;
+  }
+
+  var diagURLs=[];
+  for(var i=0;i<problems.length;i++) diagURLs.push(getDiagURL(problems[i]));
+
+  function buildSheet(showSol){
+    var h='<div style="font-family:Arial,sans-serif;background:#fff;padding:16px">';
+    h+='<div style="font-size:17px;font-weight:bold;margin-bottom:3px">3D Trigonometry \u2014 '+modeLabel+' \u2014 '+(showSol?'Worked Solutions':'Questions')+'</div>';
+    h+='<div style="font-size:11px;color:#555;margin-bottom:12px">'+(showSol?date:'Date: '+date+'&nbsp;&nbsp;&nbsp;Name: ___________________________&nbsp;&nbsp;&nbsp;Class: _________')+'</div>';
+    for(var i=0;i<problems.length;i++){
+      var p=problems[i],steps=buildSteps(p);
+      h+='<div style="display:flex;gap:10px;border:1px solid #ccc;border-radius:6px;padding:10px;margin-bottom:10px;align-items:flex-start">';
+      h+='<div style="flex:1"><span style="color:#185fa5;font-weight:bold">Q'+(i+1)+'.</span> <span style="font-size:12px">'+probText(p)+'</span>';
+      if(showSol){h+='<div style="margin-top:6px">';for(var j=0;j<steps.length;j++)h+='<div style="font-size:11px;background:#f5f5f3;border-radius:3px;padding:3px 6px;margin-bottom:3px">'+steps[j]+'</div>';h+='</div>';}
+      else h+='<div style="margin-top:20px;font-size:12px">Answer: x = _________________________</div>';
+      h+='</div>';
+      h+='<img src="'+diagURLs[i]+'" style="width:'+DW+'px;height:'+DH+'px;flex-shrink:0;border:1px solid #ddd;border-radius:4px">';
+      h+='</div>';
+    }
+    h+='</div>';
+    return h;
+  }
+
+  document.getElementById('wsQSheet').innerHTML=buildSheet(false);
+  document.getElementById('wsSSheet').innerHTML=buildSheet(true);
+  document.getElementById('wsModal').classList.add('open');
+  // restore tri after use
+  tc.clearRect(0,0,240,200);tc.fillStyle='#f5f5f3';tc.fillRect(0,0,240,200);
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────
+function resetHint(){var hb=document.getElementById('hintBox');hb.style.opacity='0';hb.style.display='none';document.getElementById('btnHint').textContent='Show hint';}
+
+function newProblem(){
+  prob=makeProblem();
+  if(prob.isPyramid){pyrRx=0.5;pyrRy=0.55;document.getElementById('dims').textContent='Pyramid: base '+prob.w+' \u00d7 '+prob.l+', height '+prob.h+' units';}
+  else document.getElementById('dims').textContent='Cuboid: '+prob.w+' \u00d7 '+prob.d+' \u00d7 '+prob.h+' units';
+  document.getElementById('ptext').textContent=probText(prob);
+  document.getElementById('sol').classList.remove('open');
+  document.getElementById('btnShow').textContent='Show worked solution';
+  resetHint();drawCube();
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('btnStd').classList.toggle('active',m==='standard');
+  document.getElementById('btnAdv').classList.toggle('active',m==='advanced');
+  document.getElementById('btnHard').classList.toggle('active',m==='hard');
+  var badge=document.getElementById('modeBadge');
+  badge.textContent=m==='standard'?'Basic':m==='advanced'?'Intermediate':'Advanced';
+  badge.className='badge '+(m==='standard'?'badge-std':m==='advanced'?'badge-adv':'badge-hard');
+  newProblem();
+}
+
+document.getElementById('btnStd').onclick=function(){setMode('standard');};
+document.getElementById('btnAdv').onclick=function(){setMode('advanced');};
+document.getElementById('btnHard').onclick=function(){setMode('hard');};
+document.getElementById('wsClose').onclick=function(){
+  document.getElementById('wsModal').classList.remove('open');
+  document.getElementById('wsQSheet').innerHTML='';
+  document.getElementById('wsSSheet').innerHTML='';
+};
+document.getElementById('btnHint').onclick=function(){
+  var hb=document.getElementById('hintBox'),btn=document.getElementById('btnHint');
+  if(hb.style.display==='none'||hb.style.display===''){hb.innerHTML=buildHint(prob);hb.style.display='block';requestAnimationFrame(function(){requestAnimationFrame(function(){hb.style.opacity='1';});});btn.textContent='Hide hint';}
+  else{hb.style.opacity='0';setTimeout(function(){hb.style.display='none';},400);btn.textContent='Show hint';}
+};
+document.getElementById('btnShow').onclick=function(){
+  var s=document.getElementById('sol'),open=s.classList.toggle('open');
+  document.getElementById('btnShow').textContent=open?'Hide solution':'Show worked solution';
+  if(open){document.getElementById('steps').innerHTML=buildSteps(prob).map(function(s){return '<div class="step">'+s+'</div>';}).join('');drawTri();}
+};
+document.getElementById('btnNew').onclick=newProblem;
+document.getElementById('btnWorksheet').onclick=generateWorksheet;
+
+cubeCanvas.addEventListener('mousedown',function(e){drag=true;lx=e.clientX;ly=e.clientY;cubeCanvas.style.cursor='grabbing';});
+window.addEventListener('mouseup',function(){drag=false;cubeCanvas.style.cursor='grab';});
+window.addEventListener('mousemove',function(e){
+  if(!drag)return;
+  if(prob&&prob.isPyramid){pyrRy+=(e.clientX-lx)*0.012;pyrRx+=(e.clientY-ly)*0.012;}
+  else{ry+=(e.clientX-lx)*0.012;rx+=(e.clientY-ly)*0.012;}
+  lx=e.clientX;ly=e.clientY;drawCube();
+});
+cubeCanvas.addEventListener('touchstart',function(e){e.preventDefault();drag=true;lx=e.touches[0].clientX;ly=e.touches[0].clientY;},{passive:false});
+cubeCanvas.addEventListener('touchend',function(e){e.preventDefault();drag=false;},{passive:false});
+cubeCanvas.addEventListener('touchcancel',function(){drag=false;});
+cubeCanvas.addEventListener('touchmove',function(e){
+  e.preventDefault();if(!drag)return;
+  if(prob&&prob.isPyramid){pyrRy+=(e.touches[0].clientX-lx)*0.012;pyrRx+=(e.touches[0].clientY-ly)*0.012;}
+  else{ry+=(e.touches[0].clientX-lx)*0.012;rx+=(e.touches[0].clientY-ly)*0.012;}
+  lx=e.touches[0].clientX;ly=e.touches[0].clientY;drawCube();
+},{passive:false});
+
+setTimeout(newProblem,50);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trig Graph Transformer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    body { font-family: system-ui, sans-serif; color: #f0f0f0; background: #2b2b2b; }
+    .wrap { padding: 1rem; display: flex; flex-direction: column; gap: 14px; }
+
+    /* toggles */
+    .toggle-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .toggle-btn { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; font-size: 18px; font-weight: 600; min-height: 44px; }
+    .toggle-btn input[type=checkbox] { display: none; }
+    .toggle-track { width: 54px; height: 30px; border-radius: 15px; background: #555; position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; position: absolute; top: 4px; left: 4px; transition: left 0.2s; }
+    .toggle-btn input:checked + .toggle-track { background: var(--color); }
+    .toggle-btn input:checked + .toggle-track .toggle-thumb { left: 28px; }
+
+    /* main layout */
+    .main-row { display: flex; gap: 12px; align-items: flex-start; }
+
+    /* sidebar */
+    .sidebar { display: flex; flex-direction: column; gap: 14px; width: 260px; flex-shrink: 0; }
+
+    /* graph */
+    .graph-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .graph-box { border: 0.5px solid #444; border-radius: 8px; overflow: hidden; width: 100%; aspect-ratio: 2/1; }
+    canvas { width: 100%; height: 100%; display: block; }
+
+    /* equation */
+    .equation { font-size: 18px; font-weight: 600; text-align: center; padding: 4px 0; color: #f0f0f0; min-height: 32px; line-height: 1.5; }
+
+    /* controls panel */
+    .controls { border: 0.5px solid #444; border-radius: 10px; padding: 14px 16px; background: #333; display: flex; flex-direction: column; gap: 14px; }
+
+    /* custom select */
+    .custom-select { position: relative; width: 100%; }
+    .cs-selected { padding: 12px 14px; border-radius: 8px; border: 0.5px solid #555; background: #2b2b2b; color: #f0f0f0; font-size: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; min-height: 48px; gap: 8px; }
+    .cs-selected:active { background: #3a3a3a; }
+    .cs-label-text { flex: 1; }
+    .cs-list { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #2b2b2b; border: 0.5px solid #555; border-radius: 8px; z-index: 100; overflow: hidden; }
+    .cs-list.open { display: block; }
+    .cs-option { padding: 14px; font-size: 15px; color: #f0f0f0; cursor: pointer; min-height: 48px; display: flex; align-items: center; border-bottom: 0.5px solid #3a3a3a; line-height: 1.3; }
+    .cs-option:last-child { border-bottom: none; }
+    .cs-option:active { background: #3a3a3a; }
+    .cs-option.active { background: #185FA5; color: #fff; }
+
+    /* sliders */
+    .sliders { display: flex; flex-direction: column; gap: 14px; }
+    .slider-row { display: flex; flex-direction: column; gap: 6px; }
+    .slider-label { font-size: 15px; color: #ccc; display: flex; justify-content: space-between; }
+    .slider-label span { font-weight: 600; color: #f0f0f0; }
+    input[type=range] { width: 100%; height: 28px; cursor: pointer; accent-color: #185FA5; }
+
+    /* reset */
+    .reset-row { display: flex; }
+    button.reset { cursor: pointer; padding: 12px 24px; border-radius: 8px; border: 0.5px solid #555; background: #3a3a3a; color: #f0f0f0; font-size: 17px; font-weight: 600; min-height: 48px; width: 100%; }
+    button.reset:active { background: #4a4a4a; }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="toggle-row">
+    <label class="toggle-btn" style="--color:#0072B2">
+      <input type="checkbox" id="tog-sin" checked onchange="onToggle(event)">
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      <span style="color:#0072B2">Sine</span>
+    </label>
+    <label class="toggle-btn" style="--color:#D55E00">
+      <input type="checkbox" id="tog-cos" onchange="onToggle(event)">
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      <span style="color:#D55E00">Cosine</span>
+    </label>
+    <label class="toggle-btn" style="--color:#009E73">
+      <input type="checkbox" id="tog-tan" onchange="onToggle(event)">
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      <span style="color:#009E73">Tan</span>
+    </label>
+  </div>
+
+  <div class="main-row">
+    <div class="sidebar">
+      <div class="controls">
+        <div class="custom-select" id="cs-wrap">
+          <div class="cs-selected" id="cs-selected" ontouchend="handleCSTouch(event)" onclick="toggleCS()">
+            <span class="cs-label-text" id="cs-label">y = sin(x) — no transformation</span>
+            <span>▾</span>
+          </div>
+          <div class="cs-list" id="cs-list"></div>
+        </div>
+        <div class="sliders" id="slider-area"></div>
+      </div>
+      <div class="reset-row">
+        <button class="reset" onclick="resetAll()">Reset</button>
+      </div>
+    </div>
+
+    <div class="graph-col">
+      <div class="graph-box">
+        <canvas id="gc"></canvas>
+      </div>
+      <div class="equation" id="eq">y = sin(x)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let active = { sin: true, cos: false, tan: false };
+  let params = { a: 1, b: 1, c: 0, d: 0 };
+  let tfm = 'none';
+  let csOpen = false;
+
+  const COLORS = { sin: '#0072B2', cos: '#D55E00', tan: '#009E73' };
+  const NAMES  = { sin: 'sin', cos: 'cos', tan: 'tan' };
+
+  const sliderDefs = {
+    a: { label: 'a (amplitude)',      min: -3,   max: 3,   step: 0.1 },
+    b: { label: 'b (frequency)',      min: 0.1,  max: 4,   step: 0.1 },
+    c: { label: 'c (phase shift °)',  min: -360, max: 360, step: 5   },
+    d: { label: 'd (vertical shift)', min: -3,   max: 3,   step: 0.1 }
+  };
+  const tfmSliders = {
+    none: [], a: ['a'], d: ['d'], b: ['b'], c: ['c'], bc: ['b','c'], all: ['a','b','c','d']
+  };
+  const csOptions = [
+    { value: 'none', t: f => `y = ${f}(x) — no transformation` },
+    { value: 'a',    t: f => `y = a · ${f}(x) — vertical stretch` },
+    { value: 'd',    t: f => `y = ${f}(x) + d — vertical shift` },
+    { value: 'b',    t: f => `y = ${f}(bx) — horizontal stretch / period change` },
+    { value: 'c',    t: f => `y = ${f}(x + c) — horizontal shift (phase)` },
+    { value: 'bc',   t: f => `y = ${f}(bx + c) — period and phase` },
+    { value: 'all',  t: f => `y = a · ${f}(bx + c) + d — full transformation` },
+  ];
+
+  function dropdownLabel() {
+    const on = Object.keys(active).filter(k => active[k]);
+    return on.length === 1 ? NAMES[on[0]] : 'sin';
+  }
+  function updateCSLabel() {
+    const cur = csOptions.find(o => o.value === tfm);
+    document.getElementById('cs-label').textContent = cur ? cur.t(dropdownLabel()) : '';
+  }
+  function buildCSList() {
+    const list = document.getElementById('cs-list');
+    list.innerHTML = '';
+    csOptions.forEach(opt => {
+      const el = document.createElement('div');
+      el.className = 'cs-option' + (opt.value === tfm ? ' active' : '');
+      el.textContent = opt.t(dropdownLabel());
+      const pick = () => { tfm = opt.value; closeCS(); updateCSLabel(); buildSliders(); draw(); };
+      el.addEventListener('touchend', e => { e.preventDefault(); pick(); });
+      el.addEventListener('click', pick);
+      list.appendChild(el);
+    });
+  }
+  function openCS()  { buildCSList(); document.getElementById('cs-list').classList.add('open'); csOpen = true; }
+  function closeCS() { document.getElementById('cs-list').classList.remove('open'); csOpen = false; }
+  function toggleCS() { csOpen ? closeCS() : openCS(); }
+  function handleCSTouch(e) { e.preventDefault(); toggleCS(); }
+
+  document.addEventListener('touchend', e => { if (csOpen && !document.getElementById('cs-wrap').contains(e.target)) closeCS(); });
+  document.addEventListener('click',    e => { if (csOpen && !document.getElementById('cs-wrap').contains(e.target)) closeCS(); });
+
+  function onToggle(e) {
+    active.sin = document.getElementById('tog-sin').checked;
+    active.cos = document.getElementById('tog-cos').checked;
+    active.tan = document.getElementById('tog-tan').checked;
+    if (!active.sin && !active.cos && !active.tan) {
+      const src = e.target.id.replace('tog-', '');
+      active[src] = true;
+      document.getElementById('tog-' + src).checked = true;
+    }
+    updateCSLabel();
+    draw();
+  }
+
+  function buildSliders() {
+    const keys = tfmSliders[tfm];
+    const area = document.getElementById('slider-area');
+    area.innerHTML = '';
+    keys.forEach(k => {
+      const def = sliderDefs[k];
+      const row = document.createElement('div');
+      row.className = 'slider-row';
+      row.innerHTML = `<div class="slider-label">${def.label}<span id="val-${k}">${params[k].toFixed(k === 'c' ? 0 : 1)}</span></div>
+        <input type="range" min="${def.min}" max="${def.max}" step="${def.step}" value="${params[k]}" id="sl-${k}" oninput="onSlide('${k}')">`;
+      area.appendChild(row);
+    });
+  }
+
+  function onSlide(k) {
+    params[k] = parseFloat(document.getElementById('sl-' + k).value);
+    document.getElementById('val-' + k).textContent = params[k].toFixed(k === 'c' ? 0 : 1);
+    draw();
+  }
+
+  function resetAll() {
+    params = { a: 1, b: 1, c: 0, d: 0 };
+    tfm = 'none';
+    updateCSLabel();
+    buildSliders();
+    draw();
+  }
+
+  function calcY(f, xDeg, p) {
+    const inner = p.b * xDeg * Math.PI / 180 + p.c * Math.PI / 180;
+    let y;
+    if (f === 'sin') y = Math.sin(inner);
+    else if (f === 'cos') y = Math.cos(inner);
+    else { y = Math.tan(inner); if (Math.abs(y) > 20) return null; }
+    return p.a * y + p.d;
+  }
+
+  function buildEqStr() {
+    const on = Object.keys(active).filter(k => active[k]);
+    const keys = tfmSliders[tfm];
+    const hasA = keys.includes('a'), hasB = keys.includes('b'), hasC = keys.includes('c'), hasD = keys.includes('d');
+    const aStr = hasA ? (params.a === 1 ? '' : params.a === -1 ? '−' : params.a.toFixed(1) + '·') : '';
+    const bStr = hasB && params.b !== 1 ? params.b.toFixed(1) : '';
+    const cSign = params.c >= 0 ? '+' : '−';
+    const cStr  = hasC && params.c !== 0 ? ` ${cSign} ${Math.abs(params.c).toFixed(0)}°` : '';
+    const dSign = params.d >= 0 ? '+' : '−';
+    const dStr  = hasD && params.d !== 0 ? ` ${dSign} ${Math.abs(params.d).toFixed(1)}` : '';
+    const inner = `${bStr}x${cStr}`;
+    return on.map(f => `y = ${aStr}${NAMES[f]}(${inner})${dStr}`).join('     ');
+  }
+
+  function draw() {
+    const canvas = document.getElementById('gc');
+    const W = canvas.offsetWidth  || 640;
+    const H = canvas.offsetHeight || Math.round(W / 2);
+    canvas.width  = W * devicePixelRatio;
+    canvas.height = H * devicePixelRatio;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    const w = W, h = H;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+
+    const pad = { l: 46, r: 12, t: 14, b: 30 };
+    const gw = w - pad.l - pad.r, gh = h - pad.t - pad.b;
+    const toX = deg => pad.l + (deg + 360) / 720 * gw;
+    const toY = v   => pad.t + (1 - (v + 3) / 6) * gh;
+
+    for (let d = -360; d <= 360; d += 90) {
+      ctx.strokeStyle = d % 180 !== 0 ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.22)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(toX(d), pad.t); ctx.lineTo(toX(d), pad.t + gh); ctx.stroke();
+    }
+    for (let v = -3; v <= 3; v += 0.5) {
+      const whole = Math.round(v * 10) % 10 === 0;
+      ctx.strokeStyle = whole ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad.l, toY(v)); ctx.lineTo(pad.l + gw, toY(v)); ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.l, toY(0)); ctx.lineTo(pad.l + gw, toY(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(toX(0), pad.t); ctx.lineTo(toX(0), pad.t + gh); ctx.stroke();
+
+    ctx.fillStyle = '#333'; ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    [-360,-270,-180,-90,0,90,180,270,360].forEach(d => ctx.fillText(d + '°', toX(d), pad.t + gh + 20));
+    ctx.textAlign = 'right';
+    [-3,-2,-1,0,1,2,3].forEach(v => ctx.fillText(v, pad.l - 6, toY(v) + 5));
+
+    const refP = { a: 1, b: 1, c: 0, d: 0 };
+    ['sin', 'cos'].forEach(f => {
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      let pen = false;
+      for (let px = 0; px <= gw; px++) {
+        const deg = (px / gw) * 720 - 360;
+        const yv = calcY(f, deg, refP);
+        if (yv === null || yv < -3.5 || yv > 3.5) { pen = false; continue; }
+        const cx = pad.l + px, cy = toY(yv);
+        if (!pen) { ctx.moveTo(cx, cy); pen = true; } else ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    ['sin', 'cos', 'tan'].forEach(f => {
+      if (!active[f]) return;
+      ctx.strokeStyle = COLORS[f]; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      let pen = false;
+      for (let px = 0; px <= gw; px++) {
+        const deg = (px / gw) * 720 - 360;
+        const yv = calcY(f, deg, params);
+        if (yv === null || yv < -3.5 || yv > 3.5) { pen = false; continue; }
+        const cx = pad.l + px, cy = toY(yv);
+        if (!pen) { ctx.moveTo(cx, cy); pen = true; } else ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    });
+
+    document.getElementById('eq').textContent = buildEqStr();
+  }
+
+  window.addEventListener('resize', draw);
+  updateCSLabel();
+  buildSliders();
+  draw();
+</script>
+
+</body>
+</html>

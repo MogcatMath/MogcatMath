@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HCF & LCM Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Fira+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #f0f4ff;
+    --panel: #ffffff;
+    --border: #d0d8f0;
+    --text: #1a1f3c;
+    --muted: #6b7a9e;
+    --accent: #4361ee;
+    --col-yellow: #ffe066;
+    --col-blue: #90e0ef;
+    --col-green: #b7e4c7;
+    --col-pink: #ffb3c1;
+    --col-orange: #ffd6a5;
+    --col-purple: #d0b4fe;
+    --col-teal: #a8dadc;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  h1 {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-bottom: 28px;
+    text-align: center;
+  }
+
+  .main-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  /* BUTTON PANEL */
+  .btn-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 185px;
+    padding-top: 120px;
+  }
+
+  .btn {
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    text-align: left;
+    line-height: 1.3;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-yellow  { background: var(--col-yellow); color: #5a4500; }
+  .btn-blue    { background: var(--col-blue);   color: #004f6b; }
+  .btn-green   { background: var(--col-green);  color: #1a5c35; }
+  .btn-all     { background: #e8e0ff; color: #3b1fa8; }
+  .btn-clear   { background: #ffe5e5; color: #8b2020; }
+  .btn-third   { background: #fce4ec; color: #880e4f; border: 2px dashed #f48fb1; }
+  .btn-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* NUMBER COLUMNS */
+  .numbers-area {
+    display: flex;
+    gap: 32px;
+    flex: 1;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .number-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    min-width: 90px;
+  }
+
+  /* Column C slide-in animation */
+  #col-c {
+    overflow: hidden;
+    transition: max-width 0.35s ease, opacity 0.35s ease, margin 0.35s ease;
+    max-width: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #col-c.visible {
+    max-width: 200px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #divider-c {
+    overflow: hidden;
+    transition: max-width 0.35s ease, opacity 0.35s ease;
+    max-width: 0;
+    opacity: 0;
+  }
+  #divider-c.visible {
+    max-width: 60px;
+    opacity: 1;
+  }
+
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    white-space: nowrap;
+  }
+
+  .cell-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    list-style: none;
+  }
+
+  .cell {
+    font-family: 'Fira Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    width: 54px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    position: relative;
+    transition: background 0.2s;
+    border: 2px solid transparent;
+  }
+
+  .cell.highlight-yellow { background: var(--col-yellow); border-color: #e6b800; border-radius: 50%; box-shadow: 0 2px 8px rgba(230,184,0,0.35); }
+  .cell.highlight-blue   { background: var(--col-blue);   border-color: #0096c7; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,150,199,0.3); }
+  .cell.highlight-green  { background: var(--col-green);  border-color: #52b788; border-radius: 50%; box-shadow: 0 2px 8px rgba(82,183,136,0.3); }
+  .cell.highlight-pink   { background: var(--col-pink);   border-color: #e05577; border-radius: 50%; box-shadow: 0 2px 8px rgba(224,85,119,0.25); }
+  .cell.highlight-orange { background: var(--col-orange); border-color: #f4a261; border-radius: 50%; box-shadow: 0 2px 8px rgba(244,162,97,0.3); }
+  .cell.highlight-purple { background: var(--col-purple); border-color: #7b2d8b; border-radius: 50%; box-shadow: 0 2px 8px rgba(123,45,139,0.25); }
+  .cell.highlight-teal   { background: var(--col-teal);   border-color: #457b9d; border-radius: 50%; box-shadow: 0 2px 8px rgba(69,123,157,0.25); }
+
+  /* INPUT BOX */
+  .input-wrapper { margin: 10px 0; position: relative; }
+
+  input[type="number"] {
+    font-family: 'Fira Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    width: 90px;
+    height: 60px;
+    text-align: center;
+    border: 3px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--panel);
+    color: var(--text);
+    outline: none;
+    box-shadow: 0 2px 10px rgba(67,97,238,0.15);
+    -moz-appearance: textfield;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { border-color: #7c3aed; box-shadow: 0 0 0 4px rgba(124,58,237,0.15); }
+
+  /* DIVIDER between columns */
+  .vs-divider {
+    display: flex;
+    align-items: center;
+    padding-top: 120px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--border);
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  /* INFO BAR */
+  .info-bar {
+    margin-top: 28px;
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 22px;
+    font-size: 0.95rem;
+    color: var(--text);
+    width: 100%;
+    max-width: 1000px;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .info-bar .tag {
+    font-weight: 800;
+    font-size: 0.8rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .tag-hcf  { background: var(--col-blue);   color: #004f6b; }
+  .tag-lcm  { background: var(--col-green);  color: #1a5c35; }
+
+  .placeholder-msg { color: var(--muted); font-style: italic; }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    width: 100%;
+    max-width: 1000px;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.15); }
+</style>
+</head>
+<body>
+
+<h1>HCF &amp; LCM Explorer</h1>
+<p class="subtitle" id="subtitle">Enter two numbers to explore their factors and multiples</p>
+
+<div class="main-layout">
+
+  <!-- LEFT BUTTON PANEL -->
+  <div class="btn-panel">
+    <button class="btn btn-blue"   onclick="highlightHCF()">🔵 Highlight HCF</button>
+    <button class="btn btn-green"  onclick="highlightLCM()">🟢 Highlight LCM</button>
+    <button class="btn btn-all"    onclick="highlightAllCommonFactors()">🎨 Show all common factors</button>
+    <button class="btn btn-yellow" onclick="highlightAllCommonMultiples()">🟡 Show all common multiples</button>
+    <div class="btn-divider"></div>
+    <button class="btn btn-third"  id="btn-third" onclick="toggleThirdNumber()">➕ Use a third number</button>
+    <button class="btn" style="background:#f0f0f0;color:#444;" onclick="resetAll()">↺ Reset everything</button>
+  </div>
+
+  <!-- NUMBER COLUMNS -->
+  <div class="numbers-area" id="numbers-area">
+
+    <!-- NUMBER A -->
+    <div class="number-column">
+      <div class="section-label">Factors of A</div>
+      <ul class="cell-list" id="factors-a"></ul>
+      <div class="input-wrapper">
+        <input type="number" id="input-a" min="1" max="999" placeholder="A" oninput="update()">
+      </div>
+      <div class="section-label" style="margin-top:8px;">Multiples of A</div>
+      <ul class="cell-list" id="multiples-a"></ul>
+    </div>
+
+    <div class="vs-divider">&amp;</div>
+
+    <!-- NUMBER B -->
+    <div class="number-column">
+      <div class="section-label">Factors of B</div>
+      <ul class="cell-list" id="factors-b"></ul>
+      <div class="input-wrapper">
+        <input type="number" id="input-b" min="1" max="999" placeholder="B" oninput="update()">
+      </div>
+      <div class="section-label" style="margin-top:8px;">Multiples of B</div>
+      <ul class="cell-list" id="multiples-b"></ul>
+    </div>
+
+    <!-- DIVIDER for C (hidden initially) -->
+    <div class="vs-divider" id="divider-c">&amp;</div>
+
+    <!-- NUMBER C (hidden initially) -->
+    <div class="number-column" id="col-c">
+      <div class="section-label">Factors of C</div>
+      <ul class="cell-list" id="factors-c"></ul>
+      <div class="input-wrapper">
+        <input type="number" id="input-c" min="1" max="999" placeholder="C" oninput="update()">
+      </div>
+      <div class="section-label" style="margin-top:8px;">Multiples of C</div>
+      <ul class="cell-list" id="multiples-c"></ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- INFO BAR -->
+<div class="info-bar" id="info-bar">
+  <span class="placeholder-msg">Enter two numbers above to get started.</span>
+</div>
+
+<!-- LEGEND -->
+<div class="legend" id="legend" style="display:none;">
+  <div class="legend-item"><div class="legend-dot" style="background:#90e0ef;border-color:#0096c7;"></div> Highest Common Factor (HCF)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#b7e4c7;border-color:#52b788;"></div> Lowest Common Multiple (LCM)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#d0b4fe;border-color:#7b2d8b;"></div> Other common factors / multiples</div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────
+  let dataA = { factors: [], multiples: [] };
+  let dataB = { factors: [], multiples: [] };
+  let dataC = { factors: [], multiples: [] };
+  let activeMode = null;
+  let thirdVisible = false;
+
+  const EXTRA_COLORS = ['highlight-pink','highlight-orange','highlight-purple','highlight-teal','highlight-yellow'];
+
+  // ── Toggle third number ────────────────────────────────
+  function toggleThirdNumber() {
+    thirdVisible = !thirdVisible;
+    document.getElementById('col-c').classList.toggle('visible', thirdVisible);
+    document.getElementById('divider-c').classList.toggle('visible', thirdVisible);
+    const btn = document.getElementById('btn-third');
+    btn.textContent = thirdVisible ? '➖ Remove third number' : '➕ Use a third number';
+    if (!thirdVisible) {
+      document.getElementById('input-c').value = '';
+      dataC = { factors: [], multiples: [] };
+    }
+    clearHighlights();
+    update();
+  }
+
+  // ── Math helpers ───────────────────────────────────────
+  function getFactors(n) {
+    const f = [];
+    for (let i = 1; i <= n; i++) { if (n % i === 0) f.push(i); }
+    return f;
+  }
+
+  function getMultiples(n, lcmVal) {
+    const count = Math.max(10, lcmVal > 0 ? Math.ceil(lcmVal / n) : 10);
+    const result = [];
+    for (let i = 1; i <= count; i++) result.push(n * i);
+    return result;
+  }
+
+  function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+  function lcm(a, b) { return (a * b) / gcd(a, b); }
+  function lcm3(a, b, c) { return lcm(lcm(a, b), c); }
+  function gcd3(a, b, c) { return gcd(gcd(a, b), c); }
+
+  // ── Render helpers ─────────────────────────────────────
+  function renderList(ulId, values, prefix) {
+    const ul = document.getElementById(ulId);
+    if (!ul) return;
+    ul.innerHTML = '';
+    values.forEach(v => {
+      const li = document.createElement('li');
+      li.className = 'cell';
+      li.id = `${prefix}-${v}`;
+      li.textContent = v;
+      ul.appendChild(li);
+    });
+  }
+
+  function clearHighlights() {
+    document.querySelectorAll('.cell').forEach(c => { c.className = 'cell'; });
+    activeMode = null;
+  }
+
+  function highlight(id, cls) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add(cls);
+  }
+
+  // ── Main update ────────────────────────────────────────
+  function update() {
+    const a = parseInt(document.getElementById('input-a').value);
+    const b = parseInt(document.getElementById('input-b').value);
+    const c = thirdVisible ? parseInt(document.getElementById('input-c').value) : NaN;
+
+    const aValid = a > 0 && a <= 9999;
+    const bValid = b > 0 && b <= 9999;
+    const cValid = thirdVisible && c > 0 && c <= 9999;
+
+    let lcmVal = 0;
+    if (aValid && bValid && !cValid) lcmVal = lcm(a, b);
+    if (aValid && bValid && cValid)  lcmVal = lcm3(a, b, c);
+
+    dataA = aValid ? { factors: getFactors(a).reverse(), multiples: getMultiples(a, lcmVal) } : { factors: [], multiples: [] };
+    dataB = bValid ? { factors: getFactors(b).reverse(), multiples: getMultiples(b, lcmVal) } : { factors: [], multiples: [] };
+    dataC = cValid ? { factors: getFactors(c).reverse(), multiples: getMultiples(c, lcmVal) } : { factors: [], multiples: [] };
+
+    renderList('factors-a',   dataA.factors,   'fa');
+    renderList('multiples-a', dataA.multiples, 'ma');
+    renderList('factors-b',   dataB.factors,   'fb');
+    renderList('multiples-b', dataB.multiples, 'mb');
+    renderList('factors-c',   dataC.factors,   'fc');
+    renderList('multiples-c', dataC.multiples, 'mc');
+
+    activeMode = null;
+    updateInfoBar(aValid ? a : null, bValid ? b : null, cValid ? c : null, lcmVal);
+  }
+
+  function updateInfoBar(a, b, c, lcmVal) {
+    const bar = document.getElementById('info-bar');
+    const legend = document.getElementById('legend');
+    const subtitle = document.getElementById('subtitle');
+
+    const allNums = [a, b, c].filter(Boolean);
+
+    if (allNums.length === 0) {
+      bar.innerHTML = '<span class="placeholder-msg">Enter two numbers above to get started.</span>';
+      legend.style.display = 'none';
+      subtitle.textContent = thirdVisible ? 'Enter three numbers to explore their factors and multiples' : 'Enter two numbers to explore their factors and multiples';
+      return;
+    }
+
+    subtitle.textContent = thirdVisible ? 'Enter three numbers to explore their factors and multiples' : 'Enter two numbers to explore their factors and multiples';
+
+    if (allNums.length >= 2) {
+      const hcfVal = allNums.length === 3 ? gcd3(a, b, c) : gcd(a, b);
+      const numList = allNums.join(', ');
+      let html = `<span class="tag tag-hcf">HCF</span> The highest common factor of ${numList} is <strong>${hcfVal}</strong> &nbsp;`;
+      if (lcmVal) html += `<span class="tag tag-lcm">LCM</span> The lowest common multiple is <strong>${lcmVal}</strong>`;
+      bar.innerHTML = html;
+      legend.style.display = 'flex';
+    } else {
+      const n = allNums[0];
+      bar.innerHTML = `Factors of ${n}: ${getFactors(n).join(', ')}`;
+      legend.style.display = 'none';
+    }
+  }
+
+  // ── requireBoth / requireAll ───────────────────────────
+  function requireNums() {
+    const a = parseInt(document.getElementById('input-a').value);
+    const b = parseInt(document.getElementById('input-b').value);
+    const c = thirdVisible ? parseInt(document.getElementById('input-c').value) : NaN;
+    if (!a || !b || a <= 0 || b <= 0) {
+      alert('Please enter two positive numbers first!');
+      return null;
+    }
+    if (thirdVisible && (!c || c <= 0)) {
+      alert('Please enter a value for C too!');
+      return null;
+    }
+    return { a, b, c: thirdVisible ? c : null };
+  }
+
+  // ── Highlight HCF ─────────────────────────────────────
+  function highlightHCF() {
+    if (activeMode === 'hcf') { clearHighlights(); return; }
+    const nums = requireNums(); if (!nums) return;
+    clearHighlights(); activeMode = 'hcf';
+    const { a, b, c } = nums;
+    const h = c ? gcd3(a, b, c) : gcd(a, b);
+    highlight(`fa-${h}`, 'highlight-blue');
+    highlight(`fb-${h}`, 'highlight-blue');
+    if (c) highlight(`fc-${h}`, 'highlight-blue');
+  }
+
+  // ── Highlight LCM ─────────────────────────────────────
+  function highlightLCM() {
+    if (activeMode === 'lcm') { clearHighlights(); return; }
+    const nums = requireNums(); if (!nums) return;
+    clearHighlights(); activeMode = 'lcm';
+    const { a, b, c } = nums;
+    const l = c ? lcm3(a, b, c) : lcm(a, b);
+    highlight(`ma-${l}`, 'highlight-green');
+    highlight(`mb-${l}`, 'highlight-green');
+    if (c) highlight(`mc-${l}`, 'highlight-green');
+  }
+
+  // ── Highlight all common factors ───────────────────────
+  function highlightAllCommonFactors() {
+    if (activeMode === 'all') { clearHighlights(); return; }
+    const nums = requireNums(); if (!nums) return;
+    clearHighlights(); activeMode = 'all';
+    const { a, b, c } = nums;
+
+    const fa = new Set(getFactors(a));
+    const fb = new Set(getFactors(b));
+    let common = [...fa].filter(f => fb.has(f));
+    if (c) {
+      const fc = new Set(getFactors(c));
+      common = common.filter(f => fc.has(f));
+    }
+    common.sort((x, y) => y - x);
+    if (common.length === 0) return;
+
+    // HCF gets blue
+    highlight(`fa-${common[0]}`, 'highlight-blue');
+    highlight(`fb-${common[0]}`, 'highlight-blue');
+    if (c) highlight(`fc-${common[0]}`, 'highlight-blue');
+
+    let colIdx = 0;
+    for (let i = 1; i < common.length; i++) {
+      const f = common[i];
+      const cls = EXTRA_COLORS[colIdx++ % EXTRA_COLORS.length];
+      highlight(`fa-${f}`, cls);
+      highlight(`fb-${f}`, cls);
+      if (c) highlight(`fc-${f}`, cls);
+    }
+  }
+
+  // ── Highlight all common multiples ─────────────────────
+  function highlightAllCommonMultiples() {
+    if (activeMode === 'allMultiples') { clearHighlights(); return; }
+    const nums = requireNums(); if (!nums) return;
+    clearHighlights(); activeMode = 'allMultiples';
+    const { a, b, c } = nums;
+
+    const multA = new Set(dataA.multiples);
+    const multB = new Set(dataB.multiples);
+    let common = [...multA].filter(m => multB.has(m));
+    if (c) {
+      const multC = new Set(dataC.multiples);
+      common = common.filter(m => multC.has(m));
+    }
+    common.sort((x, y) => x - y);
+    if (common.length === 0) return;
+
+    // LCM gets green
+    highlight(`ma-${common[0]}`, 'highlight-green');
+    highlight(`mb-${common[0]}`, 'highlight-green');
+    if (c) highlight(`mc-${common[0]}`, 'highlight-green');
+
+    let colIdx = 0;
+    for (let i = 1; i < common.length; i++) {
+      const m = common[i];
+      const cls = EXTRA_COLORS[colIdx++ % EXTRA_COLORS.length];
+      highlight(`ma-${m}`, cls);
+      highlight(`mb-${m}`, cls);
+      if (c) highlight(`mc-${m}`, cls);
+    }
+  }
+
+  // ── Reset everything ───────────────────────────────────
+  function resetAll() {
+    document.getElementById('input-a').value = '';
+    document.getElementById('input-b').value = '';
+    document.getElementById('input-c').value = '';
+    if (thirdVisible) {
+      thirdVisible = false;
+      document.getElementById('col-c').classList.remove('visible');
+      document.getElementById('divider-c').classList.remove('visible');
+      document.getElementById('btn-third').textContent = '➕ Use a third number';
+      dataC = { factors: [], multiples: [] };
+    }
+    clearHighlights();
+    update();
+  }
+
+  // Init
+  update();
+</script>
+</body>
+</html>

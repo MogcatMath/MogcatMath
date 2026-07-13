@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friction on an Inclined Plane</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f9f9f7;color:#222;padding:20px;max-width:960px;margin:0 auto}
+h2{font-size:20px;font-weight:600;margin-bottom:4px}
+.subtitle{font-size:13px;color:#666;margin-bottom:14px}
+.canvas-wrap{position:relative;width:100%;margin-bottom:14px}
+canvas{width:100%;border-radius:8px;border:1px solid #ddd;background:#f8f8f5;display:block}
+#resetBtn{position:absolute;bottom:44px;left:50%;transform:translateX(-50%);opacity:0;pointer-events:none;transition:opacity 0.6s ease;padding:8px 22px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#222;font-size:13px;cursor:pointer;font-family:system-ui,sans-serif}
+#resetBtn:hover{background:#f0f0ee}
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:14px}
+.card h3{font-size:11px;font-weight:600;color:#666;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+.ctrl-row{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.ctrl-row:last-child{margin-bottom:0}
+.ctrl-label{font-size:13px;color:#666;display:flex;justify-content:space-between;align-items:center}
+.ctrl-label strong{font-size:14px;font-weight:600;color:#222}
+input[type=range]{width:100%;accent-color:#185FA5}
+.mu-row{display:flex;gap:6px;align-items:center}
+.mu-row button{width:28px;height:28px;border:1px solid #ccc;border-radius:6px;background:#f5f5f0;cursor:pointer;font-size:16px;line-height:1;color:#222;flex-shrink:0;font-family:system-ui,sans-serif}
+.mu-row button:hover{background:#fff}
+.mu-row input[type=number]{width:72px;text-align:center;border:1px solid #ccc;border-radius:6px;padding:4px 6px;font-size:14px;background:#fff;color:#222;font-family:system-ui,sans-serif}
+.mass-row{display:flex;gap:6px;align-items:center}
+.mass-row input[type=number]{width:70px;border:1px solid #ccc;border-radius:6px;padding:4px 6px;font-size:14px;background:#fff;color:#222;text-align:center;font-family:system-ui,sans-serif}
+.mass-row span{font-size:13px;color:#666}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.stat{background:#f5f5f0;border-radius:8px;padding:9px 11px}
+.stat-label{font-size:11px;color:#666;margin-bottom:2px}
+.stat-value{font-size:14px;font-weight:600}
+.state-badge{display:inline-block;padding:5px 14px;border-radius:20px;font-size:13px;font-weight:600;text-align:center;width:100%;margin-top:8px}
+.state-static{background:#EAF3DE;color:#27500A}
+.state-verge{background:#FAEEDA;color:#633806}
+.state-sliding{background:#FCEBEB;color:#791F1F}
+.formula{font-size:12px;color:#555;background:#f5f5f0;border-radius:6px;padding:10px 12px;font-family:monospace;line-height:1.9}
+.err{font-size:12px;color:#A32D2D;min-height:16px;margin-top:2px}
+@media(max-width:560px){.bottom-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h2>Friction on an inclined plane</h2>
+<p class="subtitle">A-level mechanics interactive simulator</p>
+
+<div class="canvas-wrap">
+  <canvas id="c"></canvas>
+  <button id="resetBtn" onclick="resetSled()">↺ Reset sled</button>
+</div>
+
+<div class="bottom-grid">
+  <div class="card">
+    <h3>Controls</h3>
+    <div class="ctrl-row">
+      <div class="ctrl-label">Slope angle (θ) <strong id="angleLbl">30°</strong></div>
+      <input type="range" id="angleSlider" min="0" max="90" value="30" step="1">
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label">Coefficient of friction (μ)</div>
+      <div class="mu-row">
+        <button id="muDown">−</button>
+        <input type="number" id="muInput" min="0" max="1" step="0.01" value="0.40">
+        <button id="muUp">+</button>
+      </div>
+      <div class="err" id="muErr"></div>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label">Mass (m)</div>
+      <div class="mass-row">
+        <input type="number" id="massInput" min="0.1" max="500" step="0.1" value="10">
+        <span>kg</span>
+      </div>
+      <div class="err" id="massErr"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Results</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Weight (mg)</div><div class="stat-value" id="rW">—</div></div>
+      <div class="stat"><div class="stat-label">Normal force (N)</div><div class="stat-value" id="rN">—</div></div>
+      <div class="stat"><div class="stat-label">Max friction (F)</div><div class="stat-value" id="rF">—</div></div>
+      <div class="stat"><div class="stat-label">Weight ∥ slope</div><div class="stat-value" id="rWp">—</div></div>
+      <div class="stat"><div class="stat-label">Net force</div><div class="stat-value" id="rNet">—</div></div>
+      <div class="stat"><div class="stat-label">Acceleration</div><div class="stat-value" id="rAcc">—</div></div>
+    </div>
+    <div class="stat" style="margin-top:7px"><div class="stat-label">Angle of friction (λ = arctan μ)</div><div class="stat-value" id="rLambda">—</div></div>
+    <div id="stateDiv" class="state-badge state-static">—</div>
+  </div>
+
+  <div class="card">
+    <h3>Key formulae</h3>
+    <div class="formula">
+N = mg·cos θ<br>
+F_max = μN = μmg·cos θ<br>
+W_∥ = mg·sin θ<br>
+a = g(sin θ − μ cos θ)<br>
+λ = arctan(μ)
+    </div>
+  </div>
+</div>
+
+<script>
+const G = 9.8;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let theta=30, mu=0.40, mass=10;
+let sledOff=0, sledStopped=false, lastT=null, animId=null;
+
+function showReset(v){
+  const b=document.getElementById('resetBtn');
+  b.style.opacity=v?'1':'0'; b.style.pointerEvents=v?'auto':'none';
+}
+function resetSled(){sledOff=0;sledStopped=false;showReset(false);lastT=null;}
+
+function getState(){
+  const r=theta*Math.PI/180;
+  const wPar=mass*G*Math.sin(r), Fmax=mu*mass*G*Math.cos(r);
+  const d=wPar-Fmax;
+  if(Math.abs(d)<0.001) return 'verge';
+  return d>0?'sliding':'static';
+}
+
+function updateResults(){
+  const r=theta*Math.PI/180, W=mass*G;
+  const N=W*Math.cos(r), Fmax=mu*N, Wpar=W*Math.sin(r);
+  const net=Wpar-Fmax, st=getState();
+  const a=net>0?G*(Math.sin(r)-mu*Math.cos(r)):0;
+  const lam=Math.atan(mu)*180/Math.PI;
+  document.getElementById('rW').textContent=W.toFixed(2)+' N';
+  document.getElementById('rN').textContent=N.toFixed(2)+' N';
+  document.getElementById('rF').textContent=Fmax.toFixed(2)+' N';
+  document.getElementById('rWp').textContent=Wpar.toFixed(2)+' N';
+  document.getElementById('rNet').textContent=(st==='static'?'0.00':net.toFixed(2))+' N';
+  document.getElementById('rAcc').textContent=a.toFixed(2)+' m/s²';
+  document.getElementById('rLambda').textContent=lam.toFixed(1)+'°';
+  const badge=document.getElementById('stateDiv');
+  if(st==='static'){badge.textContent='Stationary';badge.className='state-badge state-static';}
+  else if(st==='verge'){badge.textContent='On the verge of sliding';badge.className='state-badge state-verge';}
+  else{badge.textContent='Sliding ▼';badge.className='state-badge state-sliding';}
+}
+
+function resizeCanvas(){
+  const W=canvas.parentElement.clientWidth;
+  canvas.width=W; canvas.height=Math.round(W*0.52);
+}
+
+function drawScene(off){
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const rad=theta*Math.PI/180;
+  const pad=48, baseH=H-50;
+  const baseLen=W-pad*2;
+  const ox=pad, oy=baseH;
+  const tx=ox+baseLen*Math.cos(rad), ty=oy-baseLen*Math.sin(rad);
+
+  // ground triangle
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(tx,ty); ctx.lineTo(tx,oy); ctx.closePath();
+  ctx.fillStyle='#FAF5E4'; ctx.fill();
+
+  // slope surface line
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(tx,ty);
+  ctx.strokeStyle='#F5EDCA'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // angle arc + label
+  ctx.beginPath(); ctx.arc(ox,oy,42,-rad,0);
+  ctx.strokeStyle='#888680'; ctx.lineWidth=1; ctx.stroke();
+  const la=rad/2;
+  ctx.fillStyle='#888680'; ctx.font='13px system-ui,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('θ='+theta+'°', ox+46*Math.cos(la)+2, oy-46*Math.sin(la)+5);
+
+  // sled
+  const sPos=0.55-off;
+  const sledCx=ox+sPos*baseLen*Math.cos(rad);
+  const sledCy=oy-sPos*baseLen*Math.sin(rad);
+  const sw=Math.max(54,W*0.07), sh=20;
+  ctx.save();
+  ctx.translate(sledCx,sledCy); ctx.rotate(-rad);
+  ctx.fillStyle='#e8e6de'; ctx.strokeStyle='#73726c'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.roundRect(-sw/2,-sh,sw,sh,4);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#3d3d3a'; ctx.font='11px system-ui,sans-serif'; ctx.textAlign='center';
+  ctx.fillText(mass+'kg',0,-6);
+  ctx.restore();
+
+  // forces
+  const st=getState();
+  const Wv=mass*G, Nv=Wv*Math.cos(rad), Fmv=mu*Nv;
+  const scale=Math.min(baseLen*0.22/(Wv||1),2.2);
+
+  function arrow(x1,y1,x2,y2,col){
+    const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
+    if(len<2)return;
+    const ux=dx/len,uy=dy/len,hs=9;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hs,y2-uy*hs);
+    ctx.strokeStyle=col; ctx.lineWidth=2.2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hs-uy*hs*0.5,y2-uy*hs+ux*hs*0.5);
+    ctx.lineTo(x2-ux*hs+uy*hs*0.5,y2-uy*hs-ux*hs*0.5);
+    ctx.closePath(); ctx.fillStyle=col; ctx.fill();
+  }
+
+  // weight (burgundy)
+  const wLen=Wv*scale;
+  arrow(sledCx,sledCy-sh/2,sledCx,sledCy-sh/2+wLen,'#7B1C3E');
+  ctx.fillStyle='#7B1C3E'; ctx.font='bold 12px system-ui,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('mg='+Wv.toFixed(0)+'N', sledCx+8, sledCy-sh/2+wLen*0.5+4);
+
+  // normal (blue) — label at arrow tip
+  const nLen=Nv*scale, nx=-Math.sin(rad), ny=-Math.cos(rad);
+  arrow(sledCx,sledCy-sh,sledCx+nx*nLen,sledCy-sh+ny*nLen,'#185FA5');
+  ctx.fillStyle='#185FA5'; ctx.font='bold 12px system-ui,sans-serif'; ctx.textAlign='left';
+  const nTx=sledCx+nx*nLen+20*Math.cos(rad), nTy=sledCy-sh+ny*nLen+20*Math.sin(rad);
+  ctx.fillText('N='+Nv.toFixed(0)+'N', nTx, nTy);
+
+  // friction (green/red)
+  const fLen=Fmv*scale, fx=-Math.cos(rad), fy=Math.sin(rad);
+  const frCol=st==='sliding'?'#A32D2D':'#0F6E56';
+  arrow(sledCx,sledCy-sh/2,sledCx+fx*fLen,sledCy-sh/2+fy*fLen,frCol);
+  ctx.fillStyle=frCol; ctx.font='bold 12px system-ui,sans-serif'; ctx.textAlign='center';
+  const fMx=sledCx+fx*fLen*0.5, fMy=sledCy-sh/2+fy*fLen*0.5;
+  ctx.fillText('F='+Fmv.toFixed(0)+'N', fMx+22*Math.cos(rad+Math.PI/2), fMy-22*Math.sin(rad+Math.PI/2));
+
+  // legend
+  const kx=pad, ky=H-14;
+  ctx.font='11px system-ui,sans-serif'; ctx.textAlign='left';
+  [['#7B1C3E','Weight (mg)'],['#185FA5','Normal (N)'],['#0F6E56','Friction (F)']].forEach(([c,t],i)=>{
+    ctx.fillStyle=c; ctx.fillRect(kx+i*130,ky-7,16,7);
+    ctx.fillStyle='#888680'; ctx.fillText(t,kx+i*130+20,ky);
+  });
+}
+
+function animate(ts){
+  if(!lastT) lastT=ts;
+  const dt=(ts-lastT)/1000; lastT=ts;
+  const st=getState();
+  if(st==='sliding'&&!sledStopped){
+    const r=theta*Math.PI/180, a=G*(Math.sin(r)-mu*Math.cos(r));
+    sledOff+=0.5*a*dt*dt*60+0.004;
+    if(sledOff>=0.42){sledOff=0.42;sledStopped=true;showReset(true);}
+  } else if(st!=='sliding'){
+    if(sledStopped){sledStopped=false;showReset(false);}
+    sledOff=0;
+  }
+  drawScene(sledOff);
+  animId=requestAnimationFrame(animate);
+}
+
+function clampMu(v){return Math.round(Math.min(1,Math.max(0,v))*100)/100;}
+
+document.getElementById('angleSlider').addEventListener('input',e=>{
+  theta=parseInt(e.target.value);
+  document.getElementById('angleLbl').textContent=theta+'°';
+  sledOff=0;sledStopped=false;showReset(false);lastT=null;updateResults();
+});
+document.getElementById('muInput').addEventListener('input',e=>{
+  const err=document.getElementById('muErr'), v=parseFloat(e.target.value);
+  if(isNaN(v)||v<0||v>1){err.textContent='μ must be between 0 and 1';return;}
+  err.textContent='';mu=clampMu(v);sledOff=0;sledStopped=false;showReset(false);lastT=null;updateResults();
+});
+document.getElementById('muDown').addEventListener('click',()=>{
+  mu=clampMu(mu-0.01);document.getElementById('muInput').value=mu.toFixed(2);
+  document.getElementById('muErr').textContent='';sledOff=0;sledStopped=false;showReset(false);lastT=null;updateResults();
+});
+document.getElementById('muUp').addEventListener('click',()=>{
+  mu=clampMu(mu+0.01);document.getElementById('muInput').value=mu.toFixed(2);
+  document.getElementById('muErr').textContent='';sledOff=0;sledStopped=false;showReset(false);lastT=null;updateResults();
+});
+document.getElementById('massInput').addEventListener('input',e=>{
+  const err=document.getElementById('massErr'), v=parseFloat(e.target.value);
+  if(isNaN(v)||v<=0){err.textContent='Mass must be > 0';return;}
+  err.textContent='';mass=v;sledOff=0;sledStopped=false;showReset(false);lastT=null;updateResults();
+});
+
+window.addEventListener('resize',()=>{resizeCanvas(); drawScene(sledOff);});
+resizeCanvas();
+updateResults();
+animId=requestAnimationFrame(animate);
+</script>
+</body>
+</html>

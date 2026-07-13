@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pythagorean Triples — 3D Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --paper: #ffffff;
+    --ink-blue: #2255cc;
+    --ink-red: #cc2222;
+    --ink-gold: #444444;
+    --ink-dim: #6b6b6b;
+    --line: #cfd6e0;
+    --text: #1a1a1a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: var(--bg);
+    background-image:
+      linear-gradient(#d7dee6 1px, transparent 1px),
+      linear-gradient(90deg, #d7dee6 1px, transparent 1px);
+    background-size: 26px 26px;
+    overflow: hidden;
+    font-family: 'Patrick Hand', cursive;
+    color: var(--text);
+    touch-action: none;
+  }
+  #app { position: relative; width: 100vw; height: 100vh; }
+  #scene { position: absolute; inset: 0; display: block; }
+
+  .paper-panel {
+    background-color: #ffffff;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 10px;
+    box-shadow: 2px 3px 0 rgba(0,0,0,0.12);
+    font-weight: bold;
+  }
+
+  #title-block {
+    position: absolute; top: 14px; left: 14px;
+    padding: 8px 16px 10px;
+    max-width: 300px;
+    pointer-events: none;
+  }
+  #title-block h1 {
+    font-family: 'Caveat', cursive;
+    font-size: 30px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text);
+    line-height: 1;
+  }
+  #title-block p {
+    margin: 4px 0 0;
+    font-size: 15px;
+    color: var(--ink-dim);
+    line-height: 1.25;
+  }
+
+  #ui-panel {
+    position: absolute; top: 14px; right: 14px;
+    width: 236px;
+    padding: 14px 16px 16px;
+  }
+  #ui-panel h2 {
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    margin: 0 0 8px;
+    color: var(--ink-gold);
+  }
+  .row { margin-bottom: 12px; }
+  .row label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 16px; margin-bottom: 4px;
+  }
+  .row label span.val { color: var(--ink-blue); font-size: 17px; }
+  input[type="range"] {
+    width: 100%; accent-color: var(--ink-blue); cursor: pointer;
+  }
+  .toggle-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 16px; cursor: pointer; margin-bottom: 8px; user-select: none;
+  }
+  .toggle-row input { width: 17px; height: 17px; accent-color: var(--ink-red); cursor: pointer; }
+  #reset-btn, #range-btn, #hist-btn {
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px 10px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 16px;
+    font-weight: bold;
+    background: transparent;
+    color: var(--text);
+    border: 1.5px solid var(--ink-dim);
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  #reset-btn:active, #range-btn:active, #hist-btn:active { background: rgba(0,0,0,0.08); }
+
+  #count-line { font-size: 14px; color: var(--ink-dim); margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+
+  #legend {
+    position: absolute; left: 14px; bottom: 14px;
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  #hint {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+    font-size: 14px; color: var(--ink-dim);
+    padding: 5px 12px; border-radius: 20px;
+    background: rgba(0,0,0,0.25);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  #tooltip {
+    position: absolute;
+    padding: 10px 16px;
+    min-width: 150px;
+    font-size: 20px;
+    line-height: 1.35;
+    display: none;
+    pointer-events: none;
+    transform: translate(-50%, -115%);
+    z-index: 5;
+  }
+  #tooltip .eq { font-family: 'Caveat', cursive; font-size: 26px; color: var(--ink-red); }
+  #tooltip .sub { font-size: 14px; color: var(--ink-dim); margin-top: 2px; }
+
+  @media (max-width: 760px) {
+    #ui-panel { width: 190px; font-size: 14px; }
+    #title-block { max-width: 220px; }
+    #title-block h1 { font-size: 24px; }
+  }
+
+  #hist-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 50;
+    padding: 20px;
+  }
+  #hist-overlay.visible { display: flex; }
+  #hist-panel {
+    position: relative;
+    width: min(900px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px 24px 22px;
+  }
+  #hist-close {
+    position: absolute; top: 10px; right: 12px;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1.5px solid #1a1a1a;
+    background: #ffffff;
+    font-size: 20px;
+    font-family: 'Patrick Hand', cursive;
+    cursor: pointer;
+    line-height: 1;
+  }
+  #hist-title {
+    font-family: 'Caveat', cursive;
+    font-size: 30px; margin: 0 0 2px;
+    padding-right: 40px;
+  }
+  #hist-sub { font-size: 15px; color: var(--ink-dim); margin: 0 0 14px; font-weight: normal; }
+  #hist-controls {
+    display: flex; align-items: center; gap: 14px;
+    border: 1.5px solid #1a1a1a; border-radius: 10px;
+    padding: 10px 16px; margin-bottom: 16px;
+  }
+  #hist-controls label { font-size: 16px; white-space: nowrap; }
+  #binVal { color: var(--ink-red); font-size: 17px; }
+  #hist-chartbox {
+    border: 1.5px solid #1a1a1a; border-radius: 10px;
+    padding: 14px; overflow-x: auto;
+  }
+  #histChart { display: block; }
+  #hist-meta { font-size: 14px; color: var(--ink-dim); margin-top: 10px; font-weight: normal; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <div id="title-block" class="paper-panel">
+    <h1>Pythagorean Triples</h1>
+    <p id="constraint-text">x = leg&#8321; &nbsp;&middot;&nbsp; y = leg&#8322; &nbsp;&middot;&nbsp; z = hypotenuse<br>plotted where leg&#8321; &gt; leg&#8322;</p>
+  </div>
+
+  <div id="ui-panel" class="paper-panel">
+    <h2>Controls</h2>
+    <div class="row">
+      <label>Max leg length <span class="val" id="maxval">20</span></label>
+      <input type="range" id="maxleg" min="5" max="1000" value="20" step="1">
+    </div>
+    <label class="toggle-row"><input type="checkbox" id="primOnly">Primitive triples only</label>
+    <label class="toggle-row"><input type="checkbox" id="showSurface">Show cone surface (x&sup2;+y&sup2;=z&sup2;)</label>
+    <label class="toggle-row"><input type="checkbox" id="allowInversion">Allow leg inversion</label>
+    <button id="reset-btn">Reset view</button>
+    <button id="hist-btn">Primitive triples chart</button>
+    <div id="count-line">Showing <span id="count">0</span> triples</div>
+  </div>
+
+  <div id="legend" class="paper-panel">
+    <div class="legend-item"><span class="swatch" style="background:var(--ink-red)"></span>Primitive triple</div>
+    <div class="legend-item"><span class="swatch" style="background:#555555"></span>Non-primitive (multiple)</div>
+    <div class="legend-item"><span class="swatch" style="background:var(--ink-blue)"></span>Selected</div>
+  </div>
+
+  <div id="tooltip" class="paper-panel"></div>
+  <div id="hint">Drag to rotate &nbsp;&middot;&nbsp; scroll / pinch to zoom &nbsp;&middot;&nbsp; tap a point for details</div>
+
+  <div id="hist-overlay">
+    <div id="hist-panel" class="paper-panel">
+      <button id="hist-close" aria-label="Close">&times;</button>
+      <h1 id="hist-title">Primitive Triples by Leg Length</h1>
+      <p id="hist-sub"></p>
+      <div id="hist-controls">
+        <label>Range width <span id="binVal">50</span></label>
+      <input type="range" id="binWidth" min="1" max="100" value="50" step="1">
+      </div>
+      <div id="hist-chartbox">
+        <canvas id="histChart"></canvas>
+      </div>
+      <div id="hist-meta"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+
+  // ---------- basic gcd / triple generation ----------
+  function gcd(a,b){ while(b){ [a,b] = [b, a % b]; } return a; }
+
+  function generateTriples(maxLeg){
+    const triples = [];
+    for (let a = 2; a <= maxLeg; a++){
+      for (let b = 1; b < a; b++){
+        const c2 = a*a + b*b;
+        const c = Math.round(Math.sqrt(c2));
+        if (c*c === c2){
+          const g = gcd(gcd(a,b), c);
+          triples.push({ a, b, c, primitive: g === 1, g });
+        }
+      }
+    }
+    return triples;
+  }
+
+  // ---------- scene setup ----------
+  const canvas = document.getElementById('scene');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  scene.background = null;
+
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const DEFAULT_CAM = new THREE.Vector3(26, 20, 26);
+  camera.position.copy(DEFAULT_CAM);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(6, 6, 6);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 6;
+  controls.maxDistance = 120;
+  controls.update();
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const dLight = new THREE.DirectionalLight(0xffffff, 0.7);
+  dLight.position.set(20, 30, 10);
+  scene.add(dLight);
+  const dLight2 = new THREE.DirectionalLight(0xffffff, 0.25);
+  dLight2.position.set(-15, 10, -20);
+  scene.add(dLight2);
+
+  // ---------- groups ----------
+  const axisGroup = new THREE.Group();
+  const pointsGroup = new THREE.Group();
+  const surfaceGroup = new THREE.Group();
+  scene.add(axisGroup, pointsGroup, surfaceGroup);
+
+  // colors
+  const COL_AXIS      = 0x111111;
+  const COL_PRIMITIVE = 0xcc2222;
+  const COL_MULTIPLE  = 0x555555;
+  const COL_SELECTED  = 0x2255cc;
+  const COL_SURFACE   = 0x888888;
+
+  // ---------- text sprite helper (handwritten labels) ----------
+  function makeTextSprite(text, opts){
+    opts = opts || {};
+    const fontSize = opts.fontSize || 64;
+    const color = opts.color || '#ece7dc';
+    const font = opts.font || fontSize + 'px "Patrick Hand", cursive';
+    const canvasEl = document.createElement('canvas');
+    const ctx = canvasEl.getContext('2d');
+    ctx.font = font;
+    const metrics = ctx.measureText(text);
+    const padding = 14;
+    canvasEl.width = Math.ceil(metrics.width) + padding*2;
+    canvasEl.height = fontSize * 1.4;
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, canvasEl.width/2, canvasEl.height/2);
+    const texture = new THREE.CanvasTexture(canvasEl);
+    texture.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    const scale = opts.scale || 1;
+    sprite.scale.set(canvasEl.width/canvasEl.height * scale, scale, 1);
+    sprite.renderOrder = 10;
+    return sprite;
+  }
+
+  // ---------- state ----------
+  let currentMaxLeg = 20;
+  let TARGET_SIZE = 16;      // world-space extent for the leg axes
+  let unit = TARGET_SIZE / currentMaxLeg;
+  let selectedMesh = null;
+  const sphereMeshes = [];
+
+  function niceStep(maxLeg){
+    if (maxLeg <= 15) return 1;
+    if (maxLeg <= 30) return 5;
+    if (maxLeg <= 60) return 10;
+    if (maxLeg <= 120) return 20;
+    if (maxLeg <= 250) return 25;
+    if (maxLeg <= 400) return 50;
+    if (maxLeg <= 800) return 100;
+    return 200;
+  }
+
+  // ---------- axes ----------
+  function buildAxes(maxLeg, maxHyp){
+    axisGroup.clear();
+    const step = niceStep(maxLeg);
+    const hypStep = niceStep(Math.ceil(maxHyp));
+
+    const xLen = maxLeg * unit;
+    const zLen = maxLeg * unit;
+    const yLen = maxHyp * unit;
+
+    const axisMat = new THREE.MeshBasicMaterial({ color: COL_AXIS });
+    const axisRadius = Math.max(0.045, unit*0.035);
+
+    function addLine(from, to){
+      const dir = new THREE.Vector3().subVectors(to, from);
+      const len = dir.length();
+      const geo = new THREE.CylinderGeometry(axisRadius, axisRadius, len, 8);
+      const mesh = new THREE.Mesh(geo, axisMat);
+      const mid = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+      mesh.position.copy(mid);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+      axisGroup.add(mesh);
+    }
+    // X axis (leg1)
+    addLine(new THREE.Vector3(0,0,0), new THREE.Vector3(xLen,0,0));
+    // Z axis (leg2) -- three.js Z, our "y"
+    addLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,zLen));
+    // Y axis (hypotenuse) -- three.js Y, our "z"
+    addLine(new THREE.Vector3(0,0,0), new THREE.Vector3(0,yLen,0));
+
+    // ticks + labels along X (leg1)
+    for (let v = step; v <= maxLeg; v += step){
+      const tick = makeTextSprite(String(v), { fontSize: 40, color: '#555555', scale: 0.7 });
+      tick.position.set(v*unit, -0.55, 0.6);
+      axisGroup.add(tick);
+    }
+    // ticks along Z (leg2)
+    for (let v = step; v <= maxLeg; v += step){
+      const tick = makeTextSprite(String(v), { fontSize: 40, color: '#555555', scale: 0.7 });
+      tick.position.set(-0.6, -0.55, v*unit);
+      axisGroup.add(tick);
+    }
+    // ticks along Y (hypotenuse)
+    for (let v = hypStep; v <= maxHyp; v += hypStep){
+      const tick = makeTextSprite(String(v), { fontSize: 40, color: '#555555', scale: 0.7 });
+      tick.position.set(-0.6, v*unit, -0.6);
+      axisGroup.add(tick);
+    }
+
+    // axis titles
+    const xLabel = makeTextSprite('x  (leg\u2081)', { fontSize: 52, color: '#111111', scale: 1.1 });
+    xLabel.position.set(xLen + 1.6, 0, 0);
+    axisGroup.add(xLabel);
+
+    const zLabel = makeTextSprite('y  (leg\u2082)', { fontSize: 52, color: '#111111', scale: 1.1 });
+    zLabel.position.set(0, 0, zLen + 1.6);
+    axisGroup.add(zLabel);
+
+    const yLabel = makeTextSprite('z  (hypotenuse)', { fontSize: 52, color: '#111111', scale: 1.1 });
+    yLabel.position.set(0, yLen + 1.4, 0);
+    axisGroup.add(yLabel);
+  }
+
+  // ---------- cone surface x^2 + y^2 = z^2 ----------
+  function buildSurface(maxLeg){
+    surfaceGroup.clear();
+    const segs = 40;
+    const geo = new THREE.PlaneGeometry(maxLeg*unit, maxLeg*unit, segs, segs);
+    geo.rotateX(-Math.PI/2);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++){
+      const wx = pos.getX(i) + (maxLeg*unit)/2;
+      const wz = pos.getZ(i) + (maxLeg*unit)/2;
+      const a = wx/unit, b = wz/unit;
+      const c = Math.sqrt(a*a + b*b);
+      pos.setY(i, c*unit);
+      pos.setX(i, wx);
+      pos.setZ(i, wz);
+    }
+    geo.computeVertexNormals();
+    const mat = new THREE.MeshPhongMaterial({
+      color: COL_SURFACE, transparent: true, opacity: 0.16,
+      side: THREE.DoubleSide, depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    surfaceGroup.add(mesh);
+
+    const wireMat = new THREE.MeshBasicMaterial({ color: COL_SURFACE, wireframe: true, transparent: true, opacity: 0.12 });
+    surfaceGroup.add(new THREE.Mesh(geo, wireMat));
+  }
+
+  // ---------- points ----------
+  const sphereGeoPrim = new THREE.SphereGeometry(0.16, 12, 10);
+  const sphereGeoMult = new THREE.SphereGeometry(0.10, 8, 8);
+  let instPrim = null, instMult = null;
+  const dummy = new THREE.Object3D();
+  const colorPrim = new THREE.Color(COL_PRIMITIVE);
+  const colorMult = new THREE.Color(COL_MULTIPLE);
+  const colorSel  = new THREE.Color(COL_SELECTED);
+
+  function buildPoints(triples, primOnly){
+    pointsGroup.clear();
+    sphereMeshes.length = 0;
+    selectedMesh = null;
+    hideTooltip();
+
+    const list = primOnly ? triples.filter(t => t.primitive) : triples;
+    const prims = list.filter(t => t.primitive);
+    const mults = list.filter(t => !t.primitive);
+
+    const matPrim = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.05 });
+    const matMult = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.05 });
+
+    instPrim = new THREE.InstancedMesh(sphereGeoPrim, matPrim, Math.max(prims.length, 1));
+    instMult = new THREE.InstancedMesh(sphereGeoMult, matMult, Math.max(mults.length, 1));
+    instPrim.userData.triples = prims;
+    instMult.userData.triples = mults;
+    instPrim.userData.isPrimGroup = true;
+    instMult.userData.isPrimGroup = false;
+
+    prims.forEach((t, i) => {
+      dummy.position.set(t.a*unit, t.c*unit, t.b*unit);
+      dummy.updateMatrix();
+      instPrim.setMatrixAt(i, dummy.matrix);
+      instPrim.setColorAt(i, colorPrim);
+    });
+    mults.forEach((t, i) => {
+      dummy.position.set(t.a*unit, t.c*unit, t.b*unit);
+      dummy.updateMatrix();
+      instMult.setMatrixAt(i, dummy.matrix);
+      instMult.setColorAt(i, colorMult);
+    });
+    if (instPrim.instanceColor) instPrim.instanceColor.needsUpdate = true;
+    if (instMult.instanceColor) instMult.instanceColor.needsUpdate = true;
+    instPrim.instanceMatrix.needsUpdate = true;
+    instMult.instanceMatrix.needsUpdate = true;
+
+    if (prims.length) pointsGroup.add(instPrim);
+    if (mults.length) pointsGroup.add(instMult);
+    sphereMeshes.length = 0;
+    if (prims.length) sphereMeshes.push(instPrim);
+    if (mults.length) sphereMeshes.push(instMult);
+
+    document.getElementById('count').textContent = list.length;
+  }
+
+  function expandForInversion(triples, allowInversion){
+    if (!allowInversion) return triples;
+    const mirrored = triples.map(t => ({ a: t.b, b: t.a, c: t.c, primitive: t.primitive, g: t.g, mirrored: true }));
+    return triples.concat(mirrored);
+  }
+
+  // ---------- full rebuild ----------
+  function rebuild(){
+    const primOnly = document.getElementById('primOnly').checked;
+    const allowInversion = document.getElementById('allowInversion').checked;
+    const maxLeg = currentMaxLeg;
+    unit = TARGET_SIZE / maxLeg;
+
+    const rawTriples = generateTriples(maxLeg);
+    const triples = expandForInversion(rawTriples, allowInversion);
+    const maxHyp = triples.reduce((m,t) => Math.max(m, t.c), maxLeg*Math.SQRT2*0.01) || Math.ceil(maxLeg*Math.SQRT2);
+    const hypCeil = Math.max(maxLeg, Math.ceil(maxHyp));
+
+    document.getElementById('constraint-text').innerHTML = allowInversion
+      ? 'x = leg\u2081 &middot; y = leg\u2082 &middot; z = hypotenuse<br>leg inversion allowed \u2014 all pairs shown'
+      : 'x = leg\u2081 &middot; y = leg\u2082 &middot; z = hypotenuse<br>plotted where leg\u2081 &gt; leg\u2082';
+
+    buildAxes(maxLeg, hypCeil);
+    buildPoints(triples, primOnly);
+    if (document.getElementById('showSurface').checked) buildSurface(maxLeg);
+    else surfaceGroup.clear();
+
+    controls.target.set(maxLeg*unit*0.4, maxLeg*unit*0.3, maxLeg*unit*0.4);
+    controls.update();
+  }
+
+  // ---------- tooltip / selection ----------
+  const tooltip = document.getElementById('tooltip');
+  function hideTooltip(){ tooltip.style.display = 'none'; }
+
+  function restoreSelectedColor(){
+    if (!selectedMesh) return;
+    const { mesh, index, triple } = selectedMesh;
+    mesh.setColorAt(index, triple.primitive ? colorPrim : colorMult);
+    mesh.instanceColor.needsUpdate = true;
+  }
+
+  function selectInstance(mesh, index){
+    restoreSelectedColor();
+    const t = mesh.userData.triples[index];
+    selectedMesh = { mesh, index, triple: t };
+    mesh.setColorAt(index, colorSel);
+    mesh.instanceColor.needsUpdate = true;
+
+    let html = `<div class="eq">${t.a}\u00B2 + ${t.b}\u00B2 = ${t.c}\u00B2</div>`;
+    if (t.primitive){
+      html += `<div class="sub">primitive triple</div>`;
+    } else {
+      html += `<div class="sub">${t.g} \u00D7 (${t.a/t.g}, ${t.b/t.g}, ${t.c/t.g})</div>`;
+    }
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+    updateTooltipPosition();
+  }
+
+  function updateTooltipPosition(){
+    if (!selectedMesh) return;
+    const t = selectedMesh.triple;
+    const pos = new THREE.Vector3(t.a*unit, t.c*unit, t.b*unit);
+    const v = pos.project(camera);
+    const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+
+  // ---------- raycasting / tap handling ----------
+  const raycaster = new THREE.Raycaster();
+  raycaster.params.Points && (raycaster.params.Points.threshold = 0.2);
+  const pointer = new THREE.Vector2();
+  let downPos = null, downTime = 0;
+
+  function getPointer(e){
+    const rect = renderer.domElement.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY);
+    return { x: cx, y: cy, ndc: new THREE.Vector2(
+      ((cx - rect.left) / rect.width) * 2 - 1,
+      -((cy - rect.top) / rect.height) * 2 + 1
+    )};
+  }
+
+  function onDown(e){
+    const p = getPointer(e);
+    downPos = { x: p.x, y: p.y };
+    downTime = performance.now();
+  }
+  function onUp(e){
+    if (!downPos) return;
+    const p = getPointer(e);
+    const dist = Math.hypot(p.x - downPos.x, p.y - downPos.y);
+    const dt = performance.now() - downTime;
+    downPos = null;
+    if (dist > 8 || dt > 500) return; // treat as drag, not tap
+
+    raycaster.setFromCamera(p.ndc, camera);
+    const hits = raycaster.intersectObjects(sphereMeshes);
+    if (hits.length && hits[0].instanceId !== undefined){
+      selectInstance(hits[0].object, hits[0].instanceId);
+    }
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onDown, { passive: true });
+  renderer.domElement.addEventListener('pointerup', onUp, { passive: true });
+
+  // ---------- UI wiring ----------
+  const maxLegInput = document.getElementById('maxleg');
+  const maxValLabel = document.getElementById('maxval');
+  maxLegInput.addEventListener('input', () => {
+    currentMaxLeg = parseInt(maxLegInput.value, 10);
+    maxValLabel.textContent = currentMaxLeg;
+    rebuild();
+  });
+  document.getElementById('primOnly').addEventListener('change', rebuild);
+  document.getElementById('allowInversion').addEventListener('change', rebuild);
+  document.getElementById('showSurface').addEventListener('change', rebuild);
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    camera.position.copy(DEFAULT_CAM);
+    controls.target.set(currentMaxLeg*unit*0.4, currentMaxLeg*unit*0.3, currentMaxLeg*unit*0.4);
+    controls.update();
+  });
+  document.getElementById('hist-btn').addEventListener('click', showHistogramOverlay);
+
+  // ---------- primitive triples histogram (in-page overlay) ----------
+  function countPrimitivesByLeg(maxLeg){
+    const counts = new Array(maxLeg + 1).fill(0); // index 1..maxLeg
+    const triples = generateTriples(maxLeg);
+    triples.forEach(t => { if (t.primitive) counts[t.a]++; });
+    return counts;
+  }
+
+  const histOverlay = document.getElementById('hist-overlay');
+  const histCanvas = document.getElementById('histChart');
+  const histCtx = histCanvas.getContext('2d');
+  const histBinSlider = document.getElementById('binWidth');
+  const histBinVal = document.getElementById('binVal');
+  const histMeta = document.getElementById('hist-meta');
+  const histSub = document.getElementById('hist-sub');
+  let histCounts = [];
+  let histMaxLeg = 0;
+
+  function makeBins(width){
+    const bins = [];
+    for (let start = 1; start <= histMaxLeg; start += width){
+      const end = Math.min(start + width - 1, histMaxLeg);
+      let total = 0;
+      for (let v = start; v <= end; v++) total += histCounts[v] || 0;
+      bins.push({ start, end, total });
+    }
+    return bins;
+  }
+
+  function drawHistogram(){
+    const width = parseInt(histBinSlider.value, 10);
+    histBinVal.textContent = width;
+    const bins = makeBins(width);
+
+    const boxWidth = histCanvas.parentElement.clientWidth || 800;
+    const barW = Math.max(10, Math.min(48, Math.floor((boxWidth - 80) / bins.length)));
+    const chartW = Math.max(boxWidth - 4, bins.length * (barW + 6) + 80);
+    const chartH = 380;
+    histCanvas.width = chartW;
+    histCanvas.height = chartH;
+
+    const ctx = histCtx;
+    ctx.clearRect(0, 0, chartW, chartH);
+
+    const padL = 55, padB = 70, padT = 20, padR = 20;
+    const plotW = chartW - padL - padR;
+    const plotH = chartH - padT - padB;
+    const maxCount = Math.max(1, ...bins.map(b => b.total));
+
+    // gridlines + y ticks
+    ctx.strokeStyle = '#d7dee6';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#6b6b6b';
+    ctx.font = '13px "Patrick Hand", cursive';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const yTickCount = 5;
+    for (let i = 0; i <= yTickCount; i++){
+      const val = Math.round((maxCount / yTickCount) * i);
+      const y = padT + plotH - (val / maxCount) * plotH;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
+      ctx.stroke();
+      ctx.fillText(String(val), padL - 8, y);
+    }
+
+    // bars
+    ctx.textAlign = 'center';
+    bins.forEach((b, i) => {
+      const x = padL + i * (plotW / bins.length) + (plotW / bins.length - barW) / 2;
+      const h = (b.total / maxCount) * plotH;
+      const y = padT + plotH - h;
+      ctx.fillStyle = '#cc2222';
+      ctx.fillRect(x, y, barW, h);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(x, y, barW, h);
+
+      if (b.total > 0){
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = 'bold 12px "Patrick Hand", cursive';
+        ctx.fillText(String(b.total), x + barW/2, y - 10);
+      }
+    });
+
+    // x-axis labels (thin out if too many bars)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 12px "Patrick Hand", cursive';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const labelEvery = Math.max(1, Math.ceil(bins.length / 24));
+    bins.forEach((b, i) => {
+      if (i % labelEvery !== 0 && i !== bins.length - 1) return;
+      const x = padL + i * (plotW / bins.length) + (plotW / bins.length) / 2;
+      ctx.save();
+      ctx.translate(x, padT + plotH + 8);
+      if (bins.length > 20) ctx.rotate(Math.PI / 4);
+      ctx.textAlign = bins.length > 20 ? 'left' : 'center';
+      const label = b.start === b.end ? String(b.start) : (b.start + '\u2013' + b.end);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    });
+
+    // axes (bold black)
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT + plotH);
+    ctx.lineTo(padL + plotW, padT + plotH);
+    ctx.stroke();
+
+    const total = histCounts.reduce((a,c)=>a+(c||0), 0);
+    histMeta.textContent = bins.length + ' bar' + (bins.length === 1 ? '' : 's') + ' \u00b7 ' +
+      total + ' primitive triples total (leg\u2081 1\u2013' + histMaxLeg + ')';
+  }
+
+  function showHistogramOverlay(){
+    histMaxLeg = currentMaxLeg;
+    histCounts = countPrimitivesByLeg(histMaxLeg);
+    histSub.textContent = 'Bars show how many primitive Pythagorean triples have leg\u2081 (the larger leg) falling in each range, for leg\u2081 from 1 to ' + histMaxLeg + '.';
+    histBinSlider.value = 50;
+    histOverlay.classList.add('visible');
+    drawHistogram();
+  }
+
+  function hideHistogramOverlay(){
+    histOverlay.classList.remove('visible');
+  }
+
+  histBinSlider.addEventListener('input', drawHistogram);
+  document.getElementById('hist-close').addEventListener('click', hideHistogramOverlay);
+  histOverlay.addEventListener('click', (e) => {
+    if (e.target === histOverlay) hideHistogramOverlay();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && histOverlay.classList.contains('visible')) hideHistogramOverlay();
+  });
+
+
+  // ---------- resize ----------
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    if (histOverlay.classList.contains('visible')) drawHistogram();
+  });
+
+  // ---------- animate ----------
+  function animate(){
+    requestAnimationFrame(animate);
+    controls.update();
+    if (selectedMesh) updateTooltipPosition();
+    renderer.render(scene, camera);
+  }
+
+  // ---------- init ----------
+  function init(){
+    rebuild();
+    animate();
+  }
+
+  if (document.fonts && document.fonts.ready){
+    document.fonts.ready.then(init).catch(init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>

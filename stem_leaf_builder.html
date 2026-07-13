@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stem and Leaf Diagram Builder</title>
+<style>
+  :root{
+    --bg:#1b1b1d;
+    --panel:#26262a;
+    --panel-raised:#2f2f34;
+    --border:#3a3a40;
+    --text:#eaeaec;
+    --text-dim:#9a9aa2;
+    --accent:#4fc3f7;
+    --accent-dim:#2b6b82;
+    --stem:#ffb74d;
+    --leaf:#81c784;
+    --go:#4caf50;
+    --go-dim:#2e6b31;
+    --disabled:#3a3a40;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html,body{
+    margin:0; height:100%; width:100%; overflow:hidden;
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system, "Helvetica Neue", Arial, sans-serif;
+    touch-action:manipulation;
+  }
+  #app{
+    display:flex; flex-direction:column;
+    height:100vh; width:100vw;
+    padding:14px; gap:12px;
+  }
+
+  /* ---------- TOP BAR: data + controls ---------- */
+  .topbar{
+    display:flex; gap:14px;
+    height:26vh; min-height:170px; max-height:230px;
+  }
+
+  .databox-wrap{
+    flex:1; display:flex; flex-direction:column;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; padding:10px 12px; min-width:0;
+  }
+  .databox-header{
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0; margin-bottom:6px;
+  }
+  .databox-label{
+    font-size:0.85rem; color:var(--text-dim); letter-spacing:0.04em;
+    text-transform:uppercase;
+  }
+  .add-second-btn{
+    background:var(--panel-raised); border:1px solid var(--border);
+    color:var(--accent); font-size:0.78rem; font-weight:700;
+    border-radius:8px; padding:6px 10px; min-height:32px;
+  }
+  .add-second-btn:active{ background:var(--accent-dim); color:var(--text); }
+  .databox-panels{
+    flex:1; min-height:0; display:flex; flex-direction:column; gap:6px;
+  }
+  .databox-panel{
+    flex:1; min-height:0; display:flex; flex-direction:column;
+  }
+  .databox-panel + .databox-panel{
+    border-top:1px solid var(--border); padding-top:6px;
+  }
+  .databox-panel-tag{
+    font-size:0.68rem; font-weight:700; letter-spacing:0.04em;
+    text-transform:uppercase; margin-bottom:3px; flex-shrink:0;
+    display:none;
+  }
+  .databox-panel[data-set="A"] .databox-panel-tag{ color:var(--stem); }
+  .databox-panel[data-set="B"] .databox-panel-tag{ color:var(--leaf); }
+  .databox-panels.has-second .databox-panel-tag{ display:block; }
+  .databox{
+    flex:1; overflow-y:auto; display:flex; flex-wrap:wrap;
+    align-content:flex-start; gap:6px;
+  }
+  .data-chip{
+    background:var(--panel-raised); border:1px solid var(--border);
+    padding:6px 10px; border-radius:8px;
+    font-size:1.15rem; font-variant-numeric:tabular-nums;
+    transition:opacity 0.35s ease, background 0.35s ease, transform 0.35s ease;
+  }
+  .data-chip.used{
+    opacity:0.22; background:transparent; transform:scale(0.94);
+  }
+  .databox-empty{ color:var(--text-dim); font-size:1rem; padding:6px 2px; }
+
+  .target-row{
+    display:flex; align-items:center; gap:6px;
+  }
+  .target-row-label{
+    font-size:0.72rem; color:var(--text-dim); letter-spacing:0.04em;
+    text-transform:uppercase; flex-shrink:0;
+  }
+  .target-btn{
+    flex:1; background:var(--panel-raised); border:1px solid var(--border);
+    color:var(--text); border-radius:8px; padding:2px;
+    font-size:0.85rem; font-weight:700; min-height:30px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .target-btn.selected{
+    background:var(--accent); color:#0d1a1f; border-color:var(--accent);
+  }
+
+  .controls{
+    width:360px; flex-shrink:0; display:flex; flex-direction:column; gap:4px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; padding:7px 10px; overflow:hidden;
+  }
+  .ctrl-label{
+    font-size:0.68rem; color:var(--text-dim); letter-spacing:0.04em;
+    text-transform:uppercase; margin:0;
+    line-height:1.15;
+  }
+  .dist-grid{
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:4px;
+  }
+  .dist-btn{
+    background:var(--panel-raised); border:1px solid var(--border);
+    color:var(--text); border-radius:8px; padding:3px 2px;
+    font-size:0.78rem; font-weight:600; min-height:34px;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; line-height:1.05;
+  }
+  .dist-btn.selected{
+    background:var(--accent); color:#0d1a1f; border-color:var(--accent);
+  }
+  .size-row{
+    display:flex; align-items:center; gap:8px;
+  }
+  .size-row input[type="number"]{
+    flex:1; font-size:1rem; padding:4px; text-align:center;
+    border-radius:8px; border:1px solid var(--border);
+    background:var(--panel-raised); color:var(--text);
+    min-height:34px;
+  }
+  .size-row input[type="number"]::-webkit-inner-spin-button{ opacity:1; }
+
+  #populateBtn{
+    background:var(--go); border:none; color:#0d1f0e;
+    font-size:1rem; font-weight:700; border-radius:8px;
+    min-height:38px; margin-top:1px;
+  }
+  #populateBtn:active{ background:var(--go-dim); }
+
+  /* ---------- STEP ROW ---------- */
+  .steprow{ display:flex; gap:12px; flex-shrink:0; }
+  .step-btn{
+    flex:1; min-height:56px; font-size:1.15rem; font-weight:700;
+    border-radius:12px; border:1px solid var(--border);
+    background:var(--panel-raised); color:var(--text);
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .step-btn:not(:disabled):active{ background:var(--accent-dim); }
+  .step-btn:disabled{ opacity:0.35; color:var(--text-dim); }
+  .step-btn .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%;
+    background:var(--accent); color:#0d1a1f; font-size:0.95rem;
+    flex-shrink:0;
+  }
+  .step-btn:disabled .num{ background:var(--disabled); color:var(--text-dim); }
+
+  /* ---------- DIAGRAM AREA ---------- */
+  .diagram-wrap{
+    flex:1; min-height:0; display:flex; flex-direction:column;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; padding:14px 18px; overflow:hidden;
+  }
+  .diagram-header{
+    display:flex; justify-content:space-between; align-items:baseline;
+    flex-shrink:0; margin-bottom:6px;
+  }
+  .diagram-title{ font-size:1rem; color:var(--text-dim); letter-spacing:0.04em; text-transform:uppercase; }
+  .key-display{
+    font-size:1.05rem; color:var(--accent); font-variant-numeric:tabular-nums;
+    min-height:1.4em;
+  }
+
+  .diagram-scroll{
+    flex:1; min-height:0; overflow-y:auto;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .diagram-empty{
+    margin:auto; color:var(--text-dim); font-size:1.2rem; text-align:center;
+  }
+
+  .sl-headerline{
+    display:flex; width:100%; max-width:820px; margin:0 auto 6px;
+    font-size:1rem; color:var(--text-dim);
+  }
+  .sl-headerline .sl-stem{ width:64px; text-align:right; padding-right:16px; }
+  .sl-headerline .sl-leaves{ flex:1; }
+
+  .sl-row{
+    display:flex; align-items:flex-start; width:100%; max-width:820px;
+    margin:0 auto; padding:5px 0;
+    font-size:1.55rem; font-variant-numeric:tabular-nums;
+    border-bottom:1px solid #2f2f34;
+  }
+  .sl-stem{
+    width:64px; text-align:right; padding-right:16px;
+    color:var(--stem); font-weight:700; flex-shrink:0;
+  }
+  .sl-divider{
+    width:3px; align-self:stretch; background:#4a4a52; margin-right:16px; border-radius:2px;
+  }
+  .sl-leaves{
+    flex:1; display:flex; flex-wrap:wrap; gap:0 10px; padding-top:2px;
+  }
+  .leaf{ color:var(--leaf); font-weight:600; }
+  .leaf.new{ animation:pop 0.42s ease; }
+  .leaf.leaf-a{ color:var(--accent); }
+  .leaf.leaf-b{ color:var(--leaf); }
+  @keyframes pop{
+    0%{ transform:scale(0.2) translateY(-6px); opacity:0; }
+    70%{ transform:scale(1.15); opacity:1; }
+    100%{ transform:scale(1); }
+  }
+
+  /* ---------- BACK-TO-BACK DIAGRAM ---------- */
+  .sl-headerline-bb{
+    display:flex; width:100%; max-width:920px; margin:0 auto 6px;
+    font-size:1rem; color:var(--text-dim);
+  }
+  .sl-headerline-bb .hl-left{ flex:1; text-align:right; padding-right:27px; color:var(--accent); }
+  .sl-headerline-bb .hl-stem{ width:56px; text-align:center; flex-shrink:0; }
+  .sl-headerline-bb .hl-right{ flex:1; text-align:left; padding-left:27px; color:var(--leaf); }
+
+  .sl-row-bb{
+    display:flex; align-items:flex-start; width:100%; max-width:920px;
+    margin:0 auto; padding:5px 0;
+    font-size:1.55rem; font-variant-numeric:tabular-nums;
+    border-bottom:1px solid #2f2f34;
+  }
+  .sl-leaves-left{
+    flex:1; display:flex; flex-wrap:wrap; justify-content:flex-end;
+    gap:0 10px; padding-top:2px;
+  }
+  .sl-leaves-right{
+    flex:1; display:flex; flex-wrap:wrap; justify-content:flex-start;
+    gap:0 10px; padding-top:2px;
+  }
+  .sl-stem-center{
+    width:56px; text-align:center; flex-shrink:0;
+    color:var(--stem); font-weight:700;
+  }
+  .sl-divider-bb{
+    width:3px; align-self:stretch; background:#4a4a52; border-radius:2px; margin:0 12px;
+  }
+  ::-webkit-scrollbar{ width:10px; }
+  ::-webkit-scrollbar-thumb{ background:#45454c; border-radius:6px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="databox-wrap">
+      <div class="databox-header">
+        <div class="databox-label">Dataset</div>
+        <button class="add-second-btn" id="addSecondBtn">+ Second Data Set</button>
+      </div>
+      <div class="databox-panels" id="databoxPanels">
+        <div class="databox-panel" data-set="A">
+          <div class="databox-panel-tag">Dataset A</div>
+          <div class="databox" id="databoxA">
+            <div class="databox-empty">Press Populate to generate a dataset&hellip;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="target-row" id="targetRow" style="display:none;">
+        <div class="target-row-label">Populate</div>
+        <button class="target-btn selected" data-target="A">A</button>
+        <button class="target-btn" data-target="B">B</button>
+      </div>
+      <div class="ctrl-label">Distribution</div>
+      <div class="dist-grid" id="distGrid">
+        <button class="dist-btn selected" data-dist="normal">Normal</button>
+        <button class="dist-btn" data-dist="skewLeft">Skew Left</button>
+        <button class="dist-btn" data-dist="skewRight">Skew Right</button>
+        <button class="dist-btn" data-dist="constant">Constant</button>
+      </div>
+      <div class="ctrl-label">Sample size (1&ndash;100)</div>
+      <div class="size-row">
+        <input type="number" id="sizeInput" min="1" max="100" value="30" inputmode="numeric">
+      </div>
+      <button id="populateBtn">&#8635;&nbsp; Populate</button>
+    </div>
+  </div>
+
+  <div class="steprow">
+    <button class="step-btn" id="btnAxesStem" disabled><span class="num">1</span> Draw Axes &amp; Plot Stem</button>
+    <button class="step-btn" id="btnLeaf" disabled><span class="num">2</span> Plot Leaf</button>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <div class="diagram-title">Stem and Leaf Diagram</div>
+      <div class="key-display" id="keyDisplay"></div>
+    </div>
+    <div class="diagram-scroll" id="diagramScroll">
+      <div class="diagram-empty" id="diagramEmpty">The diagram will build here, step by step.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- state ----------------
+  let data = [];               // Dataset A — feeds the diagram below
+  let dataB = null;            // Dataset B — display only, for now
+  let hasSecond = false;
+  let activeTarget = "A";      // which dataset Populate currently targets
+  let selectedDist = "normal";
+  let leafTimer = null;
+  let leafIndex = 0;
+  let uniqueLeafId = 0;
+  let rows = {};                // stem -> row bookkeeping (shape depends on diagramMode)
+  let diagramMode = "single";   // "single" or "bb" — locked in when Draw Axes & Plot Stem runs
+  let keyAShown = false;
+  let keyBShown = false;
+  let keyALine = "";
+  let keyBLine = "";
+
+  // ---------------- element refs ----------------
+  const databoxPanels = document.getElementById("databoxPanels");
+  const addSecondBtn = document.getElementById("addSecondBtn");
+  const targetRow = document.getElementById("targetRow");
+  const distGrid = document.getElementById("distGrid");
+  const sizeInput = document.getElementById("sizeInput");
+  const populateBtn = document.getElementById("populateBtn");
+  const btnAxesStem = document.getElementById("btnAxesStem");
+  const btnLeaf = document.getElementById("btnLeaf");
+  const diagramScroll = document.getElementById("diagramScroll");
+  const diagramEmpty = document.getElementById("diagramEmpty");
+  const keyDisplay = document.getElementById("keyDisplay");
+
+  // ---------------- distribution generators ----------------
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+  function genNormal(){
+    let sum = 0;
+    for(let i=0;i<6;i++) sum += Math.random();
+    sum /= 6; // ~normal, mean 0.5
+    return Math.round(clamp(10 + sum*89, 10, 99));
+  }
+  function genSkewRight(){ // mass low, tail toward high values
+    const r = Math.pow(Math.random(), 2.3);
+    return Math.round(clamp(10 + r*89, 10, 99));
+  }
+  function genSkewLeft(){ // mass high, tail toward low values
+    const r = 1 - Math.pow(Math.random(), 2.3);
+    return Math.round(clamp(10 + r*89, 10, 99));
+  }
+  function makeConstantGenerator(){
+    // "Constant" = spread across a band (mean +/- 20), but every STEM in
+    // that band is equally likely to be picked, then a leaf is chosen
+    // uniformly within the values that stem can validly take.
+    const mean = 30 + Math.floor(Math.random()*40); // keeps mean-20..mean+20 within 10..99
+    const lo = mean - 20;
+    const hi = mean + 20;
+    const stemLo = Math.floor(lo/10);
+    const stemHi = Math.floor(hi/10);
+    return function(){
+      const stem = stemLo + Math.floor(Math.random()*(stemHi - stemLo + 1));
+      const leafLo = Math.max(0, lo - stem*10);
+      const leafHi = Math.min(9, hi - stem*10);
+      const leaf = leafLo + Math.floor(Math.random()*(leafHi - leafLo + 1));
+      return stem*10 + leaf;
+    };
+  }
+
+  function generateData(dist, n){
+    let gen;
+    if(dist === "normal") gen = genNormal;
+    else if(dist === "skewLeft") gen = genSkewLeft;
+    else if(dist === "skewRight") gen = genSkewRight;
+    else gen = makeConstantGenerator();
+
+    const out = [];
+    for(let i=0;i<n;i++) out.push(gen());
+    return out;
+  }
+
+  // ---------------- distribution button handling ----------------
+  distGrid.addEventListener("click", function(e){
+    const btn = e.target.closest(".dist-btn");
+    if(!btn) return;
+    distGrid.querySelectorAll(".dist-btn").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    selectedDist = btn.dataset.dist;
+  });
+
+  // ---------------- add second data set ----------------
+  function updateReadyState(){
+    const ready = hasSecond
+      ? (data.length > 0 && dataB && dataB.length > 0)
+      : (data.length > 0);
+    resetDiagram();
+    btnAxesStem.disabled = !ready;
+    btnLeaf.disabled = true;
+  }
+
+  addSecondBtn.addEventListener("click", function(){
+    if(hasSecond){
+      // remove Dataset B, revert to single-panel view
+      hasSecond = false;
+      dataB = null;
+      activeTarget = "A";
+      const panelB = databoxPanels.querySelector('.databox-panel[data-set="B"]');
+      if(panelB) panelB.remove();
+      databoxPanels.classList.remove("has-second");
+      targetRow.style.display = "none";
+      targetRow.querySelectorAll(".target-btn").forEach(b => b.classList.remove("selected"));
+      targetRow.querySelector('[data-target="A"]').classList.add("selected");
+      addSecondBtn.textContent = "+ Second Data Set";
+      updateReadyState();
+      return;
+    }
+
+    hasSecond = true;
+    activeTarget = "B";
+    dataB = null;
+
+    const panelB = document.createElement("div");
+    panelB.className = "databox-panel";
+    panelB.dataset.set = "B";
+    panelB.innerHTML =
+      '<div class="databox-panel-tag">Dataset B</div>' +
+      '<div class="databox" id="databoxB"><div class="databox-empty">Press Populate to generate a dataset&hellip;</div></div>';
+    databoxPanels.appendChild(panelB);
+    databoxPanels.classList.add("has-second");
+
+    targetRow.style.display = "";
+    targetRow.querySelectorAll(".target-btn").forEach(b => b.classList.remove("selected"));
+    targetRow.querySelector('[data-target="B"]').classList.add("selected");
+
+    addSecondBtn.textContent = "\u2212 Remove Second Data Set";
+    updateReadyState();
+  });
+
+  targetRow.addEventListener("click", function(e){
+    const btn = e.target.closest(".target-btn");
+    if(!btn) return;
+    targetRow.querySelectorAll(".target-btn").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    activeTarget = btn.dataset.target;
+  });
+
+  // ---------------- populate ----------------
+  populateBtn.addEventListener("click", function(){
+    let n = parseInt(sizeInput.value, 10);
+    if(isNaN(n) || n < 1) n = 1;
+    if(n > 100) n = 100;
+    sizeInput.value = n;
+
+    const generated = generateData(selectedDist, n);
+
+    if(activeTarget === "B"){
+      dataB = generated;
+      renderDataBox("B", dataB);
+    } else {
+      data = generated;
+      renderDataBox("A", data);
+    }
+
+    updateReadyState();
+  });
+
+  function renderDataBox(target, arr){
+    const box = document.getElementById("databox" + target);
+    if(!box) return;
+    box.innerHTML = "";
+    arr.forEach(function(val, i){
+      const chip = document.createElement("div");
+      chip.className = "data-chip";
+      chip.id = "chip-" + target + "-" + i;
+      chip.textContent = val;
+      box.appendChild(chip);
+    });
+  }
+
+  // ---------------- diagram reset ----------------
+  function resetDiagram(){
+    stopLeafAnimation();
+    rows = {};
+    leafIndex = 0;
+    uniqueLeafId = 0;
+    keyAShown = false;
+    keyBShown = false;
+    keyALine = "";
+    keyBLine = "";
+    keyDisplay.innerHTML = "";
+    diagramScroll.innerHTML = "";
+    diagramEmpty.style.display = "";
+    diagramScroll.appendChild(diagramEmpty);
+  }
+
+  // ---------------- STEP 1: draw axes & plot stem ----------------
+  btnAxesStem.addEventListener("click", function(){
+    diagramMode = hasSecond ? "bb" : "single";
+    diagramScroll.innerHTML = "";
+    rows = {};
+
+    if(diagramMode === "single"){
+      const header = document.createElement("div");
+      header.className = "sl-headerline";
+      header.innerHTML = '<div class="sl-stem">Stem</div><div class="sl-leaves">Leaf</div>';
+      diagramScroll.appendChild(header);
+
+      const stemList = Array.from(new Set(data.map(v => Math.floor(v/10)))).sort((a,b) => a-b);
+
+      stemList.forEach(function(stemVal){
+        const rowEl = document.createElement("div");
+        rowEl.className = "sl-row";
+
+        const stemEl = document.createElement("div");
+        stemEl.className = "sl-stem";
+        stemEl.textContent = stemVal;
+
+        const dividerEl = document.createElement("div");
+        dividerEl.className = "sl-divider";
+
+        const leavesEl = document.createElement("div");
+        leavesEl.className = "sl-leaves";
+
+        rowEl.appendChild(stemEl);
+        rowEl.appendChild(dividerEl);
+        rowEl.appendChild(leavesEl);
+        diagramScroll.appendChild(rowEl);
+
+        rows[stemVal] = { leavesEl: leavesEl, leaves: [] };
+      });
+
+    } else {
+      const header = document.createElement("div");
+      header.className = "sl-headerline-bb";
+      header.innerHTML = '<div class="hl-left">Dataset A</div><div class="hl-stem">Stem</div><div class="hl-right">Dataset B</div>';
+      diagramScroll.appendChild(header);
+
+      const stemVals = data.map(v => Math.floor(v/10)).concat(dataB.map(v => Math.floor(v/10)));
+      const stemList = Array.from(new Set(stemVals)).sort((a,b) => a-b);
+
+      stemList.forEach(function(stemVal){
+        const rowEl = document.createElement("div");
+        rowEl.className = "sl-row-bb";
+
+        const leftEl = document.createElement("div");
+        leftEl.className = "sl-leaves-left";
+
+        const dividerLeft = document.createElement("div");
+        dividerLeft.className = "sl-divider-bb";
+
+        const stemEl = document.createElement("div");
+        stemEl.className = "sl-stem-center";
+        stemEl.textContent = stemVal;
+
+        const dividerRight = document.createElement("div");
+        dividerRight.className = "sl-divider-bb";
+
+        const rightEl = document.createElement("div");
+        rightEl.className = "sl-leaves-right";
+
+        rowEl.appendChild(leftEl);
+        rowEl.appendChild(dividerLeft);
+        rowEl.appendChild(stemEl);
+        rowEl.appendChild(dividerRight);
+        rowEl.appendChild(rightEl);
+        diagramScroll.appendChild(rowEl);
+
+        rows[stemVal] = { leftEl: leftEl, rightEl: rightEl, leavesLeft: [], leavesRight: [] };
+      });
+    }
+
+    btnAxesStem.disabled = true;
+    btnLeaf.disabled = false;
+  });
+
+  // ---------------- STEP 2: plot leaf (auto-animate) ----------------
+  btnLeaf.addEventListener("click", function(){
+    btnLeaf.disabled = true;
+    leafIndex = 0;
+    const total = diagramMode === "bb" ? (data.length + dataB.length) : data.length;
+    const interval = clamp(Math.round(6000 / total), 60, 400);
+    leafTimer = setInterval(plotNextLeaf, interval);
+  });
+
+  function stopLeafAnimation(){
+    if(leafTimer){ clearInterval(leafTimer); leafTimer = null; }
+  }
+
+  function plotNextLeaf(){
+    const total = diagramMode === "bb" ? (data.length + dataB.length) : data.length;
+    if(leafIndex >= total){
+      stopLeafAnimation();
+      return;
+    }
+
+    let side, value, origIndex;
+    if(leafIndex < data.length){
+      side = "A";
+      origIndex = leafIndex;
+      value = data[origIndex];
+    } else {
+      side = "B";
+      origIndex = leafIndex - data.length;
+      value = dataB[origIndex];
+    }
+
+    const stemVal = Math.floor(value/10);
+    const leafVal = value % 10;
+    const row = rows[stemVal];
+
+    if(row){
+      const id = uniqueLeafId++;
+      if(diagramMode === "single"){
+        row.leaves.push({ value: leafVal, id: id });
+        row.leaves.sort((a,b) => (a.value - b.value) || (a.id - b.id));
+        renderLeavesInto(row.leavesEl, row.leaves, id, "");
+      } else if(side === "A"){
+        row.leavesLeft.push({ value: leafVal, id: id });
+        row.leavesLeft.sort((a,b) => (b.value - a.value) || (a.id - b.id));
+        renderLeavesInto(row.leftEl, row.leavesLeft, id, "leaf-a");
+      } else {
+        row.leavesRight.push({ value: leafVal, id: id });
+        row.leavesRight.sort((a,b) => (a.value - b.value) || (a.id - b.id));
+        renderLeavesInto(row.rightEl, row.leavesRight, id, "leaf-b");
+      }
+    }
+
+    // mark the source chip as used
+    const chip = document.getElementById("chip-" + side + "-" + origIndex);
+    if(chip) chip.classList.add("used");
+
+    // build the key line(s) from the first leaf plotted on each side
+    if(diagramMode === "single"){
+      if(leafIndex === 0){
+        keyDisplay.textContent = stemVal + " | " + leafVal + "   means   " + value;
+      }
+    } else {
+      if(side === "A" && !keyAShown){
+        keyAShown = true;
+        keyALine = '<span style="color:var(--accent)">A:  ' + stemVal + ' | ' + leafVal + '   means   ' + value + '</span>';
+      }
+      if(side === "B" && !keyBShown){
+        keyBShown = true;
+        keyBLine = '<span style="color:var(--leaf)">B:  ' + stemVal + ' | ' + leafVal + '   means   ' + value + '</span>';
+      }
+      keyDisplay.innerHTML = keyALine + (keyALine && keyBLine ? "<br>" : "") + keyBLine;
+    }
+
+    leafIndex++;
+  }
+
+  function renderLeavesInto(containerEl, leavesArr, justAddedId, colorClass){
+    containerEl.innerHTML = "";
+    leavesArr.forEach(function(leaf){
+      const span = document.createElement("span");
+      span.className = "leaf" + (colorClass ? " " + colorClass : "") + (leaf.id === justAddedId ? " new" : "");
+      span.textContent = leaf.value;
+      containerEl.appendChild(span);
+    });
+  }
+
+  // ---------------- init ----------------
+  resetDiagram();
+})();
+</script>
+</body>
+</html>

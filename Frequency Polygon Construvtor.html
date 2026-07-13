@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Frequency Polygons</title>
+<style>
+  :root{
+    --ink:#1c2a2e;
+    --paper:#33383b;
+    --card:#ffffff;
+    --teal:#1f6f6b;
+    --teal-dark:#154d4a;
+    --amber:#d98a3d;
+    --line:#d8d0c0;
+    --grid:#e4e9e8;
+    --mid-bg:#eef6f4;
+    --title:#c8cccc;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);
+    background-size: 22px 22px;
+    color:var(--ink);
+    font-family: 'Iowan Old Style','Georgia', ui-serif, serif;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+  .app{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  header{
+    padding: 18px 26px 10px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .eyebrow{
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:11px;
+    color:var(--teal);
+    font-weight:700;
+  }
+  h1{
+    margin:2px 0 0;
+    font-size: clamp(22px, 3.2vw, 30px);
+    font-weight:600;
+    letter-spacing:-0.01em;
+    color:var(--title);
+  }
+  .subtitle{
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    font-size:13.5px;
+    color:#5b6b6a;
+    max-width:520px;
+  }
+  main{
+    flex:1;
+    display:grid;
+    grid-template-columns: minmax(300px, 420px) 1fr;
+    gap: 20px;
+    padding: 10px 26px 26px;
+    align-items:start;
+  }
+  @media (max-width: 880px){
+    main{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow: 0 1px 2px rgba(28,42,46,0.06), 0 8px 24px -16px rgba(28,42,46,0.25);
+    overflow:hidden;
+  }
+  #tablePanel{
+    background-color:#ffffff;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(90,98,96,0.22) 0px, rgba(90,98,96,0.22) 1px, transparent 1px, transparent 22px),
+      repeating-linear-gradient(90deg, rgba(90,98,96,0.22) 0px, rgba(90,98,96,0.22) 1px, transparent 1px, transparent 22px);
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 14px 18px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .panel-title{
+    font-size:15px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel-title .num{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:11px;
+    font-weight:800;
+    color:#fff;
+    background:var(--teal);
+    width:20px;height:20px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Table */
+  .table-scroll{
+    max-height: 56vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 16px 4px;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family: 'Iowan Old Style','Georgia', ui-serif, serif;
+    font-size:15px;
+    border: 2px solid var(--ink);
+    background:#ffffff;
+  }
+  thead th{
+    text-align:center;
+    font-size:12px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    color:var(--ink);
+    font-weight:700;
+    padding: 9px 6px;
+    position:sticky;
+    top:0;
+    background:#fff;
+    z-index:2;
+    border: 1px solid var(--ink);
+    border-top:none;
+  }
+  thead th:first-child{ border-left:none; }
+  thead th:last-child{ border:none; background:none; }
+  td:last-child{ border:none; }
+  th.mid-col, td.mid-col{
+    background: var(--mid-bg);
+  }
+  td{
+    padding: 6px;
+    border: 1px solid var(--ink);
+    text-align:center;
+    vertical-align:middle;
+  }
+  td:first-child{ border-left:none; }
+  tr:last-child td{ border-bottom:none; }
+  td.no-border, th.no-border{ border-color: transparent; border-width:0; background:none; }
+  .class-cell{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    white-space:nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .class-cell .ineq{ color:var(--ink); font-size:16px; font-weight:700; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  input[type="number"], input.class-input{
+    width:52px;
+    min-height:44px;
+    border:1.5px solid var(--line);
+    border-radius:4px;
+    text-align:center;
+    font-size:15px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background:#ffffff;
+    color:var(--ink);
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  input[type="number"]:focus, input.class-input:focus{
+    outline:none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(31,111,107,0.15);
+  }
+  .freq-input{ width:64px; }
+  td.mid-val{
+    font-weight:700;
+    color:var(--teal-dark);
+    font-variant-numeric: tabular-nums;
+  }
+  .row-fade{
+    opacity:0;
+    transition: opacity .5s ease;
+  }
+  .row-fade.in{ opacity:1; }
+
+  .del-btn{
+    min-width:32px;min-height:32px;
+    border-radius:50%;
+    border:none;
+    background:transparent;
+    color:#b7a9a0;
+    font-size:18px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .del-btn:active{ background:#f1e8e0; }
+
+  .table-footer{
+    display:flex;
+    justify-content:flex-start;
+    padding: 8px 16px 14px;
+  }
+  .add-row{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--teal-dark);
+    background:none;
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+    padding: 8px 14px;
+    min-height:40px;
+    cursor:pointer;
+  }
+  .add-row:active{ background:var(--mid-bg); }
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    padding: 14px 18px 18px;
+    border-top:1px solid var(--line);
+  }
+  button.action{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:.01em;
+    border:none;
+    border-radius:11px;
+    padding: 12px 18px;
+    min-height:44px;
+    cursor:pointer;
+    flex:1;
+    min-width:110px;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease;
+  }
+  button.action:active{ transform: scale(0.97); }
+  button.action:disabled{ opacity:.4; cursor:default; }
+  .btn-populate{ background:var(--ink); color:#fff; }
+  .btn-middle{ background:var(--ink); color:#fff; }
+  .btn-axes{ background:var(--ink); color:#fff; }
+  .btn-draw{ background:var(--amber); color:#fff; }
+  .btn-reset{ background:none; color:#8a9291; border:1.5px solid var(--line); flex:0 1 auto; min-width:90px; }
+
+  /* Right panel / axes */
+  .axes-wrap{
+    padding: 6px 14px 18px;
+  }
+  svg{ width:100%; height:auto; display:block; touch-action:none; }
+  .axis-line{ stroke:var(--ink); stroke-width:2; }
+  .grid-line{ stroke:var(--grid); stroke-width:1; }
+  .tick-label{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:16px;
+    fill:#5b6b6a;
+  }
+  .axis-caption{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:16px;
+    font-weight:700;
+    fill:var(--ink);
+  }
+  .poly-line{
+    fill:none;
+    stroke:var(--teal);
+    stroke-width:3;
+    stroke-linejoin:round;
+    stroke-linecap:round;
+  }
+  .poly-point{
+    fill:var(--amber);
+    stroke:#fff;
+    stroke-width:2;
+  }
+  .poly-point.zero-touch{
+    fill:#fff;
+    stroke:var(--amber);
+  }
+  .empty-note{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:13.5px;
+    color:#8a9291;
+    text-align:center;
+    padding: 60px 20px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Frequency Polygons</h1>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT: table -->
+    <section class="panel" id="tablePanel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="num">1</span>Frequency table</div>
+      </div>
+      <div class="table-scroll">
+        <table id="freqTable">
+          <thead>
+            <tr id="headRow">
+              <th>Class</th>
+              <th class="mid-col" id="midHeader" style="display:none;">Middle</th>
+              <th>Frequency</th>
+              <th style="width:32px;"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <button class="add-row" id="addRowBtn">+ Add class</button>
+      </div>
+      <div class="controls">
+        <button class="action btn-populate" id="populateBtn">Populate</button>
+        <button class="action btn-middle" id="middleBtn">Middle</button>
+        <button class="action btn-axes" id="drawAxesBtn">Draw axes</button>
+        <button class="action btn-draw" id="drawPolygonBtn" disabled>Draw polygon</button>
+        <button class="action btn-reset" id="resetBtn">Reset</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: axes -->
+    <section class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="num">2</span>Frequency polygon</div>
+      </div>
+      <div class="axes-wrap" id="axesWrap">
+        <div class="empty-note" id="emptyNote">Fill in the table, find the middles, then tap <strong>Draw axes</strong>.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  var tbody = document.getElementById('tbody');
+  var midHeader = document.getElementById('midHeader');
+  var addRowBtn = document.getElementById('addRowBtn');
+  var populateBtn = document.getElementById('populateBtn');
+  var middleBtn = document.getElementById('middleBtn');
+  var drawAxesBtn = document.getElementById('drawAxesBtn');
+  var drawPolygonBtn = document.getElementById('drawPolygonBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var axesWrap = document.getElementById('axesWrap');
+  var emptyNote = document.getElementById('emptyNote');
+
+  var classes = [];      // {from, to, freq}
+  var hasMiddle = false;
+  var axisState = null;  // geometry captured when axes are drawn, reused by Draw polygon
+
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+  function formatNum(n){
+    n = Math.round(n*100)/100;
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+
+  function makeEmptyRow(){ return { from:'', to:'', freq:'', fromAuto:true }; }
+
+  function seedInitialRows(){
+    classes = [makeEmptyRow(), makeEmptyRow(), makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
+  }
+
+  function syncFromInputs(){
+    var rows = tbody.querySelectorAll('tr');
+    rows.forEach(function(row, i){
+      var from = row.querySelector('.from-input');
+      var to = row.querySelector('.to-input');
+      var freq = row.querySelector('.freq-input');
+      classes[i].from = from.value === '' ? '' : parseFloat(from.value);
+      classes[i].to = to.value === '' ? '' : parseFloat(to.value);
+      classes[i].freq = freq.value === '' ? '' : parseFloat(freq.value);
+    });
+  }
+
+  function renderTable(fadeMiddle){
+    tbody.innerHTML = '';
+    midHeader.style.display = hasMiddle ? '' : 'none';
+
+    classes.forEach(function(c, i){
+      var tr = document.createElement('tr');
+
+      var classTd = document.createElement('td');
+      var wrap = document.createElement('div');
+      wrap.className = 'class-cell';
+      wrap.innerHTML =
+        '<input type="number" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="class-input from-input" value="'+(c.from===''?'':c.from)+'">' +
+        '<span class="ineq">&le; x &lt;</span>' +
+        '<input type="number" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="class-input to-input" value="'+(c.to===''?'':c.to)+'">';
+      classTd.appendChild(wrap);
+      tr.appendChild(classTd);
+
+      if(hasMiddle){
+        var midTd = document.createElement('td');
+        midTd.className = 'mid-val mid-col row-fade';
+        var mid = (c.from!=='' && c.to!=='') ? formatNum((c.from + c.to)/2) : '\u2013';
+        midTd.textContent = mid;
+        tr.appendChild(midTd);
+      }
+
+      var freqTd = document.createElement('td');
+      var freqInput = document.createElement('input');
+      freqInput.type = 'number';
+      freqInput.inputMode = 'decimal';
+      freqInput.autocomplete = 'off';
+      freqInput.setAttribute('autocorrect','off');
+      freqInput.setAttribute('spellcheck','false');
+      freqInput.className = 'freq-input';
+      freqInput.value = c.freq === '' ? '' : c.freq;
+      freqTd.appendChild(freqInput);
+      tr.appendChild(freqTd);
+
+      var delTd = document.createElement('td');
+      var delBtn = document.createElement('button');
+      delBtn.className = 'del-btn';
+      delBtn.textContent = '\u00d7';
+      delBtn.setAttribute('aria-label','Remove class');
+      delBtn.addEventListener('click', function(){
+        syncFromInputs();
+        classes.splice(i,1);
+        renderTable(false);
+      });
+      delTd.appendChild(delBtn);
+      tr.appendChild(delTd);
+
+      tbody.appendChild(tr);
+    });
+
+    // wire up change listeners to keep state in sync
+    tbody.querySelectorAll('input').forEach(function(inp){
+      inp.addEventListener('change', syncFromInputs);
+    });
+
+    // auto-fill next row's lower bound when this row's upper bound is set —
+    // uses 'input' so it stays live while dialing with the spinner arrows,
+    // and stops overwriting once the person edits the next row's lower bound by hand
+    var rowEls = tbody.querySelectorAll('tr');
+
+    function setToMin(rowEl, i){
+      var toInput = rowEl.querySelector('.to-input');
+      if(!toInput) return;
+      var fromVal = classes[i].from;
+      if(fromVal !== '' && fromVal !== null && !isNaN(fromVal)){
+        toInput.min = fromVal + 1;
+      } else {
+        toInput.removeAttribute('min');
+      }
+    }
+
+    rowEls.forEach(function(rowEl, i){
+      var fromInput = rowEl.querySelector('.from-input');
+      var toInput = rowEl.querySelector('.to-input');
+      if(!fromInput || !toInput) return;
+
+      setToMin(rowEl, i);
+
+      fromInput.addEventListener('input', function(){
+        classes[i].fromAuto = false;
+        classes[i].from = fromInput.value === '' ? '' : parseFloat(fromInput.value);
+        setToMin(rowEl, i);
+      });
+
+      toInput.addEventListener('input', function(){
+        syncFromInputs();
+        if(i+1 < classes.length && toInput.value !== '' && classes[i+1].fromAuto !== false){
+          classes[i+1].from = parseFloat(toInput.value);
+          classes[i+1].fromAuto = true;
+          var nextFromInput = rowEls[i+1].querySelector('.from-input');
+          if(nextFromInput) nextFromInput.value = classes[i+1].from;
+          setToMin(rowEls[i+1], i+1);
+          if(hasMiddle){
+            var nextMidCell = rowEls[i+1].querySelector('.mid-val');
+            if(nextMidCell && classes[i+1].to !== ''){
+              nextMidCell.textContent = formatNum((classes[i+1].from + classes[i+1].to)/2);
+            }
+          }
+        }
+      });
+    });
+
+    if(fadeMiddle){
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          tbody.querySelectorAll('.row-fade').forEach(function(el){ el.classList.add('in'); });
+        });
+      });
+    } else if(hasMiddle){
+      tbody.querySelectorAll('.row-fade').forEach(function(el){ el.classList.add('in'); });
+    }
+  }
+
+  resetBtn.addEventListener('click', function(){
+    hasMiddle = false;
+    seedInitialRows();
+    renderTable(false);
+    resetAxes();
+  });
+
+  addRowBtn.addEventListener('click', function(){
+    syncFromInputs();
+    var newRow = makeEmptyRow();
+    var last = classes[classes.length-1];
+    if(last && last.to !== '' && last.to !== null){
+      newRow.from = last.to;
+      newRow.fromAuto = true;
+    }
+    classes.push(newRow);
+    renderTable(false);
+  });
+
+  populateBtn.addEventListener('click', function(){
+    syncFromInputs();
+    var numClasses = classes.length >= 2 ? classes.length : randInt(4,7);
+    var width = [2,5,10][randInt(0,2)];
+    var start = width * randInt(0,3);
+    classes = [];
+    for(var i=0;i<numClasses;i++){
+      var from = start + i*width;
+      var to = from + width;
+      var freq = randInt(1,28);
+      classes.push({from:from, to:to, freq:freq});
+    }
+    hasMiddle = false;
+    renderTable(false);
+    resetAxes();
+  });
+
+  middleBtn.addEventListener('click', function(){
+    syncFromInputs();
+    if(classes.length < 2){
+      alert('Add at least two classes first.');
+      return;
+    }
+    var ok = classes.every(function(c){ return c.from !== '' && c.to !== '' && c.to > c.from; });
+    if(!ok){
+      alert('Fill in every "from" and "to" value first (to must be greater than from).');
+      return;
+    }
+    hasMiddle = true;
+    renderTable(true);
+  });
+
+  drawAxesBtn.addEventListener('click', function(){
+    syncFromInputs();
+    if(classes.length < 2){
+      alert('Add at least two classes first.');
+      return;
+    }
+    var ok = classes.every(function(c){
+      return c.from !== '' && c.to !== '' && c.to > c.from && c.freq !== '' && c.freq >= 0;
+    });
+    if(!ok){
+      alert('Fill in every class boundary and frequency first.');
+      return;
+    }
+    drawAxes();
+    drawPolygonBtn.disabled = false;
+  });
+
+  drawPolygonBtn.addEventListener('click', function(){
+    if(!axisState){
+      alert('Draw the axes first.');
+      return;
+    }
+    plotPolygon();
+  });
+
+  function resetAxes(){
+    axisState = null;
+    drawPolygonBtn.disabled = true;
+    axesWrap.innerHTML = '<div class="empty-note">Fill in the table, find the middles, then tap <strong>Draw axes</strong>.</div>';
+  }
+
+  function drawAxes(){
+    var sorted = classes.slice().sort(function(a,b){ return a.from - b.from; });
+
+    var mids = sorted.map(function(c){ return (c.from + c.to)/2; });
+    var freqs = sorted.map(function(c){ return c.freq; });
+    var maxFreq = Math.max.apply(null, freqs);
+
+    var leadX = sorted[0].from;
+    var trailX = sorted[sorted.length-1].to;
+
+    var pts = [{x:leadX, y:0, zero:true}];
+    mids.forEach(function(m,i){ pts.push({x:m, y:freqs[i], zero:false}); });
+    pts.push({x:trailX, y:0, zero:true});
+
+    var xMin = leadX, xMax = trailX;
+    var yMax = maxFreq * 1.18 || 1;
+
+    // SVG geometry
+    var W = 640, H = 460;
+    var marginL = 66, marginR = 24, marginT = 26, marginB = 68;
+    var plotW = W - marginL - marginR;
+    var plotH = H - marginT - marginB;
+
+    function sx(x){ return marginL + (x - xMin) / (xMax - xMin) * plotW; }
+    function sy(y){ return (H - marginB) - (y / yMax) * plotH; }
+
+    function niceStep(range, targetCount){
+      var rawStep = range / targetCount;
+      var mag = Math.pow(10, Math.floor(Math.log(rawStep)/Math.LN10));
+      var steps = [1,2,5,10];
+      var s = mag;
+      for(var i=0;i<steps.length;i++){
+        if(steps[i]*mag >= rawStep){ s = steps[i]*mag; break; }
+      }
+      return s;
+    }
+
+    // y ticks - nice step
+    var step = niceStep(yMax, 5);
+    var yTicks = [];
+    for(var v=0; v<=yMax; v+=step){ yTicks.push(Math.round(v*100)/100); }
+    if(yTicks[yTicks.length-1] < maxFreq) yTicks.push(Math.round((yTicks[yTicks.length-1]+step)*100)/100);
+
+    // x ticks: evenly spaced round numbers (e.g. 10, 20, 30...) rather than one
+    // per class boundary, so labels stay legible even when class widths vary.
+    // The plotted points still use the true linear scale above.
+    var xStep = niceStep(xMax - xMin, 5) || 1;
+    var xTicks = [];
+    var xStart = Math.ceil(xMin / xStep) * xStep;
+    for(var xt = xStart; xt <= xMax + 1e-9; xt += xStep){ xTicks.push(Math.round(xt*100)/100); }
+    if(xTicks.length === 0 || xTicks[0] > xMin + 1e-9){ xTicks.unshift(Math.round(xMin*100)/100); }
+    if(xTicks[xTicks.length-1] < xMax - 1e-9){ xTicks.push(Math.round(xMax*100)/100); }
+
+    var svg = [];
+    svg.push('<svg id="polySvg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">');
+
+    // gridlines (horizontal, from y ticks)
+    yTicks.forEach(function(t){
+      var y = sy(t);
+      svg.push('<line class="grid-line" x1="'+marginL+'" y1="'+y+'" x2="'+(W-marginR)+'" y2="'+y+'"/>');
+      svg.push('<text class="tick-label" x="'+(marginL-8)+'" y="'+(y+4)+'" text-anchor="end">'+formatNum(t)+'</text>');
+    });
+
+    // x ticks
+    xTicks.forEach(function(t){
+      var x = sx(t);
+      svg.push('<line class="grid-line" x1="'+x+'" y1="'+marginT+'" x2="'+x+'" y2="'+(H-marginB)+'"/>');
+      svg.push('<text class="tick-label" x="'+x+'" y="'+(H-marginB+18)+'" text-anchor="middle">'+formatNum(t)+'</text>');
+    });
+
+    // axes
+    svg.push('<line class="axis-line" x1="'+marginL+'" y1="'+marginT+'" x2="'+marginL+'" y2="'+(H-marginB)+'"/>');
+    svg.push('<line class="axis-line" x1="'+marginL+'" y1="'+(H-marginB)+'" x2="'+(W-marginR)+'" y2="'+(H-marginB)+'"/>');
+
+    svg.push('<text class="axis-caption" x="'+(marginL)+'" y="18" text-anchor="start">Frequency</text>');
+    svg.push('<text class="axis-caption" x="'+(W/2)+'" y="'+(H-10)+'" text-anchor="middle">Middle of class</text>');
+
+    svg.push('<g id="polyLayer"></g>');
+    svg.push('</svg>');
+    axesWrap.innerHTML = svg.join('');
+
+    axisState = { pts: pts, sx: sx, sy: sy };
+  }
+
+  function plotPolygon(){
+    var svgEl = document.getElementById('polySvg');
+    var layer = document.getElementById('polyLayer');
+    if(!svgEl || !layer) return;
+    layer.innerHTML = '';
+
+    var pts = axisState.pts, sx = axisState.sx, sy = axisState.sy;
+    var svg = [];
+
+    var pointDelay = 0.4;   // seconds between each point appearing
+    var lineDur = 0.5;      // seconds for each segment to draw
+    var lineStartBase = pts.length * pointDelay; // lines begin once all points have appeared
+
+    // points — appear one by one, left to right
+    pts.forEach(function(p, idx){
+      var cx = sx(p.x), cy = sy(p.y);
+      var cls = 'poly-point' + (p.zero ? ' zero-touch' : '');
+      var delay = (idx * pointDelay).toFixed(2);
+      svg.push('<circle class="'+cls+'" cx="'+cx+'" cy="'+cy+'" r="0">' +
+        '<animate attributeName="r" from="0" to="'+(p.zero?4.5:6)+'" begin="'+delay+'s" dur="0.3s" fill="freeze"/>' +
+        '</circle>');
+      if(!p.zero){
+        svg.push('<text class="tick-label" x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-weight="700" fill="var(--teal-dark)" opacity="0">'+formatNum(p.y)+
+          '<animate attributeName="opacity" from="0" to="1" begin="'+delay+'s" dur="0.3s" fill="freeze"/></text>');
+      }
+    });
+
+    // segments — drawn one at a time, left to right, once all points are down.
+    // the two end segments (touching zero) finish as dotted, since that convention isn't always used
+    for(var i=1;i<pts.length;i++){
+      var x1 = sx(pts[i-1].x), y1 = sy(pts[i-1].y);
+      var x2 = sx(pts[i].x), y2 = sy(pts[i].y);
+      var segLen = Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+      var segStart = (lineStartBase + (i-1) * lineDur).toFixed(2);
+      var isEndSegment = (i === 1) || (i === pts.length - 1);
+      var switchToDotted = isEndSegment
+        ? '<set attributeName="stroke-dasharray" to="7,6" begin="'+(parseFloat(segStart)+lineDur).toFixed(2)+'s" fill="freeze"/>'
+        : '';
+      svg.push('<line class="poly-line" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+
+        '" style="stroke-dasharray:'+segLen+'; stroke-dashoffset:'+segLen+';">' +
+        '<animate attributeName="stroke-dashoffset" from="'+segLen+'" to="0" begin="'+segStart+'s" dur="'+lineDur+'s" fill="freeze"/>' +
+        switchToDotted +
+        '</line>');
+    }
+
+    layer.innerHTML = svg.join('');
+  }
+
+  seedInitialRows();
+  renderTable(false);
+})();
+</script>
+</body>
+</html>

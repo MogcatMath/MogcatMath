@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ratio Visualiser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: #2b2b2e;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .card {
+    background: #f7f4ec;
+    border-radius: 18px;
+    width: 100%;
+    max-width: 1000px;
+    padding: 32px 40px 40px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  }
+
+  h1 {
+    text-align: center;
+    color: #2b2b2e;
+    font-size: 1.8rem;
+    margin: 0 0 24px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Tab switch */
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 28px;
+    background: #e4ded0;
+    border-radius: 999px;
+    padding: 6px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .tab-btn {
+    border: none;
+    background: transparent;
+    padding: 12px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    color: #6b6558;
+    transition: background 0.2s ease, color 0.2s ease;
+    touch-action: manipulation;
+  }
+
+  .tab-btn.active {
+    background: #2b2b2e;
+    color: #f7f4ec;
+  }
+
+  /* Inputs */
+  .inputs-row {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .input-group label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2b2b2e;
+    letter-spacing: 0.5px;
+  }
+
+  .input-group input {
+    width: 90px;
+    height: 60px;
+    font-size: 1.6rem;
+    text-align: center;
+    border: 3px solid #2b2b2e;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #2b2b2e;
+    font-weight: 700;
+  }
+
+  .input-group input:focus {
+    outline: none;
+    border-color: #c0392b;
+    background: #fff8f0;
+  }
+
+  /* Split button row */
+  .action-row {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .split-btn {
+    border: 3px solid #2b2b2e;
+    background: #2b2b2e;
+    color: #f7f4ec;
+    padding: 12px 28px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .split-btn.active-state {
+    background: #f7f4ec;
+    color: #c0392b;
+    border-color: #c0392b;
+  }
+
+  /* Grid frame: wraps ratio display, calc line and boxes with exercise-book grid */
+  .grid-frame {
+    background-color: #ffffff;
+    background-image:
+      linear-gradient(to right, #c9c9c9 1px, transparent 1px),
+      linear-gradient(to bottom, #c9c9c9 1px, transparent 1px);
+    background-size: 64px 64px;
+    border: 2px solid #d8d0ba;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  /* Ratio label colon display */
+  .ratio-display {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #2b2b2e;
+    margin-bottom: 28px;
+    letter-spacing: 2px;
+  }
+
+  /* Box grid area */
+  .box-area {
+    min-height: 200px;
+  }
+
+  .box-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .box-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .row-label {
+    min-width: 32px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2b2b2e;
+    text-align: right;
+    margin-right: 6px;
+  }
+
+  .box {
+    width: 51px;
+    height: 51px;
+    border: 3px solid #2b2b2e;
+    border-radius: 7px;
+    background: transparent;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .box.box-diff {
+    background: #fff3cd;
+    border-color: #c0392b;
+  }
+
+  .box-value {
+    font-family: 'Patrick Hand', cursive, sans-serif;
+    font-size: 1.5rem;
+    color: #1a4fa0;
+    line-height: 1;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .row-total-handwritten {
+    font-family: 'Patrick Hand', cursive, sans-serif;
+    font-size: 1.6rem;
+    color: #c0392b;
+    margin-left: 6px;
+    white-space: nowrap;
+  }
+
+  .split-calc {
+    text-align: center;
+    font-family: 'Patrick Hand', cursive, sans-serif;
+    font-size: 1.8rem;
+    color: #1a4fa0;
+    margin-bottom: 16px;
+  }
+
+  .total-line {
+    text-align: center;
+    margin-top: 22px;
+    font-size: 1.15rem;
+    color: #2b2b2e;
+    font-weight: 600;
+  }
+
+  .total-line span {
+    font-weight: 800;
+    color: #c0392b;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 20px;
+  }
+
+  .modal-overlay.open {
+    display: flex;
+  }
+
+  .modal-box {
+    background: #f7f4ec;
+    border-radius: 16px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+
+  .modal-box h2 {
+    margin: 0 0 18px;
+    font-size: 1.2rem;
+    color: #2b2b2e;
+  }
+
+  .modal-box input {
+    width: 100%;
+    height: 56px;
+    font-size: 1.4rem;
+    text-align: center;
+    border: 3px solid #2b2b2e;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #2b2b2e;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+
+  .modal-box input:focus {
+    outline: none;
+    border-color: #c0392b;
+  }
+
+  .modal-error {
+    color: #c0392b;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-top: -10px;
+    margin-bottom: 16px;
+  }
+
+  .modal-btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .modal-btn {
+    flex: 1;
+    padding: 12px 0;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 3px solid #2b2b2e;
+    touch-action: manipulation;
+  }
+
+  .modal-btn.confirm {
+    background: #2b2b2e;
+    color: #f7f4ec;
+  }
+
+  .modal-btn.cancel {
+    background: transparent;
+    color: #2b2b2e;
+  }
+
+  @media (max-width: 600px) {
+    .card { padding: 24px 18px 30px; }
+    h1 { font-size: 1.4rem; }
+    .box { width: 39px; height: 39px; }
+    .box-value { font-size: 1.1rem; }
+    .input-group input { width: 72px; height: 52px; font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Ratio Visualiser</h1>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab2" onclick="setMode(2)">2-part ratio</button>
+    <button class="tab-btn" id="tab3" onclick="setMode(3)">3-part ratio</button>
+  </div>
+
+  <div class="inputs-row" id="inputsRow">
+    <!-- inputs injected by JS -->
+  </div>
+
+  <div class="action-row">
+    <button class="split-btn" id="splitBtn" onclick="handleSplitBtn()">Split between</button>
+    <button class="split-btn" id="moreBtn" onclick="handleMoreBtn()">A got more than B</button>
+    <button class="split-btn" id="aTotalBtn" onclick="handleATotalBtn()">A got in total</button>
+  </div>
+
+  <div class="grid-frame">
+    <div class="ratio-display" id="ratioDisplay"></div>
+
+    <div class="split-calc" id="splitCalc"></div>
+
+    <div class="box-area" id="boxArea">
+      <!-- rows injected by JS -->
+    </div>
+  </div>
+
+  <div class="total-line" id="totalLine"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h2>Split what total?</h2>
+    <input type="number" id="splitInput" inputmode="numeric" min="1" placeholder="e.g. 20">
+    <div class="modal-btn-row">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmSplit()">Split</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlayMore">
+  <div class="modal-box">
+    <h2>How much more than B did A get?</h2>
+    <input type="number" id="moreInput" inputmode="numeric" min="1" placeholder="e.g. 12">
+    <div class="modal-error" id="moreError" style="display:none;"></div>
+    <div class="modal-btn-row">
+      <button class="modal-btn cancel" onclick="closeMoreModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmMore()">Go</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlayATotal">
+  <div class="modal-box">
+    <h2>How much did A get in total?</h2>
+    <input type="number" id="aTotalInput" inputmode="numeric" min="1" placeholder="e.g. 18">
+    <div class="modal-error" id="aTotalError" style="display:none;"></div>
+    <div class="modal-btn-row">
+      <button class="modal-btn cancel" onclick="closeATotalModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmATotal()">Go</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let mode = 2;
+  let values = { A: 3, B: 2, C: 4 };
+  let splitTotal = null;
+  let moreMode = null; // { amountMore, diffBoxes, unit, revealed }
+  let moreModeVersion = 0;
+  let aTotalMode = null; // { amount, countA, unit, revealed }
+  let aTotalModeVersion = 0;
+  const labels = ['A', 'B', 'C'];
+  const MAX_BOXES = 20;
+
+  function setMode(n) {
+    mode = n;
+    splitTotal = null;
+    moreMode = null;
+    aTotalMode = null;
+    document.getElementById('tab2').classList.toggle('active', n === 2);
+    document.getElementById('tab3').classList.toggle('active', n === 3);
+    render();
+  }
+
+  function buildInputs() {
+    const row = document.getElementById('inputsRow');
+    row.innerHTML = '';
+    const activeLabels = labels.slice(0, mode);
+    activeLabels.forEach(letter => {
+      const group = document.createElement('div');
+      group.className = 'input-group';
+
+      const label = document.createElement('label');
+      label.textContent = 'Part ' + letter;
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '1';
+      input.max = String(MAX_BOXES);
+      input.inputMode = 'numeric';
+      input.value = values[letter];
+      input.addEventListener('input', () => {
+        let v = parseInt(input.value, 10);
+        if (isNaN(v) || v < 1) v = 1;
+        if (v > MAX_BOXES) v = MAX_BOXES;
+        values[letter] = v;
+        splitTotal = null;
+        moreMode = null;
+        aTotalMode = null;
+        render();
+      });
+
+      group.appendChild(label);
+      group.appendChild(input);
+      row.appendChild(group);
+    });
+  }
+
+  function formatNum(n) {
+    const rounded = Math.round(n * 100) / 100;
+    return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
+  function handleSplitBtn() {
+    if (splitTotal !== null) {
+      splitTotal = null;
+      render();
+    } else {
+      moreMode = null;
+      aTotalMode = null;
+      openModal();
+    }
+  }
+
+  function openModal() {
+    document.getElementById('splitInput').value = '';
+    document.getElementById('modalOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('splitInput').focus(), 50);
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+
+  function confirmSplit() {
+    const input = document.getElementById('splitInput');
+    let v = parseFloat(input.value);
+    if (isNaN(v) || v <= 0) {
+      input.focus();
+      return;
+    }
+    moreMode = null;
+    aTotalMode = null;
+    splitTotal = v;
+    closeModal();
+    render();
+  }
+
+  function handleMoreBtn() {
+    if (moreMode !== null) {
+      moreMode = null;
+      render();
+    } else {
+      splitTotal = null;
+      aTotalMode = null;
+      openMoreModal();
+    }
+  }
+
+  function openMoreModal() {
+    document.getElementById('moreInput').value = '';
+    document.getElementById('moreError').style.display = 'none';
+    document.getElementById('modalOverlayMore').classList.add('open');
+    setTimeout(() => document.getElementById('moreInput').focus(), 50);
+  }
+
+  function closeMoreModal() {
+    document.getElementById('modalOverlayMore').classList.remove('open');
+  }
+
+  function confirmMore() {
+    const input = document.getElementById('moreInput');
+    const errorEl = document.getElementById('moreError');
+    let v = parseFloat(input.value);
+
+    if (isNaN(v) || v <= 0) {
+      errorEl.textContent = 'Enter a number greater than 0.';
+      errorEl.style.display = 'block';
+      input.focus();
+      return;
+    }
+
+    const diffBoxes = values.A - values.B;
+    if (diffBoxes <= 0) {
+      errorEl.textContent = 'A needs more boxes than B for this to work — adjust the ratio first.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    splitTotal = null;
+    aTotalMode = null;
+    moreModeVersion++;
+    const thisVersion = moreModeVersion;
+    moreMode = {
+      amountMore: v,
+      diffBoxes: diffBoxes,
+      unit: v / diffBoxes,
+      revealed: false
+    };
+    closeMoreModal();
+    render();
+
+    setTimeout(() => {
+      if (moreMode && moreModeVersion === thisVersion) {
+        moreMode.revealed = true;
+        render();
+      }
+    }, 1000);
+  }
+
+  function handleATotalBtn() {
+    if (aTotalMode !== null) {
+      aTotalMode = null;
+      render();
+    } else {
+      splitTotal = null;
+      moreMode = null;
+      openATotalModal();
+    }
+  }
+
+  function openATotalModal() {
+    document.getElementById('aTotalInput').value = '';
+    document.getElementById('aTotalError').style.display = 'none';
+    document.getElementById('modalOverlayATotal').classList.add('open');
+    setTimeout(() => document.getElementById('aTotalInput').focus(), 50);
+  }
+
+  function closeATotalModal() {
+    document.getElementById('modalOverlayATotal').classList.remove('open');
+  }
+
+  function confirmATotal() {
+    const input = document.getElementById('aTotalInput');
+    const errorEl = document.getElementById('aTotalError');
+    let v = parseFloat(input.value);
+
+    if (isNaN(v) || v <= 0) {
+      errorEl.textContent = 'Enter a number greater than 0.';
+      errorEl.style.display = 'block';
+      input.focus();
+      return;
+    }
+
+    splitTotal = null;
+    moreMode = null;
+    aTotalModeVersion++;
+    const thisVersion = aTotalModeVersion;
+    aTotalMode = {
+      amount: v,
+      countA: values.A,
+      unit: v / values.A,
+      revealed: false
+    };
+    closeATotalModal();
+    render();
+
+    setTimeout(() => {
+      if (aTotalMode && aTotalModeVersion === thisVersion) {
+        aTotalMode.revealed = true;
+        render();
+      }
+    }, 1000);
+  }
+
+  function render() {
+    buildInputs();
+
+    const activeLabels = labels.slice(0, mode);
+    const nums = activeLabels.map(l => values[l]);
+    const totalParts = nums.reduce((a, b) => a + b, 0);
+
+    // ratio display text, e.g. 3 : 2 : 4
+    document.getElementById('ratioDisplay').textContent = nums.join('  :  ');
+
+    // split button state
+    const splitBtn = document.getElementById('splitBtn');
+    splitBtn.textContent = splitTotal !== null ? 'Clear split' : 'Split between';
+    splitBtn.classList.toggle('active-state', splitTotal !== null);
+
+    // more button state
+    const moreBtn = document.getElementById('moreBtn');
+    moreBtn.textContent = moreMode !== null ? 'Clear extra' : 'A got more than B';
+    moreBtn.classList.toggle('active-state', moreMode !== null);
+
+    // A total button state
+    const aTotalBtn = document.getElementById('aTotalBtn');
+    aTotalBtn.textContent = aTotalMode !== null ? 'Clear A total' : 'A got in total';
+    aTotalBtn.classList.toggle('active-state', aTotalMode !== null);
+
+    const unitValue = splitTotal !== null ? splitTotal / totalParts : null;
+
+    // explicit division calculation
+    const splitCalcEl = document.getElementById('splitCalc');
+    if (splitTotal !== null) {
+      splitCalcEl.textContent = formatNum(splitTotal) + ' ÷ ' + totalParts + ' = ' + formatNum(unitValue);
+    } else if (moreMode !== null) {
+      splitCalcEl.textContent = formatNum(moreMode.amountMore) + ' ÷ ' + moreMode.diffBoxes + ' = ' + formatNum(moreMode.unit);
+    } else if (aTotalMode !== null) {
+      splitCalcEl.textContent = formatNum(aTotalMode.amount) + ' ÷ ' + aTotalMode.countA + ' = ' + formatNum(aTotalMode.unit);
+    } else {
+      splitCalcEl.textContent = '';
+    }
+
+    // box rows
+    const boxArea = document.getElementById('boxArea');
+    boxArea.innerHTML = '';
+    activeLabels.forEach(letter => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'box-row';
+
+      const labelEl = document.createElement('div');
+      labelEl.className = 'row-label';
+      labelEl.textContent = letter + ':';
+      rowEl.appendChild(labelEl);
+
+      const count = values[letter];
+      for (let i = 0; i < count; i++) {
+        const box = document.createElement('div');
+        box.className = 'box';
+
+        if (moreMode !== null) {
+          const isDiffBox = letter === 'A' && i >= values.B;
+          if (isDiffBox) box.classList.add('box-diff');
+
+          const showValue = isDiffBox || moreMode.revealed;
+          if (showValue) {
+            const valSpan = document.createElement('span');
+            valSpan.className = 'box-value';
+            valSpan.textContent = formatNum(moreMode.unit);
+            box.appendChild(valSpan);
+          }
+        } else if (aTotalMode !== null) {
+          const isABox = letter === 'A';
+          if (isABox) box.classList.add('box-diff');
+
+          const showValue = isABox || aTotalMode.revealed;
+          if (showValue) {
+            const valSpan = document.createElement('span');
+            valSpan.className = 'box-value';
+            valSpan.textContent = formatNum(aTotalMode.unit);
+            box.appendChild(valSpan);
+          }
+        } else if (splitTotal !== null) {
+          const valSpan = document.createElement('span');
+          valSpan.className = 'box-value';
+          valSpan.textContent = formatNum(unitValue);
+          box.appendChild(valSpan);
+        }
+
+        rowEl.appendChild(box);
+      }
+
+      if (splitTotal !== null) {
+        const partValue = splitTotal * count / totalParts;
+        const totalSpan = document.createElement('span');
+        totalSpan.className = 'row-total-handwritten';
+        totalSpan.textContent = '= ' + formatNum(partValue);
+        rowEl.appendChild(totalSpan);
+      } else if (moreMode !== null && moreMode.revealed) {
+        const partValue = moreMode.unit * count;
+        const totalSpan = document.createElement('span');
+        totalSpan.className = 'row-total-handwritten';
+        totalSpan.textContent = '= ' + formatNum(partValue);
+        rowEl.appendChild(totalSpan);
+      } else if (aTotalMode !== null && (letter === 'A' || aTotalMode.revealed)) {
+        const partValue = aTotalMode.unit * count;
+        const totalSpan = document.createElement('span');
+        totalSpan.className = 'row-total-handwritten';
+        totalSpan.textContent = '= ' + formatNum(partValue);
+        rowEl.appendChild(totalSpan);
+      }
+
+      boxArea.appendChild(rowEl);
+    });
+
+    // total
+    let totalLineHtml = 'Total parts: <span>' + totalParts + '</span>';
+    if (splitTotal !== null) {
+      totalLineHtml += '  &nbsp;|&nbsp;  Split total: <span>' + formatNum(splitTotal) + '</span>';
+    } else if (moreMode !== null && moreMode.revealed) {
+      const grandTotal = moreMode.unit * totalParts;
+      totalLineHtml += '  &nbsp;|&nbsp;  Grand total: <span>' + formatNum(grandTotal) + '</span>';
+    } else if (aTotalMode !== null && aTotalMode.revealed) {
+      const grandTotal = aTotalMode.unit * totalParts;
+      totalLineHtml += '  &nbsp;|&nbsp;  Grand total: <span>' + formatNum(grandTotal) + '</span>';
+    }
+    document.getElementById('totalLine').innerHTML = totalLineHtml;
+  }
+
+  render();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fractions Plotter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #2c2c2c; color: #ddd; padding: 1rem; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 1rem; color: #eee; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.6rem; }
+  button { font-family: inherit; background: #3e3e3e; color: #ddd; border: 0.5px solid #555; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
+  button:hover { background: #4a4a4a; }
+  button.mode-btn { font-size: 13px; padding: 6px 14px; }
+  button.mode-btn.active { background: #666; color: #fff; border-color: #777; }
+  button.line-btn { font-size: 12px; padding: 4px 9px; }
+  button.small-btn { font-size: 12px; padding: 4px 10px; }
+  .section-label { font-size: 11px; color: #999; margin-bottom: 3px; margin-top: 4px; }
+  #line-btn-area { margin-bottom: 0.4rem; }
+  #toolbar { display: flex; gap: 8px; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  #info { font-size: 13px; color: #aaa; min-height: 18px; margin-bottom: 0.5rem; }
+  #chart-wrap { position: relative; width: 100%; height: 460px; background: #fff; border-radius: 6px; padding: 4px; }
+</style>
+</head>
+<body>
+<h1>Fractions plotter</h1>
+
+<div class="row">
+  <button class="mode-btn" id="m-unitary">Unitary fractions</button>
+  <button class="mode-btn" id="m-multiple">Proper fractions</button>
+  <button class="mode-btn" id="m-improper">Improper fractions</button>
+</div>
+
+<div id="line-btn-area"></div>
+
+<div id="toolbar" style="display:none;">
+  <button class="small-btn" id="clear-btn">Clear all</button>
+  <button class="small-btn" id="const-denom-btn">Common denominator</button>
+</div>
+
+<div id="info">Select a fraction type above to begin.</div>
+<div id="chart-wrap">
+  <canvas id="chart" role="img" aria-label="Fraction lines plot"></canvas>
+</div>
+
+<script>
+const BASE_MAX = 20;
+const PALETTE = ['#185FA5','#0F6E56','#993C1D','#993556','#534AB7','#3B6D11','#854F0B','#A32D2D','#0C447C','#085041',
+                 '#1D9E75','#D85A30','#D4537E','#639922','#BA7517','#7F77DD','#378ADD','#E24B4A'];
+const RING_COLORS = ['#E24B4A','#EF9F27','#1D9E75','#7F77DD','#D4537E','#378ADD','#639922','#BA7517'];
+
+function gcd(a,b){return b===0?a:gcd(b,a%b);}
+function lcm(a,b){return(a*b)/gcd(a,b);}
+
+let activeLines = [];
+let activeModes = new Set();
+let constDenomOn = false;
+let chart;
+
+function linePoints(n,d,maxX){
+  const pts=[];
+  for(let k=1;k*d<=maxX;k++) pts.push({x:k*d,y:k*n});
+  return pts;
+}
+
+function getAxisMax(){
+  if(!constDenomOn||activeLines.length<2) return BASE_MAX;
+  const lcd=activeLines.reduce((acc,l)=>lcm(acc,l.d),activeLines[0].d);
+  return lcd>BASE_MAX?lcd+Math.ceil(lcd*0.1):BASE_MAX;
+}
+
+function getYMax(axisMax){
+  if(activeModes.has('improper')){
+    const impLines=activeLines.filter(l=>l.n>l.d);
+    if(impLines.length){
+      const maxD=Math.max(...impLines.map(l=>l.d));
+      return Math.max(axisMax,maxD*2)+0.5;
+    }
+  }
+  return axisMax+0.5;
+}
+
+function getSharedDenomGroups(axisMax){
+  if(activeLines.length<2) return {};
+  const xSets=activeLines.map(l=>new Set(linePoints(l.n,l.d,axisMax).map(p=>p.x)));
+  const sharedXs=[...xSets[0]].filter(x=>xSets.every(s=>s.has(x)));
+  const groups={};
+  sharedXs.forEach(x=>{
+    groups[x]=[];
+    activeLines.forEach(l=>linePoints(l.n,l.d,axisMax).forEach(p=>{if(p.x===x)groups[x].push(p);}));
+  });
+  return groups;
+}
+
+function bgPoints(axisMax){
+  const active=new Set(activeLines.flatMap(l=>linePoints(l.n,l.d,axisMax).map(p=>p.x+','+p.y)));
+  const pts=[];
+  for(let d=1;d<=axisMax;d++)
+    for(let n=1;n<=d;n++)
+      if(gcd(n,d)===1&&!active.has(d+','+n)) pts.push({x:d,y:n});
+  return pts;
+}
+
+function buildChart(){
+  const axisMax=getAxisMax();
+  const yMax=getYMax(axisMax);
+  const datasets=[];
+
+  activeLines.forEach((l,i)=>{
+    const col=PALETTE[i%PALETTE.length];
+    datasets.push({
+      label:l.key, data:linePoints(l.n,l.d,axisMax),
+      type:'line', borderColor:col, backgroundColor:col,
+      pointRadius:5, pointHoverRadius:7, showLine:true, borderWidth:2, order:1
+    });
+  });
+
+  if(constDenomOn&&activeLines.length>=2){
+    const groups=getSharedDenomGroups(axisMax);
+    Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach((x,i)=>{
+      datasets.push({
+        label:'ring'+x, data:groups[x], type:'scatter',
+        backgroundColor:'transparent', borderColor:RING_COLORS[i%RING_COLORS.length],
+        pointStyle:'circle', pointRadius:12, pointHoverRadius:14,
+        pointBorderWidth:2.5, pointBackgroundColor:'transparent', order:0
+      });
+    });
+  }
+
+  datasets.push({
+    label:'bg', data:bgPoints(axisMax), type:'scatter',
+    backgroundColor:'rgba(136,135,128,0.3)', pointRadius:3, order:2
+  });
+
+  if(chart) chart.destroy();
+  const tickStep=axisMax>40?5:axisMax>25?2:1;
+  const yTickStep=yMax>40?5:yMax>25?2:1;
+
+  chart=new Chart(document.getElementById('chart'),{
+    type:'scatter', data:{datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:250},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>ctx.parsed.y+'/'+ctx.parsed.x+' = '+(ctx.parsed.y/ctx.parsed.x).toFixed(3)}}
+      },
+      scales:{
+        x:{title:{display:true,text:'Denominator',font:{size:13}},min:0,max:axisMax+0.5,
+           ticks:{stepSize:tickStep,callback:v=>Number.isInteger(v)&&v%tickStep===0?v:''}},
+        y:{title:{display:true,text:'Numerator',font:{size:13}},min:0,max:yMax,
+           ticks:{stepSize:yTickStep,callback:v=>Number.isInteger(v)&&v%yTickStep===0?v:''}}
+      }
+    }
+  });
+}
+
+function getButtonDefs(mode){
+  const defs=[];
+  if(mode==='unitary'){
+    for(let d=1;d<=10;d++) defs.push({key:'1/'+d,n:1,d});
+  } else if(mode==='multiple'){
+    for(let d=2;d<=10;d++) for(let n=1;n<d;n++) if(gcd(n,d)===1) defs.push({key:n+'/'+d,n,d});
+  } else {
+    for(let d=1;d<=10;d++) for(let n=d+1;n<=2*d;n++) if(gcd(n,d)===1) defs.push({key:n+'/'+d,n,d});
+  }
+  return defs;
+}
+
+const MODE_LABELS={unitary:'Unitary',multiple:'Proper',improper:'Improper'};
+
+function rebuildLineBtnArea(){
+  const area=document.getElementById('line-btn-area');
+  area.innerHTML='';
+  ['unitary','multiple','improper'].forEach(mode=>{
+    if(!activeModes.has(mode)) return;
+    const label=document.createElement('div');
+    label.className='section-label';
+    label.textContent=MODE_LABELS[mode];
+    area.appendChild(label);
+    const row=document.createElement('div');
+    row.className='row';
+    getButtonDefs(mode).forEach(def=>{
+      const btn=document.createElement('button');
+      btn.className='line-btn';
+      btn.textContent=def.key;
+      const idx=activeLines.findIndex(l=>l.key===def.key);
+      if(idx>=0){btn.style.background=PALETTE[idx%PALETTE.length];btn.style.color='#fff';btn.style.borderColor=PALETTE[idx%PALETTE.length];}
+      btn.onclick=()=>{
+        const i=activeLines.findIndex(l=>l.key===def.key);
+        if(i>=0) activeLines.splice(i,1); else activeLines.push({key:def.key,n:def.n,d:def.d});
+        rebuildLineBtnArea(); updateInfo(); buildChart();
+      };
+      row.appendChild(btn);
+    });
+    area.appendChild(row);
+  });
+  document.getElementById('toolbar').style.display=activeModes.size>0?'flex':'none';
+}
+
+function updateInfo(){
+  const el=document.getElementById('info');
+  if(activeModes.size===0){el.textContent='Select a fraction type above to begin.';return;}
+  if(activeLines.length===0){el.textContent='Select fractions to plot.';return;}
+  let txt=activeLines.map(l=>l.key).join(', ');
+  if(constDenomOn&&activeLines.length>=2){
+    const ax=getAxisMax();
+    const grps=getSharedDenomGroups(ax);
+    const shared=Object.keys(grps).map(Number).sort((a,b)=>a-b);
+    const lcd=activeLines.reduce((acc,l)=>lcm(acc,l.d),activeLines[0].d);
+    txt+=shared.length?' · common denominators: '+shared.join(', '):'  · no common denominators in range';
+    if(lcd>BASE_MAX) txt+=' (axis extended to '+getAxisMax()+')';
+  }
+  el.textContent=txt;
+}
+
+['unitary','multiple','improper'].forEach(m=>{
+  document.getElementById('m-'+m).onclick=()=>{
+    if(activeModes.has(m)){
+      activeModes.delete(m);
+      const defs=new Set(getButtonDefs(m).map(d=>d.key));
+      activeLines=activeLines.filter(l=>!defs.has(l.key));
+      document.getElementById('m-'+m).classList.remove('active');
+    } else {
+      activeModes.add(m);
+      document.getElementById('m-'+m).classList.add('active');
+    }
+    rebuildLineBtnArea(); updateInfo(); buildChart();
+  };
+});
+
+document.getElementById('clear-btn').onclick=()=>{
+  activeLines=[];
+  rebuildLineBtnArea(); updateInfo(); buildChart();
+};
+
+document.getElementById('const-denom-btn').onclick=()=>{
+  constDenomOn=!constDenomOn;
+  const btn=document.getElementById('const-denom-btn');
+  btn.style.background=constDenomOn?'#534AB7':'';
+  btn.style.color=constDenomOn?'#fff':'';
+  btn.style.borderColor=constDenomOn?'#534AB7':'';
+  updateInfo(); buildChart();
+};
+
+rebuildLineBtnArea(); updateInfo(); buildChart();
+</script>
+</body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiplication & Division Machine</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #2a2a2a;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #graph-area {
+    flex: 0 0 66.666%;
+    position: relative;
+  }
+  canvas#main {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  #bottom-area {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    border-top: 2px solid #888;
+    min-height: 0;
+  }
+  #zoom-area {
+    flex: 0 0 40%;
+    background: #3a3a3a;
+    border-right: 2px solid #888;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 4px 4px 2px 4px;
+  }
+  #zoom-label {
+    font-size: 0.62rem;
+    color: #ccc;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+  }
+  canvas#zoom {
+    width: 100%;
+    flex: 1;
+    display: block;
+    min-height: 0;
+  }
+  #input-area {
+    flex: 1;
+    background: #3a3a3a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 16px;
+    position: relative;
+  }
+  .expression-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .num-input {
+    width: 90px;
+    padding: 8px 10px;
+    font-size: 1.3rem;
+    text-align: center;
+    background: #4a4a4a;
+    border: 2px solid #aaa;
+    border-radius: 10px;
+    color: #f0f0f0;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .num-input:focus { border-color: #fff; }
+  .op-symbol {
+    font-size: 1.8rem;
+    color: #ddd;
+    font-weight: bold;
+    user-select: none;
+  }
+  #result {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #f0f0f0;
+    min-height: 1.8rem;
+    letter-spacing: 0.05em;
+    width: 160px;
+    text-align: left;
+  }
+  #result.error { color: #f08080; }
+  .axis-label {
+    font-size: 0.72rem;
+    color: #bbb;
+    text-align: center;
+  }
+  #quotient-label {
+    font-size: 0.75rem;
+    color: #ddd;
+    text-align: center;
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+  }
+</style>
+</head>
+<body>
+<div id="graph-area">
+  <canvas id="main"></canvas>
+</div>
+<div id="bottom-area">
+  <div id="zoom-area">
+    <div id="zoom-label">Zoom: x ∈ [0.8, 1.2]</div>
+    <canvas id="zoom"></canvas>
+  </div>
+  <div id="input-area">
+    <div class="expression-row">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+        <input class="num-input" id="dividend" type="number" value="12" placeholder="dividend">
+        <span class="axis-label">dividend (y)</span>
+      </div>
+      <span class="op-symbol">÷</span>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+        <input class="num-input" id="divisor" type="number" value="4" placeholder="divisor">
+        <span class="axis-label">divisor (x)</span>
+      </div>
+      <span class="op-symbol">=</span>
+      <div id="result"></div>
+    </div>
+    <div id="quotient-label"></div>
+  </div>
+</div>
+
+<script>
+const mainCanvas = document.getElementById('main');
+const zoomCanvas = document.getElementById('zoom');
+const mctx = mainCanvas.getContext('2d');
+const zctx = zoomCanvas.getContext('2d');
+const divEl = document.getElementById('dividend');
+const divsorEl = document.getElementById('divisor');
+const resultEl = document.getElementById('result');
+const quotientLabelEl = document.getElementById('quotient-label');
+
+function resize() {
+  const ma = document.getElementById('graph-area');
+  mainCanvas.width = ma.clientWidth * devicePixelRatio;
+  mainCanvas.height = ma.clientHeight * devicePixelRatio;
+  const za = document.getElementById('zoom-area');
+  zoomCanvas.width = za.clientWidth * devicePixelRatio;
+  zoomCanvas.height = (za.clientHeight - 20) * devicePixelRatio;
+  draw();
+}
+
+function getVals() {
+  return {
+    dividend: parseFloat(divEl.value),
+    divisor: parseFloat(divsorEl.value)
+  };
+}
+
+function fmt(n) {
+  return Number.isInteger(n) ? n : parseFloat(n.toFixed(4));
+}
+
+function niceStep(maxVal) {
+  const raw = maxVal / 5;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const r = raw / mag;
+  if (r < 1.5) return mag;
+  if (r < 3.5) return 2 * mag;
+  if (r < 7.5) return 5 * mag;
+  return 10 * mag;
+}
+
+function drawGraph(ctx, W, H, dividend, divisor, bounds, isZoom) {
+  const { xMin, xMax, yMin, yMax } = bounds;
+  const dpr = devicePixelRatio;
+  const xRange = xMax - xMin;
+  const yRange = yMax - yMin;
+
+  const ml = 52 * dpr, mr = 20 * dpr, mt = 20 * dpr, mb = 36 * dpr;
+  const gw = W - ml - mr, gh = H - mt - mb;
+
+  function toC(x, y) {
+    return [
+      ml + (x - xMin) / xRange * gw,
+      mt + (1 - (y - yMin) / yRange) * gh
+    ];
+  }
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  const valid = !isNaN(dividend) && !isNaN(divisor);
+  const quotient = valid && divisor !== 0 ? dividend / divisor : null;
+
+  const xStep = niceStep(xRange / 2);
+  const yStep = niceStep(yRange / 2);
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  for (let v = Math.ceil(xMin / xStep) * xStep; v <= xMax + 1e-9; v += xStep) {
+    const [gx] = toC(v, 0);
+    ctx.beginPath(); ctx.moveTo(gx, mt); ctx.lineTo(gx, mt + gh); ctx.stroke();
+  }
+  for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax + 1e-9; v += yStep) {
+    const [, gy] = toC(0, v);
+    ctx.beginPath(); ctx.moveTo(ml, gy); ctx.lineTo(ml + gw, gy); ctx.stroke();
+  }
+
+  if (quotient !== null) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,80,220,0.18)';
+    ctx.lineWidth = 2 * dpr;
+    ctx.setLineDash([8, 6]);
+    const [x1, y1] = toC(xMin, xMin * quotient);
+    const [x2, y2] = toC(xMax, xMax * quotient);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2 * dpr;
+  ctx.setLineDash([]);
+  if (yMin <= 0 && yMax >= 0) {
+    const [, ay] = toC(0, 0);
+    ctx.beginPath(); ctx.moveTo(ml, ay); ctx.lineTo(ml + gw, ay); ctx.stroke();
+  }
+  if (xMin <= 0 && xMax >= 0) {
+    const [ax] = toC(0, 0);
+    ctx.beginPath(); ctx.moveTo(ax, mt); ctx.lineTo(ax, mt + gh); ctx.stroke();
+  }
+
+  if (isZoom) {
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.strokeRect(ml, mt, gw, gh);
+  }
+
+  const fontSize = isZoom ? 12 : 14;
+  const axisY = yMin <= 0 && yMax >= 0 ? toC(0, 0)[1] : mt + gh;
+  const axisX = xMin <= 0 && xMax >= 0 ? toC(0, 0)[0] : ml;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let v = Math.ceil(xMin / xStep) * xStep; v <= xMax + 1e-9; v += xStep) {
+    const [gx] = toC(v, 0);
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5 * dpr;
+    ctx.beginPath(); ctx.moveTo(gx, axisY - 4 * dpr); ctx.lineTo(gx, axisY + 4 * dpr); ctx.stroke();
+    ctx.fillStyle = '#333';
+    ctx.font = `${fontSize * dpr}px Segoe UI`;
+    const label = Math.abs(v) < 1e-9 ? '0' : (Number.isInteger(v) ? v : parseFloat(v.toFixed(3)));
+    ctx.fillText(label, gx, axisY + 6 * dpr);
+  }
+
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax + 1e-9; v += yStep) {
+    const [, gy] = toC(0, v);
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5 * dpr;
+    ctx.beginPath(); ctx.moveTo(axisX - 4 * dpr, gy); ctx.lineTo(axisX + 4 * dpr, gy); ctx.stroke();
+    ctx.fillStyle = '#333';
+    ctx.font = `${fontSize * dpr}px Segoe UI`;
+    const label = Math.abs(v) < 1e-9 ? '0' : (Number.isInteger(v) ? v : parseFloat(v.toFixed(3)));
+    ctx.fillText(label, axisX - 7 * dpr, gy);
+  }
+
+  if (!isZoom) {
+    ctx.fillStyle = '#0050dc';
+    ctx.font = `bold ${16 * dpr}px Segoe UI`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('divisor (x)', ml + gw - 4 * dpr, axisY - 8 * dpr);
+    ctx.save();
+    ctx.translate(axisX + 14 * dpr, mt + 4 * dpr);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('dividend (y)', 0, 0);
+    ctx.restore();
+  }
+
+  if (!valid) return;
+
+  const [px, py] = toC(divisor, dividend);
+  const inView = divisor >= xMin && divisor <= xMax && dividend >= yMin && dividend <= yMax;
+
+  if (!isZoom && inView) {
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.setLineDash([6, 5]);
+    const clampedAY = Math.max(mt, Math.min(mt + gh, axisY));
+    const clampedAX = Math.max(ml, Math.min(ml + gw, axisX));
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, clampedAY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(clampedAX, py); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if (quotient !== null) {
+    ctx.strokeStyle = '#0050dc';
+    ctx.lineWidth = 2.5 * dpr;
+    ctx.setLineDash([]);
+    const [x1, y1] = toC(xMin, xMin * quotient);
+    const [x2, y2] = toC(xMax, xMax * quotient);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ml, mt, gw, gh); ctx.clip();
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.restore();
+  }
+
+  if (quotient !== null && 1 >= xMin && 1 <= xMax) {
+    const [ix, iy] = toC(1, quotient);
+    ctx.strokeStyle = '#cc7700';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(ix, mt); ctx.lineTo(ix, mt + gh); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(ix, iy, 5 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = '#cc7700';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.stroke();
+
+    if (isZoom) {
+      const [yAxisX] = toC(xMin, 0);
+      ctx.strokeStyle = '#cc7700';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(yAxisX, iy); ctx.stroke();
+    }
+
+    if (!isZoom) {
+      ctx.fillStyle = '#cc7700';
+      ctx.font = `bold ${14 * dpr}px Segoe UI`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`(1, ${fmt(quotient)})`, ix + 7 * dpr, iy - 4 * dpr);
+    }
+  }
+
+  if (inView) {
+    const dotColor = isZoom ? '#007a3d' : '#cc0000';
+    ctx.beginPath();
+    ctx.arc(px, py, 7 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = dotColor;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2 * dpr;
+    ctx.stroke();
+
+    if (!isZoom) {
+      const lx = divisor >= 0 ? px + 14 * dpr : px - 14 * dpr;
+      const ly = dividend >= 0 ? py - 14 * dpr : py + 14 * dpr;
+      ctx.fillStyle = '#cc0000';
+      ctx.font = `bold ${14 * dpr}px Segoe UI`;
+      ctx.textAlign = divisor >= 0 ? 'left' : 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`(${fmt(divisor)}, ${fmt(dividend)})`, lx, ly);
+    }
+  }
+}
+
+function draw() {
+  const { dividend, divisor } = getVals();
+  const valid = !isNaN(dividend) && !isNaN(divisor);
+
+  const W = mainCanvas.width, H = mainCanvas.height;
+  let maxVal = 10;
+  if (valid) {
+    maxVal = Math.max(Math.abs(dividend), Math.abs(divisor), 1) * 1.4;
+    maxVal = Math.ceil(maxVal / 5) * 5;
+    if (maxVal < 5) maxVal = 5;
+  }
+  drawGraph(mctx, W, H, dividend, divisor,
+    { xMin: -maxVal, xMax: maxVal, yMin: -maxVal, yMax: maxVal }, false);
+
+  const ZW = zoomCanvas.width, ZH = zoomCanvas.height;
+  const quotient = valid && divisor !== 0 ? dividend / divisor : NaN;
+  const yCenter = isNaN(quotient) ? 0 : quotient;
+  drawGraph(zctx, ZW, ZH, dividend, divisor,
+    { xMin: 0.8, xMax: 1.2, yMin: yCenter - 0.1, yMax: yCenter + 0.1 }, true);
+
+  if (!valid) {
+    resultEl.textContent = '';
+    quotientLabelEl.textContent = '';
+  } else if (divisor === 0) {
+    resultEl.textContent = 'undefined (÷ 0)';
+    resultEl.className = 'error';
+    quotientLabelEl.textContent = '';
+  } else {
+    const q = dividend / divisor;
+    resultEl.textContent = `${fmt(dividend)} ÷ ${fmt(divisor)} = ${fmt(q)}`;
+    resultEl.className = '';
+    quotientLabelEl.textContent = `slope = quotient = ${fmt(q)}  ·  at x=1: y = ${fmt(q)}`;
+  }
+}
+
+divEl.addEventListener('input', draw);
+divsorEl.addEventListener('input', draw);
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>

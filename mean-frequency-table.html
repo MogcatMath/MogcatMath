@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mean from a Frequency Table</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #2b2b2e;
+    color: #f0f0f0;
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px 20px 40px;
+  }
+
+  h1 {
+    font-size: clamp(24px, 3.2vw, 38px);
+    font-weight: 600;
+    margin: 0 0 6px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  .subtitle {
+    font-size: clamp(15px, 1.6vw, 19px);
+    color: #b8b8bd;
+    margin-bottom: 26px;
+    text-align: center;
+  }
+
+  .table-card {
+    background-color: #ffffff;
+    background-image:
+      linear-gradient(to right, #d9d9d9 1px, transparent 1px),
+      linear-gradient(to bottom, #d9d9d9 1px, transparent 1px);
+    background-size: 26px 26px;
+    border: 2px solid #111;
+    border-radius: 4px;
+    padding: 30px 36px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    margin-bottom: 26px;
+  }
+
+  .layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 28px;
+  }
+
+  .button-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 230px;
+  }
+
+  .actions-top, .actions-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  table {
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 2px solid #111;
+    table-layout: fixed;
+  }
+
+  th, td {
+    padding: 14px 34px;
+    text-align: center;
+    font-size: clamp(20px, 2.4vw, 30px);
+    min-width: 90px;
+    border: 1px solid #111;
+  }
+
+  th {
+    color: #111;
+    font-weight: 700;
+    background: #f4f4f4;
+    border-bottom: 2px solid #111;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    color: #111;
+    font-weight: 500;
+  }
+
+  tr:last-of-type td {
+    border-bottom: 2px solid #111;
+  }
+
+  .col-class { color: #111; }
+  .col-freq { color: #1d4ed8; }
+  .col-total { color: #c1121f; }
+
+  .total-row td {
+    font-weight: 800;
+    border-top: 3px double #111;
+    padding-top: 16px;
+    background: #f4f4f4;
+  }
+
+  .total-row .label-cell {
+    color: #111;
+    text-align: right;
+    font-weight: 700;
+    font-size: clamp(17px, 2vw, 22px);
+  }
+
+  .total-row td.col-total,
+  .total-row td.col-freq {
+    background: #ffffff;
+  }
+
+  .col-total-header, .col-total-cell {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+
+  .col-total-header.show, .col-total-cell.show {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .freq-total-cell {
+    opacity: 0;
+    transition: opacity 0.45s ease;
+  }
+
+  .freq-total-cell.show {
+    opacity: 1;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: clamp(15px, 1.6vw, 18px);
+    font-weight: 600;
+    padding: 16px 20px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    color: #1c1c1e;
+    background: #ffd166;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.2s ease;
+    touch-action: manipulation;
+    width: 100%;
+    text-align: center;
+  }
+
+  button:active {
+    transform: scale(0.96);
+  }
+
+  button.secondary {
+    background: #8ecae6;
+  }
+
+  button.tertiary {
+    background: #b9fbc0;
+  }
+
+  button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  button.reset-btn {
+    background: #4a4a50;
+    color: #f0f0f0;
+  }
+
+  button.dataset-btn {
+    background: #cdb4db;
+  }
+
+  button.mode-btn {
+    background: #a7c957;
+  }
+
+  button.middle-btn {
+    background: #ffadad;
+  }
+
+  .middle-value {
+    font-family: 'Segoe Print', 'Bradley Hand', 'Chalkboard SE', 'Comic Sans MS', cursive;
+    color: #c1121f;
+    font-weight: 700;
+    font-size: clamp(22px, 2.7vw, 29px);
+    margin-left: 16px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .middle-value.show {
+    opacity: 1;
+  }
+
+  td.col-class.class-range {
+    font-size: 18px;
+    padding-left: 6px;
+    padding-right: 4px;
+    text-align: left;
+    white-space: nowrap;
+    transform: none;
+  }
+
+  .dataset-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 100;
+    padding: 24px;
+  }
+
+  .dataset-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .dataset-box {
+    position: relative;
+    background-color: #ffffff;
+    background-image:
+      linear-gradient(to right, #d9d9d9 1px, transparent 1px),
+      linear-gradient(to bottom, #d9d9d9 1px, transparent 1px);
+    background-size: 26px 26px;
+    border: 2px solid #111;
+    border-radius: 8px;
+    padding: 36px 40px 28px;
+    max-width: 720px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.4);
+  }
+
+  .dataset-box h2 {
+    margin: 0 0 18px;
+    font-size: clamp(20px, 2.4vw, 28px);
+    color: #111;
+    text-align: center;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 2px solid #111;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #111;
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 700;
+    box-shadow: none;
+  }
+
+  .dataset-row {
+    font-size: clamp(17px, 2vw, 21px);
+    line-height: 1.7;
+    margin-bottom: 6px;
+  }
+
+  .dataset-label {
+    color: #444;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+
+  .dataset-values {
+    color: #111;
+  }
+
+  .dataset-note {
+    color: #555;
+    font-style: italic;
+    font-size: clamp(14px, 1.6vw, 17px);
+    margin: 0 0 16px;
+    border-bottom: 1px dashed #999;
+    padding-bottom: 12px;
+  }
+
+  .confirm-box {
+    text-align: center;
+    max-width: 460px;
+  }
+
+  .confirm-text {
+    color: #333;
+    font-size: clamp(15px, 1.8vw, 19px);
+    margin: 0 0 24px;
+  }
+
+  .confirm-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+  }
+
+  .hint {
+    color: #9a9aa0;
+    font-size: clamp(13px, 1.4vw, 16px);
+    text-align: center;
+    max-width: 560px;
+    margin-top: 4px;
+  }
+
+  button.mean-btn {
+    background: #f4a261;
+  }
+
+  .mean-calc {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.5s ease, opacity 0.4s ease, margin-top 0.5s ease;
+    margin-top: 0;
+    border-top: none;
+    display: flex;
+    justify-content: center;
+  }
+
+  .mean-calc.show {
+    max-height: 260px;
+    opacity: 1;
+    margin-top: 28px;
+    border-top: 2px dashed #999;
+    padding-top: 24px;
+  }
+
+  .fraction-line {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    font-family: 'Segoe Print', 'Bradley Hand', 'Chalkboard SE', 'Comic Sans MS', cursive;
+    color: #1d3557;
+  }
+
+  .fraction {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.15;
+  }
+
+  .frac-num, .frac-den {
+    padding: 0 10px 4px;
+    font-size: clamp(30px, 3.6vw, 46px);
+  }
+
+  .frac-num {
+    color: #c1121f;
+    border-bottom: 3px solid #1d3557;
+  }
+
+  .frac-den {
+    color: #1d4ed8;
+    padding-top: 4px;
+  }
+
+  .frac-eq {
+    font-size: clamp(30px, 3.6vw, 46px);
+  }
+
+  .frac-ans {
+    font-size: clamp(36px, 4.4vw, 54px);
+    font-weight: 700;
+    color: #2a9d8f;
+  }
+
+  @keyframes pulseFreq {
+    0%   { transform: scale(1);    background: transparent; }
+    35%  { transform: scale(1.35); background: #fff59d; }
+    70%  { transform: scale(1.35); background: #fff59d; }
+    100% { transform: scale(1);    background: transparent; }
+  }
+
+  .freq-num.pulsing {
+    display: inline-block;
+    animation: pulseFreq 0.5s ease;
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
+
+  .freq-num.counted {
+    background: #fff3b0;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-weight: 700;
+  }
+
+  .op-header {
+    min-width: 20px;
+    padding: 14px 4px;
+    border-left: none;
+    border-right: none;
+  }
+
+  .op-cell {
+    color: #444;
+    font-weight: 700;
+    padding: 14px 4px;
+    min-width: 20px;
+    font-size: clamp(18px, 2.2vw, 26px);
+  }
+
+  .op-header-mul, .op-cell-mul {
+    border-left: hidden;
+  }
+
+  .op-header-eq, .op-cell-eq {
+    border-left: hidden;
+  }
+
+  :root {
+    --mul-offset: 0px;
+    --eq-offset: 0px;
+  }
+
+  td.col-class {
+    transform: translateX(var(--mul-offset));
+  }
+
+  td.col-freq {
+    transform: translateX(var(--eq-offset));
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="layout">
+    <div class="button-column">
+      <div class="actions-top">
+        <button class="middle-btn" id="middleBtn" onclick="revealMiddle()" style="display:none;">Find middle</button>
+        <button id="freqBtn" onclick="revealFreqTotal()">Find total frequency</button>
+        <button class="secondary" id="colBtn" onclick="revealColumnTotals()">Find total value of columns</button>
+        <button class="mean-btn" id="meanBtn" onclick="revealMean()" disabled>Calculate mean</button>
+      </div>
+
+      <div class="actions-bottom">
+        <button class="dataset-btn" onclick="showDataset()">Show full dataset</button>
+        <button class="mode-btn" id="modeBtn" onclick="requestConfirmation(toggleMode)">Grouped table</button>
+        <button class="reset-btn" onclick="requestConfirmation(newTable)">New table</button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table id="freqTable">
+        <colgroup>
+          <col style="width:170px">
+          <col style="width:50px">
+          <col style="width:150px">
+          <col style="width:50px">
+          <col style="width:170px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th colspan="2">Class</th>
+            <th colspan="2">Frequency</th>
+            <th class="col-total-header" id="colTotalHeader">Column&nbsp;total</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+        <tbody>
+          <tr class="total-row">
+            <td class="label-cell" colspan="2">Total</td>
+            <td class="col-freq freq-total-cell" id="freqTotalCell" colspan="2">0</td>
+            <td class="col-total col-total-cell" id="colTotalGrand">0</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="mean-calc" id="meanCalc">
+        <div class="fraction-line">
+          <div class="fraction">
+            <span class="frac-num" id="fracNum">0</span>
+            <span class="frac-den" id="fracDen">0</span>
+          </div>
+          <span class="frac-eq">=</span>
+          <span class="frac-ans" id="fracAns">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">Class × Frequency gives the column total for each row. Total column total ÷ total frequency = the mean.</div>
+</div>
+
+<div class="dataset-overlay" id="datasetOverlay">
+  <div class="dataset-box">
+    <button class="close-btn" onclick="hideDataset()" aria-label="Close">&times;</button>
+    <h2>Full list of values</h2>
+    <div id="datasetContent"></div>
+  </div>
+</div>
+
+<div class="dataset-overlay" id="confirmOverlay">
+  <div class="dataset-box confirm-box">
+    <h2>Are you sure?</h2>
+    <p class="confirm-text">This will clear the current numbers and any revealed totals.</p>
+    <div class="confirm-buttons">
+      <button class="reset-btn" onclick="proceedConfirmed()">Yes, continue</button>
+      <button class="secondary" onclick="cancelConfirmed()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let classes = [];
+  let classLabels = [];
+  let freqs = [];
+  let groupedMode = false;
+
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function formatNumber(n) {
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+
+  function generateData() {
+    classes = [];
+    classLabels = [];
+
+    if (groupedMode) {
+      let current = randInt(1, 50);
+      for (let i = 0; i < 6; i++) {
+        const width = randInt(2, 5);
+        const next = current + width;
+        classLabels.push(`${current} \u2264 x < ${next}`);
+        classes.push((current + next) / 2);
+        current = next;
+      }
+    } else {
+      const start = randInt(1, 100);
+      for (let i = 0; i < 6; i++) {
+        classes.push(start + i);
+        classLabels.push(String(start + i));
+      }
+    }
+
+    freqs = [];
+    for (let i = 0; i < 6; i++) freqs.push(randInt(0, 20));
+  }
+
+  function buildTable() {
+    const body = document.getElementById('tableBody');
+    body.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="col-class${groupedMode ? ' class-range' : ''}">${classLabels[i]}<span class="middle-value" id="middleVal${i}">${formatNumber(classes[i])}</span></td>
+        <td class="op-cell op-cell-mul col-total-cell" id="opMul${i}">&times;</td>
+        <td class="col-freq"><span class="freq-num" id="freqNum${i}">${freqs[i]}</span></td>
+        <td class="op-cell op-cell-eq col-total-cell" id="opEq${i}">=</td>
+        <td class="col-total col-total-cell" id="colTotalCell${i}">${formatNumber(classes[i] * freqs[i])}</td>
+      `;
+      body.appendChild(tr);
+    }
+
+    document.getElementById('freqTotalCell').textContent = freqs.reduce((a,b) => a+b, 0);
+    const grandTotal = classes.reduce((sum, c, i) => sum + c * freqs[i], 0);
+    document.getElementById('colTotalGrand').textContent = formatNumber(grandTotal);
+
+    // reset reveal states
+    document.getElementById('freqTotalCell').classList.remove('show');
+    document.getElementById('colTotalHeader').classList.remove('show');
+    document.getElementById('colTotalGrand').classList.remove('show');
+    document.querySelectorAll('.col-total-cell').forEach(el => el.classList.remove('show'));
+    document.querySelectorAll('.freq-num').forEach(el => el.classList.remove('pulsing', 'counted'));
+    document.querySelectorAll('.middle-value').forEach(el => el.classList.remove('show'));
+
+    document.getElementById('middleBtn').style.display = groupedMode ? '' : 'none';
+    document.getElementById('middleBtn').disabled = false;
+
+    document.getElementById('freqBtn').disabled = false;
+    document.getElementById('colBtn').disabled = false;
+    document.getElementById('meanBtn').disabled = true;
+    document.getElementById('meanCalc').classList.remove('show');
+    hideDataset();
+
+    updateHeaderOffsets();
+  }
+
+  function updateHeaderOffsets() {
+    const mulEl = document.getElementById('opMul0');
+    const eqEl = document.getElementById('opEq0');
+    if (!mulEl || !eqEl) return;
+    const mulWidth = mulEl.getBoundingClientRect().width;
+    const eqWidth = eqEl.getBoundingClientRect().width;
+    document.documentElement.style.setProperty('--mul-offset', (mulWidth / 2) + 'px');
+    document.documentElement.style.setProperty('--eq-offset', (eqWidth / 2) + 'px');
+  }
+
+  window.addEventListener('resize', updateHeaderOffsets);
+
+  function checkMeanReady() {
+    const freqDone = document.getElementById('freqTotalCell').classList.contains('show');
+    const colDone = document.getElementById('colTotalGrand').classList.contains('show');
+    document.getElementById('meanBtn').disabled = !(freqDone && colDone);
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function revealMiddle() {
+    document.querySelectorAll('.middle-value').forEach(el => el.classList.add('show'));
+    document.getElementById('middleBtn').disabled = true;
+  }
+
+  async function revealFreqTotal() {
+    const freqBtn = document.getElementById('freqBtn');
+    const colBtn = document.getElementById('colBtn');
+    freqBtn.disabled = true;
+    colBtn.disabled = true;
+
+    for (let i = 0; i < 6; i++) {
+      const numEl = document.getElementById('freqNum' + i);
+      numEl.classList.add('pulsing');
+      await sleep(500);
+      numEl.classList.remove('pulsing');
+      numEl.classList.add('counted');
+    }
+
+    document.getElementById('freqTotalCell').classList.add('show');
+    colBtn.disabled = false;
+    checkMeanReady();
+  }
+
+  async function revealColumnTotals() {
+    const colBtn = document.getElementById('colBtn');
+    const freqBtn = document.getElementById('freqBtn');
+    colBtn.disabled = true;
+    freqBtn.disabled = true;
+
+    for (let i = 0; i < 6; i++) {
+      document.getElementById('opMul' + i).classList.add('show');
+      document.getElementById('opEq' + i).classList.add('show');
+      document.getElementById('colTotalCell' + i).classList.add('show');
+      await sleep(1000);
+    }
+
+    document.getElementById('colTotalHeader').classList.add('show');
+    document.getElementById('colTotalGrand').classList.add('show');
+
+    freqBtn.disabled = document.getElementById('freqTotalCell').classList.contains('show');
+    checkMeanReady();
+  }
+
+  function revealMean() {
+    const freqTotal = freqs.reduce((a,b) => a+b, 0);
+    const grandTotal = classes.reduce((sum, c, i) => sum + c * freqs[i], 0);
+    let mean = freqTotal === 0 ? 0 : grandTotal / freqTotal;
+    mean = Math.round(mean * 10) / 10;
+
+    document.getElementById('fracNum').textContent = formatNumber(grandTotal);
+    document.getElementById('fracDen').textContent = freqTotal;
+    document.getElementById('fracAns').textContent = mean.toFixed(1);
+
+    document.getElementById('meanCalc').classList.add('show');
+    document.getElementById('meanBtn').disabled = true;
+  }
+
+  function showDataset() {
+    const content = document.getElementById('datasetContent');
+    content.innerHTML = '';
+
+    if (groupedMode) {
+      const note = document.createElement('p');
+      note.className = 'dataset-note';
+      note.textContent = 'In a grouped table the individual values aren\u2019t known, so we assume they all sit at the midpoint of each class interval.';
+      content.appendChild(note);
+    }
+
+    for (let i = 0; i < 6; i++) {
+      const row = document.createElement('div');
+      row.className = 'dataset-row';
+
+      const label = document.createElement('span');
+      label.className = 'dataset-label';
+      label.textContent = groupedMode
+        ? `Class ${classLabels[i]}, midpoint ${formatNumber(classes[i])} (frequency ${freqs[i]}):`
+        : `Class ${classLabels[i]} (frequency ${freqs[i]}):`;
+      row.appendChild(label);
+
+      const values = document.createElement('span');
+      values.className = 'dataset-values';
+      values.textContent = freqs[i] > 0
+        ? Array(freqs[i]).fill(formatNumber(classes[i])).join(', ')
+        : '(no data in this class)';
+      row.appendChild(values);
+
+      content.appendChild(row);
+    }
+    document.getElementById('datasetOverlay').classList.add('show');
+  }
+
+  function hideDataset() {
+    document.getElementById('datasetOverlay').classList.remove('show');
+  }
+
+  let pendingAction = null;
+
+  function requestConfirmation(action) {
+    pendingAction = action;
+    document.getElementById('confirmOverlay').classList.add('show');
+  }
+
+  function cancelConfirmed() {
+    pendingAction = null;
+    document.getElementById('confirmOverlay').classList.remove('show');
+  }
+
+  function proceedConfirmed() {
+    document.getElementById('confirmOverlay').classList.remove('show');
+    if (pendingAction) {
+      pendingAction();
+      pendingAction = null;
+    }
+  }
+
+  function toggleMode() {
+    groupedMode = !groupedMode;
+    document.getElementById('modeBtn').textContent = groupedMode ? 'Discrete table' : 'Grouped table';
+    newTable();
+  }
+
+  function newTable() {
+    generateData();
+    buildTable();
+  }
+
+  newTable();
+</script>
+
+</body>
+</html>

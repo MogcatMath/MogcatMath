@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Pie Chart Learning Tool</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:#2b2b2b;color:#ccc;font-size:16px}
+.wrap{display:flex;flex-direction:row;gap:12px;padding:12px;align-items:flex-start}
+.panel{display:flex;flex-direction:column;gap:10px;width:160px;flex-shrink:0}
+.card{background:#3a3a3a;border:1px solid #555;border-radius:12px;padding:12px;font-size:16px}
+.card label{display:block;font-size:16px;color:#888;margin-bottom:5px}
+.card input[type=number]{width:100%;background:#444;border:1px solid #555;border-radius:6px;color:#ccc;font-size:18px;padding:8px;min-height:44px}
+.legend{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.leg-row{display:flex;align-items:center;gap:10px;font-size:16px;color:#aaa}
+.leg-swatch{width:18px;height:18px;border-radius:3px;flex-shrink:0}
+.chart-col{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+button.tog{background:#3a3a3a;color:#ccc;border:1px solid #aaa;border-radius:8px;padding:8px 12px;font-size:15px;cursor:pointer;min-height:44px;touch-action:manipulation}
+button.tog.on{background:#e8c84a;color:#2b2b2b;border-color:#e8c84a;font-weight:500}
+button.action{background:#3a3a3a;color:#e8c84a;border:1px solid #aaa;border-radius:8px;padding:10px 18px;font-size:16px;cursor:pointer;min-height:44px;touch-action:manipulation}
+button.action:hover{background:#e8c84a;color:#2b2b2b}
+.chart-area{touch-action:none;line-height:0}
+svg#pie{overflow:visible;touch-action:none;user-select:none;-webkit-user-select:none;display:block}
+.drag-hint{font-size:13px;color:#555;text-align:center}
+.quiz-wrap{margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- LEFT PANEL -->
+  <div class="panel">
+    <div class="card">
+      <label for="slices">Slices</label>
+      <input type="number" id="slices" min="2" max="8" value="4">
+      <label for="total" style="margin-top:10px">Total samples</label>
+      <input type="number" id="total" min="4" max="10000" value="100">
+    </div>
+    <div class="card">
+      <div style="font-size:16px;font-weight:500;margin-bottom:10px;color:#e8c84a">Legend</div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="card" id="data-table-wrap" style="display:none"></div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="chart-col">
+    <div class="btn-row">
+      <button class="tog" id="btn-samples">Show samples</button>
+      <button class="tog" id="btn-angles">Show angles</button>
+      <button class="tog" id="btn-pct">Show %</button>
+      <button class="tog" id="btn-table">Show data table</button>
+    </div>
+    <div class="chart-area" id="chart-area">
+      <svg id="pie" viewBox="-1 -1 2 2" width="400" height="400">
+        <g id="slices-layer"></g>
+        <g id="handles-layer"></g>
+      </svg>
+    </div>
+    <p class="drag-hint">Drag the dividers between slices to adjust values</p>
+    <div class="quiz-wrap" id="quiz-area">
+      <button class="action" id="gen-quiz">Test your understanding</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var COLORS = ['#534AB7','#D85A30','#1D9E75','#E0A800','#993556','#085041','#A32D2D','#2A6EBB'];
+var LABELS = ['A','B','C','D','E','F','G','H'];
+var slices = [], total = 100, numSlices = 4;
+var showSamples = false, showAngles = false, showPct = false, showTable = false;
+var dragging = false, dragIdx = null, activeTouchId = null;
+
+function sizeSVG() {
+  var col = document.getElementById('chart-area');
+  var w = col.offsetWidth || 400;
+  var size = Math.min(w, Math.round(window.innerHeight * 0.65));
+  var svg = document.getElementById('pie');
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
+}
+
+function labelColor(hex) {
+  var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return (0.299*r + 0.587*g + 0.114*b)/255 > 0.45 ? '#111' : '#fff';
+}
+
+function initSlices() {
+  numSlices = Math.max(2, Math.min(8, parseInt(document.getElementById('slices').value)||4));
+  total = Math.max(numSlices, parseInt(document.getElementById('total').value)||100);
+  var base = Math.floor(total/numSlices), rem = total - base*numSlices;
+  slices = [];
+  for (var i = 0; i < numSlices; i++) slices.push(base + (i < rem ? 1 : 0));
+  render();
+  renderHandles();
+}
+
+function polarToCart(a) { return [Math.cos(a), Math.sin(a)]; }
+
+function getAngles() {
+  var cum = 0, a = [];
+  for (var i = 0; i < slices.length; i++) { a.push(cum); cum += slices[i]; }
+  a.push(total);
+  return a;
+}
+
+function mksvg(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+
+function render() {
+  sizeSVG();
+  var layer = document.getElementById('slices-layer');
+  layer.innerHTML = '';
+  var R = 0.88, angles = getAngles();
+  for (var i = 0; i < slices.length; i++) {
+    var a0 = (angles[i]/total)*2*Math.PI - Math.PI/2;
+    var a1 = (angles[i+1]/total)*2*Math.PI - Math.PI/2;
+    var large = slices[i]/total > 0.5 ? 1 : 0;
+    var p0 = polarToCart(a0), p1 = polarToCart(a1);
+    var path = mksvg('path');
+    path.setAttribute('d','M0,0 L'+(p0[0]*R)+','+(p0[1]*R)+' A'+R+','+R+' 0 '+large+',1 '+(p1[0]*R)+','+(p1[1]*R)+' Z');
+    path.setAttribute('fill', COLORS[i%COLORS.length]);
+    path.setAttribute('stroke','#2b2b2b');
+    path.setAttribute('stroke-width','0.014');
+    layer.appendChild(path);
+    var mid = (a0+a1)/2, col = labelColor(COLORS[i%COLORS.length]);
+    if (slices[i]/total > 0.04) {
+      if (showSamples) {
+        var t = mksvg('text');
+        t.setAttribute('x', Math.cos(mid)*R*0.5); t.setAttribute('y', Math.sin(mid)*R*0.5);
+        t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+        t.setAttribute('font-size','0.17'); t.setAttribute('fill',col); t.setAttribute('font-weight','700');
+        t.textContent = slices[i]; layer.appendChild(t);
+      } else {
+        var t = mksvg('text');
+        t.setAttribute('x', Math.cos(mid)*R*0.62); t.setAttribute('y', Math.sin(mid)*R*0.62);
+        t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+        t.setAttribute('font-size','0.13'); t.setAttribute('fill',col); t.setAttribute('font-weight','700');
+        t.textContent = LABELS[i]; layer.appendChild(t);
+      }
+      if (showAngles) {
+        var t = mksvg('text');
+        t.setAttribute('x', Math.cos(mid)*R*0.28); t.setAttribute('y', Math.sin(mid)*R*0.28);
+        t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+        t.setAttribute('font-size','0.11'); t.setAttribute('fill',col); t.setAttribute('font-weight','700');
+        t.textContent = Math.round(slices[i]/total*360)+'\u00b0'; layer.appendChild(t);
+      }
+      if (showPct) {
+        var t = mksvg('text');
+        t.setAttribute('x', Math.cos(mid)*R*0.78); t.setAttribute('y', Math.sin(mid)*R*0.78);
+        t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+        t.setAttribute('font-size','0.11'); t.setAttribute('fill',col); t.setAttribute('font-weight','700');
+        t.textContent = Math.round(slices[i]/total*100)+'%'; layer.appendChild(t);
+      }
+    }
+  }
+  renderLegend();
+  renderTable();
+}
+
+function renderHandles() {
+  var layer = document.getElementById('handles-layer');
+  layer.innerHTML = '';
+  var R = 0.88, angles = getAngles();
+  for (var i = 0; i < slices.length; i++) {
+    var angle = (angles[i+1]/total)*2*Math.PI - Math.PI/2;
+    var c = polarToCart(angle);
+    var hit = mksvg('circle');
+    hit.setAttribute('cx', c[0]*R); hit.setAttribute('cy', c[1]*R);
+    hit.setAttribute('r','0.14'); hit.setAttribute('fill','transparent');
+    hit.setAttribute('stroke','none'); hit.setAttribute('cursor','grab');
+    hit.setAttribute('data-idx', i); hit.setAttribute('pointer-events','all');
+    hit.addEventListener('mousedown', startDrag);
+    hit.addEventListener('touchstart', startDragTouch, {passive:false});
+    layer.appendChild(hit);
+    var vis = mksvg('circle');
+    vis.setAttribute('cx', c[0]*R); vis.setAttribute('cy', c[1]*R);
+    vis.setAttribute('r','0.04'); vis.setAttribute('fill','none');
+    vis.setAttribute('stroke','#ddd'); vis.setAttribute('stroke-width','0.03');
+    vis.setAttribute('pointer-events','none'); vis.setAttribute('data-vis', i);
+    layer.appendChild(vis);
+  }
+}
+
+function updateHandlePositions() {
+  var R = 0.88, angles = getAngles();
+  for (var i = 0; i < slices.length; i++) {
+    var angle = (angles[i+1]/total)*2*Math.PI - Math.PI/2;
+    var c = polarToCart(angle);
+    var hit = document.querySelector('#handles-layer circle[data-idx="'+i+'"]');
+    if (hit) { hit.setAttribute('cx',c[0]*R); hit.setAttribute('cy',c[1]*R); }
+    var vis = document.querySelector('#handles-layer circle[data-vis="'+i+'"]');
+    if (vis) { vis.setAttribute('cx',c[0]*R); vis.setAttribute('cy',c[1]*R); }
+  }
+}
+
+function renderLegend() {
+  var leg = document.getElementById('legend');
+  leg.innerHTML = '';
+  for (var i = 0; i < slices.length; i++) {
+    var row = document.createElement('div'); row.className = 'leg-row';
+    var sw = document.createElement('div'); sw.className = 'leg-swatch'; sw.style.background = COLORS[i%COLORS.length];
+    var lbl = document.createElement('span'); lbl.textContent = LABELS[i];
+    row.appendChild(sw); row.appendChild(lbl); leg.appendChild(row);
+  }
+}
+
+function renderTable() {
+  var wrap = document.getElementById('data-table-wrap');
+  if (!showTable) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  wrap.innerHTML = '';
+  var tbl = document.createElement('table');
+  tbl.style.width = '100%'; tbl.style.borderCollapse = 'collapse'; tbl.style.fontSize = '15px'; tbl.style.color = '#ccc';
+  var hrow = document.createElement('tr');
+  ['Name','Freq'].forEach(function(h) {
+    var th = document.createElement('th');
+    th.style.cssText = 'text-align:left;padding:4px 6px;border-bottom:1px solid #555;color:#e8c84a;font-weight:500';
+    th.textContent = h; hrow.appendChild(th);
+  });
+  tbl.appendChild(hrow);
+  for (var i = 0; i < slices.length; i++) {
+    var tr = document.createElement('tr');
+    tr.style.background = i%2===0 ? '#444' : '#3a3a3a';
+    var tdN = document.createElement('td'); tdN.style.padding = '4px 6px';
+    var sw = document.createElement('span');
+    sw.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle;background:'+COLORS[i%COLORS.length];
+    tdN.appendChild(sw); tdN.appendChild(document.createTextNode(LABELS[i]));
+    var tdV = document.createElement('td'); tdV.style.padding = '4px 6px'; tdV.textContent = slices[i];
+    tr.appendChild(tdN); tr.appendChild(tdV); tbl.appendChild(tr);
+  }
+  wrap.appendChild(tbl);
+}
+
+function svgPoint(cx, cy) {
+  var svg = document.getElementById('pie'), pt = svg.createSVGPoint();
+  pt.x = cx; pt.y = cy;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function applyDrag(clientX, clientY) {
+  if (!dragging) return;
+  var p = svgPoint(clientX, clientY);
+  var angle = Math.atan2(p.y, p.x) + Math.PI/2;
+  if (angle < 0) angle += 2*Math.PI;
+  if (angle > 2*Math.PI) angle -= 2*Math.PI;
+  var prev = dragIdx, next = (dragIdx+1) % slices.length;
+  var before = 0;
+  for (var k = 0; k < prev; k++) before += slices[k];
+  var rawCum = (angle/(2*Math.PI)) * total;
+  var newCum, delta;
+  if (prev === slices.length-1) {
+    if (rawCum < total/2) rawCum += total;
+    newCum = Math.round(rawCum);
+    newCum = Math.max(before+1, Math.min(before+slices[prev]+slices[next]-1, newCum));
+    delta = (newCum-before) - slices[prev];
+  } else {
+    newCum = Math.round(rawCum);
+    var newPrev = Math.max(1, Math.min(slices[prev]+slices[next]-1, newCum-before));
+    delta = newPrev - slices[prev];
+  }
+  if (delta !== 0) {
+    slices[prev] += delta; slices[next] -= delta;
+    render(); updateHandlePositions();
+  }
+}
+
+function startDrag(e) {
+  e.preventDefault();
+  dragIdx = parseInt(e.currentTarget.getAttribute('data-idx'));
+  dragging = true;
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+}
+function startDragTouch(e) {
+  e.preventDefault();
+  dragIdx = parseInt(e.currentTarget.getAttribute('data-idx'));
+  dragging = true; activeTouchId = e.changedTouches[0].identifier;
+  var svg = document.getElementById('pie');
+  svg.addEventListener('touchmove', onTouchMove, {passive:false});
+  svg.addEventListener('touchend', onTouchEnd);
+  svg.addEventListener('touchcancel', onTouchEnd);
+}
+function onMouseMove(e) { applyDrag(e.clientX, e.clientY); }
+function onTouchMove(e) {
+  e.preventDefault();
+  for (var i = 0; i < e.touches.length; i++) {
+    if (e.touches[i].identifier === activeTouchId) { applyDrag(e.touches[i].clientX, e.touches[i].clientY); return; }
+  }
+}
+function onMouseUp() {
+  dragging = false; dragIdx = null;
+  document.removeEventListener('mousemove', onMouseMove);
+  document.removeEventListener('mouseup', onMouseUp);
+}
+function onTouchEnd() {
+  dragging = false; dragIdx = null; activeTouchId = null;
+  var svg = document.getElementById('pie');
+  svg.removeEventListener('touchmove', onTouchMove);
+  svg.removeEventListener('touchend', onTouchEnd);
+  svg.removeEventListener('touchcancel', onTouchEnd);
+}
+
+function togBtn(id, state) { document.getElementById(id).className = 'tog'+(state?' on':''); }
+document.getElementById('btn-samples').addEventListener('click', function(){showSamples=!showSamples;togBtn('btn-samples',showSamples);render();});
+document.getElementById('btn-angles').addEventListener('click', function(){showAngles=!showAngles;togBtn('btn-angles',showAngles);render();});
+document.getElementById('btn-pct').addEventListener('click', function(){showPct=!showPct;togBtn('btn-pct',showPct);render();});
+document.getElementById('btn-table').addEventListener('click', function(){showTable=!showTable;togBtn('btn-table',showTable);renderTable();});
+document.getElementById('slices').addEventListener('change', initSlices);
+document.getElementById('total').addEventListener('change', initSlices);
+document.getElementById('gen-quiz').addEventListener('click', function() {
+  var body = document.getElementById('quiz-body');
+  if (body) {
+    var collapsed = body.style.display === 'none';
+    body.style.display = collapsed ? 'block' : 'none';
+    document.getElementById('gen-quiz').textContent = collapsed ? 'Hide questions' : 'Test your understanding';
+    return;
+  }
+  generateQuiz();
+});
+window.addEventListener('resize', function(){ render(); renderHandles(); });
+
+function el(tag, css, text) {
+  var e = document.createElement(tag); e.style.cssText = css;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function generateQuiz() {
+  var snap = slices.slice(), tot = total, n = snap.length;
+  var sorted = snap.map(function(v,i){return {v:v,i:i};}).sort(function(a,b){return b.v-a.v;});
+  var maxI = sorted[0].i, minI = sorted[n-1].i, maxV = snap[maxI], minV = snap[minI];
+  var fracI = Math.floor(Math.random()*n), fracV = snap[fracI];
+  function gcd(a,b){return b?gcd(b,a%b):a;}
+  var g = gcd(fracV,tot), fn = fracV/g, fd = tot/g;
+  var pctI = (fracI+1)%n, pctV = snap[pctI], correctPct = Math.round(pctV/tot*100);
+  var dblI = (fracI+2)%n, dblV = snap[dblI];
+  window._quizQ = [
+    {q:'Which slice has the most samples?', a:LABELS[maxI], hint:'Look at the largest section.', check:function(v){return v.trim().toUpperCase()===LABELS[maxI].toUpperCase();}},
+    {q:'How many more samples does slice '+LABELS[maxI]+' have than slice '+LABELS[minI]+'?', a:''+(maxV-minV), hint:'Subtract the smaller from the larger.', check:function(v){return parseInt(v)===maxV-minV;}},
+    {q:'Slice '+LABELS[fracI]+' has '+fracV+' samples out of '+tot+'. Write this as a simplified fraction (e.g. 3/4).', a:fn+'/'+fd, hint:'Divide both by their highest common factor.', check:function(v){var p=v.replace(/\s/g,'').split('/');return p.length===2&&parseInt(p[0])===fn&&parseInt(p[1])===fd;}},
+    {q:'What percentage does slice '+LABELS[pctI]+' represent? (round to nearest whole number)', a:correctPct+'%', hint:'('+pctV+' / '+tot+') x 100', check:function(v){return parseInt(v.replace('%',''))===correctPct;}},
+    {q:'If total samples doubled to '+(tot*2)+', how many would be in slice '+LABELS[dblI]+'? (same proportions)', a:''+(dblV*2), hint:'Multiply the current count by 2.', check:function(v){return parseInt(v)===dblV*2;}}
+  ];
+  window._quizAnswered = new Array(window._quizQ.length).fill(false);
+  var area = document.getElementById('quiz-area');
+  area.innerHTML = '';
+  area.style.cssText = 'margin-top:12px;background:#2b2b2b;border:1px solid #555;border-radius:12px;padding:16px';
+  var header = el('div','display:flex;align-items:center;justify-content:space-between;margin-bottom:14px');
+  header.appendChild(el('div','font-size:16px;font-weight:500;color:#e8c84a','Test your understanding'));
+  var cb = el('button','font-size:15px;background:#3a3a3a;color:#e8c84a;border:1px solid #aaa;border-radius:8px;padding:6px 14px;cursor:pointer;min-height:44px','Hide');
+  cb.id = 'gen-quiz';
+  cb.addEventListener('click', function(){
+    var body = document.getElementById('quiz-body');
+    var collapsed = body.style.display==='none';
+    body.style.display = collapsed?'block':'none';
+    cb.textContent = collapsed?'Hide':'Show';
+  });
+  header.appendChild(cb); area.appendChild(header);
+  var body = el('div',''); body.id = 'quiz-body';
+  for (var qi = 0; qi < window._quizQ.length; qi++) {
+    (function(qi){
+      var q = window._quizQ[qi];
+      var wrap = el('div','margin-bottom:18px');
+      wrap.appendChild(el('p','font-size:16px;font-weight:500;color:#ccc;margin-bottom:8px',(qi+1)+'. '+q.q));
+      var row = el('div','display:flex;gap:8px;align-items:center;margin-bottom:4px;flex-wrap:wrap');
+      var inp = el('input','font-size:16px;width:150px;background:#333;border:1px solid #555;border-radius:6px;color:#ccc;padding:8px;min-height:44px');
+      inp.type='text'; inp.placeholder='Your answer'; inp.id='qa'+qi;
+      var btn = el('button','font-size:16px;background:#3a3a3a;color:#e8c84a;border:1px solid #aaa;border-radius:8px;padding:8px 18px;cursor:pointer;min-height:44px','Check');
+      btn.onclick = function(){checkQ(qi);};
+      row.appendChild(inp); row.appendChild(btn); wrap.appendChild(row);
+      var fb = el('p','font-size:16px;margin-top:4px'); fb.id='qf'+qi;
+      var hint = el('p','font-size:14px;color:#bbb;margin-top:4px;display:none',q.hint); hint.id='qh'+qi;
+      wrap.appendChild(fb); wrap.appendChild(hint); body.appendChild(wrap);
+    })(qi);
+  }
+  var score = el('div','font-size:16px;font-weight:500;margin-top:8px;color:#e8c84a'); score.id='score-line';
+  body.appendChild(score); area.appendChild(body);
+}
+
+function checkQ(qi) {
+  var q = window._quizQ[qi];
+  var val = document.getElementById('qa'+qi).value;
+  var fb = document.getElementById('qf'+qi), hd = document.getElementById('qh'+qi);
+  if (!val.trim()) { fb.style.color='#e05a5a'; fb.textContent='Please enter an answer.'; return; }
+  var correct = q.check(val);
+  fb.style.color = correct?'#4aac6e':'#e05a5a';
+  fb.textContent = correct?'Correct! The answer is '+q.a+'.':'Not quite - check the hint below.';
+  hd.style.display = correct?'none':'block';
+  if (!window._quizAnswered[qi]&&correct) window._quizAnswered[qi]=true;
+  var done = window._quizAnswered.filter(function(x){return x;}).length;
+  var sl = document.getElementById('score-line');
+  if (sl) sl.textContent = done>0?'Score: '+done+' / '+window._quizQ.length+' correct':'';
+}
+
+initSlices();
+</script>
+</body>
+</html>
