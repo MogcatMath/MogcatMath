@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Probability Tree Builder</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap');
+
+:root{
+  --bg: #ffffff;
+  --paper: #333338;
+  --grid-line: rgba(0,0,0,0.05);
+  --grid-line-major: rgba(0,0,0,0.11);
+  --ink: #ecebe8;
+  --ink-dim: #a9a8a4;
+  --page-ink: #3a3a3d;
+  --page-ink-dim: #6f6f6c;
+  --accent: #f2c94c;
+  --accent-ink: #8a660d;
+  --panel: #3a3a40;
+  --panel-border: #4c4c53;
+  --blue:   #4f8ff7;
+  --pink:   #f472b6;
+  --green:  #4ade80;
+  --yellow: #f5c542;
+  --red:    #f87171;
+  --shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{
+  margin:0; padding:0; height:100%;
+  background:var(--bg);
+  color:var(--page-ink);
+  font-family:'Patrick Hand', cursive;
+  overflow:hidden;
+  user-select:none;
+}
+body{
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(var(--grid-line-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line-major) 1px, transparent 1px);
+  background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
+  background-color: var(--bg);
+}
+
+.screen{ height:100vh; width:100vw; display:none; flex-direction:column; padding:14px 20px; }
+.screen.active{ display:flex; }
+
+h1.title{
+  font-family:'Caveat', cursive;
+  font-weight:700;
+  font-size:2.2rem;
+  margin:0 0 6px 0;
+  color:var(--accent-ink);
+  letter-spacing:0.5px;
+}
+.subtitle{ font-size:1.05rem; color:var(--page-ink-dim); margin-bottom:10px; }
+
+
+/* ---------- SCREEN 1 : BOX BUILDER ---------- */
+#screen-build.active{ flex-direction:row; gap:16px; }
+
+.left-col{
+  flex: 0 0 130px;
+  display:flex; flex-direction:column; gap:10px;
+  overflow-y:auto;
+  padding-right:4px;
+}
+
+.silo{
+  background:var(--panel);
+  color:var(--ink);
+  border:2px solid var(--panel-border);
+  border-radius:14px;
+  padding:10px 6px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  box-shadow: var(--shadow);
+  touch-action:none;
+  cursor:grab;
+  position:relative;
+}
+.silo:active{ cursor:grabbing; }
+.silo-stack{
+  height:78px; width:78px;
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.item{
+  width:51px; height:51px;
+  border-radius:50%;
+  box-shadow: inset -4px -5px 8px rgba(0,0,0,0.35), inset 3px 3px 6px rgba(255,255,255,0.25), 0 3px 5px rgba(0,0,0,0.4);
+}
+.item.blue{ background: radial-gradient(circle at 32% 28%, #a9caff, var(--blue) 60%, #2d5fc7); }
+.item.pink{ background: radial-gradient(circle at 32% 28%, #ffd0e8, var(--pink) 60%, #c23f88); }
+.item.green{ background: radial-gradient(circle at 32% 28%, #d4ffd9, var(--green) 60%, #1f9a4d); }
+.item.yellow{ background: radial-gradient(circle at 32% 28%, #fff2c2, var(--yellow) 60%, #c98f0e); }
+.item.red{ background: radial-gradient(circle at 32% 28%, #ffcccc, var(--red) 60%, #c23030); }
+
+/* shape variants applied alongside .item to reskin the token for different contexts */
+.shape-circle{ border-radius:50%; }
+.shape-gem{ border-radius:7px; clip-path: polygon(50% 0%, 100% 38%, 80% 100%, 20% 100%, 0% 38%); }
+.shape-slice{ border-radius:4px 4px 1px 1px; clip-path: polygon(50% 100%, 4% 6%, 96% 6%); }
+.shape-card{ border-radius:6px; box-shadow: inset -3px -4px 7px rgba(0,0,0,0.35), inset 3px 3px 6px rgba(255,255,255,0.3), 0 3px 5px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,255,255,0.35); }
+.item.shape-card{ width:38px; height:57px; }
+.box-item.shape-card{ width:34px; height:51px; }
+
+.drag-ghost{
+  position:fixed; pointer-events:none; z-index:999;
+  opacity:0.85; transform:translate(-50%,-50%) scale(1.1);
+}
+
+.mid-col{ flex:1; display:flex; flex-direction:column; min-width:0; }
+
+.theme-row{
+  display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;
+}
+.theme-row label{ font-size:1.02rem; color:var(--page-ink-dim); }
+.theme-row select{
+  font-family:'Patrick Hand', cursive; font-size:1.02rem;
+  background:var(--panel); color:var(--ink);
+  border:2px solid var(--panel-border); border-radius:8px;
+  padding:5px 8px; cursor:pointer;
+}
+
+.box-wrap{
+  flex:1;
+  display:flex; align-items:center; justify-content:center;
+  padding:6px 0;
+  min-height:0;
+}
+.box-area{
+  position:relative;
+  width:min(78vw, 640px);
+  height:min(56vh, 420px);
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 24px, rgba(255,255,255,0.045) 24px 25px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 24px, rgba(255,255,255,0.045) 24px 25px),
+    #3d332a;
+  border:5px solid #5c4632;
+  border-radius:10px;
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.55), var(--shadow);
+  overflow:hidden;
+  touch-action:none;
+  transition: border-radius 0.25s ease, width 0.25s ease;
+}
+.box-area.drag-over{ border-color: var(--accent); box-shadow: inset 0 0 30px rgba(0,0,0,0.55), 0 0 0 3px var(--accent); }
+#box-area[data-theme="bag"]{
+  border-radius: 42% 42% 16% 16% / 62% 62% 18% 18%;
+  border-color:#4a2e73;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 24px, rgba(255,255,255,0.05) 24px 25px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 24px, rgba(255,255,255,0.05) 24px 25px),
+    #5b3b8c;
+}
+#box-area[data-theme="spinner"]{
+  width:min(56vh, 420px);
+  border-radius:50%;
+  border-color:#8a6d1f;
+  background:
+    repeating-conic-gradient(rgba(255,255,255,0.05) 0deg 15deg, rgba(0,0,0,0.05) 15deg 30deg),
+    #4a3d18;
+}
+#box-area[data-theme="cards"]{
+  border-radius:16px;
+  border-color:#7a1f2b;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 24px, rgba(255,255,255,0.045) 24px 25px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 24px, rgba(255,255,255,0.045) 24px 25px),
+    #1f5c3a;
+}
+.box-empty-msg{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:var(--ink-dim); font-size:1.3rem; text-align:center; padding:0 20px;
+  pointer-events:none;
+}
+.box-item{
+  position:absolute;
+  width:45px; height:45px;
+  cursor:pointer;
+  transition: transform 0.08s ease;
+  touch-action:none;
+}
+.box-item:active{ transform: scale(0.85); }
+
+.spinner-svg{ position:absolute; inset:0; width:100%; height:100%; }
+.spinner-sector{ cursor:pointer; transition: opacity 0.12s ease; }
+.spinner-sector:hover{ opacity:0.88; }
+.spinner-sector:active{ opacity:0.7; }
+
+.box-title{
+  text-align:center; font-family:'Caveat',cursive; font-size:1.3rem; color:var(--page-ink-dim); margin:0;
+}
+
+.right-col{
+  flex: 0 0 240px;
+  display:flex; flex-direction:column;
+  min-height:0;
+}
+.right-scroll{
+  flex:1;
+  display:flex; flex-direction:column; gap:12px;
+  overflow-y:auto;
+  padding-bottom:6px;
+}
+.draw-footer{
+  flex: 0 0 auto;
+  padding-top:10px;
+  border-top:2px dashed var(--panel-border);
+  margin-top:8px;
+}
+.draw-footer #clear-box{
+  margin-top:8px;
+}
+.draw-hint{
+  font-size:0.9rem;
+  text-align:center;
+  color:var(--page-ink-dim);
+  margin:0 0 8px 0;
+  min-height:1.2em;
+}
+.draw-hint.ready{ color:var(--accent-ink); font-weight:bold; }
+
+.panel{
+  background:var(--panel);
+  color:var(--ink);
+  border:2px solid var(--panel-border);
+  border-radius:12px;
+  padding:10px 12px;
+  box-shadow: var(--shadow);
+}
+.panel h2{
+  font-family:'Caveat',cursive; font-size:1.3rem; margin:0 0 6px 0; color:var(--accent);
+}
+.tally-row{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:1.05rem; padding:2px 0;
+}
+.tally-dot{ width:16px; height:16px; border-radius:50%; display:inline-block; margin-right:8px; vertical-align:middle; }
+.tally-total{
+  border-top:1px dashed var(--panel-border); margin-top:6px; padding-top:6px; font-weight:bold;
+}
+
+.btn{
+  font-family:'Patrick Hand', cursive;
+  font-size:1.05rem;
+  background:#4a4a52;
+  color:var(--ink);
+  border:2px solid var(--panel-border);
+  border-radius:10px;
+  padding:9px 10px;
+  cursor:pointer;
+  width:100%;
+  text-align:center;
+  transition: background 0.15s ease, transform 0.06s ease;
+}
+.btn:hover{ background:#54545d; }
+.btn:active{ transform: scale(0.97); }
+.btn:disabled{ opacity:0.4; cursor:not-allowed; }
+.btn.primary{ background: linear-gradient(180deg,#f5d16c,var(--accent)); color:#3a2c00; font-weight:bold; border-color:#c9a02f; font-size:1.15rem; padding:13px 10px; }
+.btn.primary:hover{ filter:brightness(1.05); }
+.btn.primary.ready{ animation: pulse-glow 1.6s ease-in-out infinite; }
+@keyframes pulse-glow{
+  0%,100%{ box-shadow: 0 0 0 0 rgba(242,201,76,0.55); }
+  50%{ box-shadow: 0 0 0 8px rgba(242,201,76,0); }
+}
+.btn.small{ padding:6px 8px; font-size:0.95rem; }
+
+.toggle-switch{
+  display:flex; border-radius:10px; overflow:hidden; border:2px solid var(--panel-border);
+}
+.toggle-switch button{
+  flex:1; padding:8px 4px; border:none; background:#454550; color:var(--ink-dim);
+  font-family:'Patrick Hand',cursive; font-size:0.95rem; cursor:pointer;
+}
+.toggle-switch button.active{ background:var(--accent); color:#3a2c00; font-weight:bold; }
+
+.levels-row{ display:flex; align-items:center; gap:8px; }
+.levels-row input[type=number]{
+  width:56px; font-family:'Patrick Hand',cursive; font-size:1.1rem; text-align:center;
+  background:#2c2c30; color:var(--ink); border:2px solid var(--panel-border); border-radius:8px; padding:6px 0;
+}
+.step-btn{
+  width:34px; height:34px; border-radius:8px; border:2px solid var(--panel-border);
+  background:#454550; color:var(--ink); font-size:1.2rem; cursor:pointer; line-height:1;
+}
+
+.hint{ font-size:0.85rem; color:var(--ink-dim); margin-top:4px; }
+.hint.warn{ color:#ffb454; }
+
+.checkbox-row{
+  display:flex; align-items:center; gap:7px;
+  font-size:0.92rem; color:var(--ink-dim);
+  margin-top:8px; cursor:pointer;
+}
+.checkbox-row input[type=checkbox]{
+  width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;
+}
+
+/* ---------- SCREEN 2 : TREE ---------- */
+#screen-tree{ padding:10px 14px; }
+.sum-check-row{
+  color:var(--page-ink-dim);
+  justify-content:center;
+  margin:2px 0 8px 0;
+}
+.tree-header{
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  margin-bottom:6px;
+}
+.tree-summary{ font-size:1.05rem; color:var(--page-ink-dim); }
+.tree-summary b{ color:var(--page-ink); }
+.tree-panes{
+  flex:1;
+  min-height:0;
+  display:flex;
+  gap:14px;
+}
+.tree-pane{
+  flex:1;
+  min-width:0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.tree-pane.hidden{ display:none; }
+.pane-label{
+  text-align:center; font-family:'Caveat',cursive; font-size:1.2rem;
+  color:var(--page-ink-dim); margin:0 0 5px 0;
+}
+.tree-scroll{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  display:flex;
+  border:2px solid var(--panel-border);
+  border-radius:12px;
+  background: var(--paper);
+  box-shadow: inset 0 0 25px rgba(0,0,0,0.4);
+}
+#tree-svg-with, #tree-svg-without{
+  display:block;
+  width:100%;
+  height:100%;
+}
+.tree-line, .tree-dot, .tree-label, .tree-leaf{
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+.tree-line.dimmed, .tree-dot.dimmed, .tree-label.dimmed, .tree-leaf.dimmed{
+  opacity:0.15;
+  filter:grayscale(70%);
+}
+.tree-hit{ cursor:pointer; }
+.back-btn{ width:auto; padding:9px 16px; }
+
+/* modal */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  display:none; align-items:center; justify-content:center; z-index:1000;
+}
+.modal-overlay.active{ display:flex; }
+.modal-box{
+  background:var(--panel); color:var(--ink); border:2px solid var(--panel-border); border-radius:14px;
+  padding:20px; max-width:420px; text-align:center; box-shadow:var(--shadow);
+}
+.modal-box h3{ font-family:'Caveat',cursive; font-size:1.6rem; color:var(--accent); margin-top:0; }
+.modal-actions{ display:flex; gap:10px; margin-top:14px; }
+
+@media (max-width: 820px){
+  #screen-build{ flex-direction:column; }
+  .left-col{ flex-direction:row; flex:0 0 auto; overflow-x:auto; }
+  .right-col{ flex:0 0 auto; max-height:38vh; }
+  .right-scroll{ flex-direction:row; flex-wrap:wrap; }
+  .panel{ flex:1 1 160px; }
+  .tree-panes{ flex-direction:column; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ============ SCREEN 1: BOX BUILDER ============ -->
+<div id="screen-build" class="screen active">
+
+  <div class="left-col" id="silos"></div>
+
+  <div class="mid-col">
+    <h1 class="title">Probability Tree Builder</h1>
+    <div class="theme-row">
+      <label for="theme-select">Context:</label>
+      <select id="theme-select">
+        <option value="box" selected>Box of balls</option>
+        <option value="bag">Sweets in a bag</option>
+        <option value="spinner">Spinner sectors</option>
+        <option value="cards">Cards in a deck</option>
+      </select>
+    </div>
+    <p class="subtitle"><b>1.</b> Drag or tap items in &nbsp; <b>2.</b> Set your options on the right &nbsp; <b>3.</b> Tap <em>Draw probability tree</em></p>
+    <div class="box-wrap">
+      <div class="box-area" id="box-area" data-theme="box">
+        <div class="box-empty-msg" id="box-empty-msg">Drag balls in from the silos on the left&hellip;</div>
+      </div>
+    </div>
+    <p class="box-title" id="box-title">the box (viewed from above)</p>
+  </div>
+
+  <div class="right-col">
+    <div class="right-scroll">
+      <div class="panel">
+        <h2>Contents</h2>
+        <div id="tally"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Replacement</h2>
+        <div class="toggle-switch">
+          <button id="btn-with" class="active">With</button>
+          <button id="btn-without">Without</button>
+        </div>
+        <p class="hint" id="replacement-hint">Balls go back in the box after each draw.</p>
+        <p class="hint warn" id="replacement-note" style="display:none;"></p>
+        <label class="checkbox-row">
+          <input type="checkbox" id="side-by-side-toggle">
+          Compare side by side (with vs without)
+        </label>
+      </div>
+
+      <div class="panel">
+        <h2>Levels</h2>
+        <div class="levels-row">
+          <button class="step-btn" id="level-down">&minus;</button>
+          <input type="number" id="levels-input" min="1" max="5" value="2">
+          <button class="step-btn" id="level-up">+</button>
+        </div>
+        <p class="hint" id="levels-hint">1 level = one ball removed.</p>
+        <p class="hint warn" id="levels-warn" style="display:none;"></p>
+      </div>
+    </div>
+
+    <div class="draw-footer">
+      <p class="draw-hint" id="draw-hint">Add at least one ball to the box first</p>
+      <button class="btn primary" id="draw-btn" disabled>&#9654;&nbsp; Draw probability tree</button>
+      <button class="btn small" id="clear-box">Clear box</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 2: TREE ============ -->
+<div id="screen-tree" class="screen">
+  <div class="tree-header">
+    <h1 class="title" style="margin-bottom:0;">Probability Tree</h1>
+    <button class="btn back-btn" id="back-btn">&larr; Back to box</button>
+  </div>
+  <p class="tree-summary" id="tree-summary"></p>
+  <label class="checkbox-row sum-check-row">
+    <input type="checkbox" id="sum-check-toggle">
+    Show branch sums (&Sigma; = 1) at each node
+  </label>
+  <div class="tree-panes" id="tree-panes">
+    <div class="tree-pane" id="pane-with">
+      <p class="pane-label">With replacement</p>
+      <div class="tree-scroll" id="tree-scroll-with">
+        <svg id="tree-svg-with" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+    <div class="tree-pane" id="pane-without">
+      <p class="pane-label">Without replacement</p>
+      <div class="tree-scroll" id="tree-scroll-without">
+        <svg id="tree-svg-without" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ WARNING MODAL ============ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <h3>That's a big tree!</h3>
+    <p id="modal-text"></p>
+    <div class="modal-actions">
+      <button class="btn" id="modal-cancel">Go back</button>
+      <button class="btn primary" id="modal-continue">Draw it anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CLEAR CONFIRM MODAL ============ -->
+<div class="modal-overlay" id="clear-confirm-overlay">
+  <div class="modal-box">
+    <h3>Clear the box?</h3>
+    <p>This will remove everything you've added. This can't be undone.</p>
+    <div class="modal-actions">
+      <button class="btn" id="clear-confirm-no">No, keep it</button>
+      <button class="btn primary" id="clear-confirm-yes">Yes, clear it</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+const COLORS = ["blue","pink","green","yellow","red"];
+const COLOR_HEX = { blue:"#4f8ff7", pink:"#f472b6", green:"#4ade80", yellow:"#f5c542", red:"#f87171" };
+
+const THEMES = {
+  box: {
+    label: "Box of balls",
+    itemSingular: "ball", itemPlural: "balls",
+    containerNoun: "box",
+    containerCaption: "the box (viewed from above)",
+    emptyMsg: "Drag balls in from the silos on the left&hellip;",
+    levelHint: "1 level = one ball removed.",
+    shapeClass: "shape-circle",
+    lockReplacement: null,
+    defaultReplacement: null,
+    replacementNote: null
+  },
+  bag: {
+    label: "Sweets in a bag",
+    itemSingular: "sweet", itemPlural: "sweets",
+    containerNoun: "bag",
+    containerCaption: "the bag",
+    emptyMsg: "Drag sweets in from the jars on the left&hellip;",
+    levelHint: "1 level = one sweet taken out.",
+    shapeClass: "shape-gem",
+    lockReplacement: null,
+    defaultReplacement: null,
+    replacementNote: null
+  },
+  spinner: {
+    label: "Spinner sectors",
+    itemSingular: "sector", itemPlural: "sectors",
+    containerNoun: "spinner",
+    containerCaption: "the spinner face",
+    emptyMsg: "Drag colours in from the left to build your spinner&hellip;",
+    levelHint: "1 level = one spin.",
+    shapeClass: "shape-slice",
+    lockReplacement: "with",
+    defaultReplacement: "with",
+    replacementNote: "A spinner always resets after each spin, so this is fixed to \u201cWith replacement\u201d."
+  },
+  cards: {
+    label: "Cards in a deck",
+    itemSingular: "card", itemPlural: "cards",
+    containerNoun: "deck",
+    containerCaption: "the deck",
+    emptyMsg: "Drag cards in from the piles on the left&hellip;",
+    levelHint: "1 level = one card drawn.",
+    shapeClass: "shape-card",
+    lockReplacement: null,
+    defaultReplacement: "without",
+    replacementNote: "Cards are usually drawn without replacement \u2014 but feel free to switch this to explore what changes."
+  }
+};
+
+function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+let currentTheme = "box";
+let boxBalls = [];        // array of {color, x, y}  (x,y in % of box area)
+let withReplacement = true;
+const MAX_LEVELS = 5;
+const WARN_LEAVES = 200;
+
+// ---------- BUILD SILOS ----------
+const silosEl = document.getElementById('silos');
+COLORS.forEach(color=>{
+  const silo = document.createElement('div');
+  silo.className = 'silo';
+  silo.dataset.color = color;
+  silo.setAttribute('aria-label', color + ' — tap or drag');
+  silo.innerHTML = `
+    <div class="silo-stack">
+      <div class="item silo-preview-item ${color} ${THEMES[currentTheme].shapeClass}"></div>
+    </div>
+  `;
+  silosEl.appendChild(silo);
+  attachSiloEvents(silo, color);
+});
+
+function attachSiloEvents(silo, color){
+  silo.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    const pointerId = e.pointerId;
+    let dragging = false, ghost = null;
+
+    function onMove(ev){
+      if(ev.pointerId !== pointerId) return;
+      const dx = ev.clientX-startX, dy = ev.clientY-startY;
+      if(!dragging && Math.hypot(dx,dy) > 8){
+        dragging = true;
+        ghost = document.createElement('div');
+        ghost.className = 'drag-ghost item ' + color + ' ' + THEMES[currentTheme].shapeClass;
+        document.body.appendChild(ghost);
+      }
+      if(dragging && ghost){
+        ghost.style.left = ev.clientX + 'px';
+        ghost.style.top = ev.clientY + 'px';
+        const boxArea = document.getElementById('box-area');
+        const r = boxArea.getBoundingClientRect();
+        const over = ev.clientX>=r.left && ev.clientX<=r.right && ev.clientY>=r.top && ev.clientY<=r.bottom;
+        boxArea.classList.toggle('drag-over', over);
+      }
+    }
+
+    function cleanup(){
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onCancel);
+      if(ghost){ ghost.remove(); ghost = null; }
+      const boxArea = document.getElementById('box-area');
+      if(boxArea) boxArea.classList.remove('drag-over');
+    }
+
+    function onUp(ev){
+      if(ev.pointerId !== pointerId) return;
+      const boxArea = document.getElementById('box-area');
+      if(!dragging){
+        addBall(color); // tap-to-add
+      } else {
+        const r = boxArea.getBoundingClientRect();
+        const over = ev.clientX>=r.left && ev.clientX<=r.right && ev.clientY>=r.top && ev.clientY<=r.bottom;
+        if(over){
+          const px = ((ev.clientX - r.left)/r.width)*100;
+          const py = ((ev.clientY - r.top)/r.height)*100;
+          addBall(color, px, py);
+        }
+      }
+      cleanup();
+    }
+
+    function onCancel(ev){
+      if(ev.pointerId !== pointerId) return;
+      cleanup();
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onCancel);
+  });
+}
+
+// ---------- BOX LOGIC ----------
+function randomPos(){
+  // try a few times to avoid heavy overlap, clamp within safe margins
+  for(let i=0;i<12;i++){
+    const x = 10 + Math.random()*80;
+    const y = 12 + Math.random()*76;
+    let ok = true;
+    for(const b of boxBalls){
+      const dx=b.x-x, dy=b.y-y;
+      if(Math.hypot(dx,dy) < 10){ ok=false; break; }
+    }
+    if(ok) return {x,y};
+  }
+  return { x: 10+Math.random()*80, y: 12+Math.random()*76 };
+}
+
+function addBall(color, px, py){
+  let pos;
+  if(px!==undefined && py!==undefined){
+    pos = {x: Math.min(94,Math.max(6,px)), y: Math.min(90,Math.max(8,py))};
+  } else {
+    pos = randomPos();
+  }
+  boxBalls.push({color, x:pos.x, y:pos.y});
+  renderBox();
+  renderTally();
+  updateLevelsCap();
+  updateDrawState();
+}
+
+function removeBallAt(index){
+  boxBalls.splice(index,1);
+  renderBox();
+  renderTally();
+  updateLevelsCap();
+  updateDrawState();
+}
+
+function boxItemSize(shapeClass){
+  if(shapeClass === 'shape-card') return { w:34, h:51 };
+  return { w:45, h:45 };
+}
+
+function renderBox(){
+  const boxArea = document.getElementById('box-area');
+  boxArea.querySelectorAll('.box-item').forEach(el=>el.remove());
+  const oldSvg = boxArea.querySelector('.spinner-svg');
+  if(oldSvg) oldSvg.remove();
+  document.getElementById('box-empty-msg').style.display = boxBalls.length ? 'none':'flex';
+
+  if(currentTheme === 'spinner'){
+    renderSpinnerSectors(boxArea);
+  } else {
+    renderScatteredItems(boxArea);
+  }
+}
+
+function renderScatteredItems(boxArea){
+  const shapeClass = THEMES[currentTheme].shapeClass;
+  const sz = boxItemSize(shapeClass);
+  boxBalls.forEach((b, idx)=>{
+    const el = document.createElement('div');
+    el.className = 'box-item item ' + b.color + ' ' + shapeClass;
+    el.style.left = 'calc(' + b.x + '% - ' + (sz.w/2) + 'px)';
+    el.style.top = 'calc(' + b.y + '% - ' + (sz.h/2) + 'px)';
+    el.addEventListener('pointerdown', (ev)=>{ ev.stopPropagation(); });
+    el.addEventListener('pointerup', (ev)=>{ ev.stopPropagation(); removeBallAt(idx); });
+    boxArea.appendChild(el);
+  });
+}
+
+// ---------- SPINNER SECTOR RENDERING ----------
+function polarToCartesian(cx, cy, r, angleDeg){
+  const rad = angleDeg * Math.PI / 180;
+  return { x: cx + r*Math.sin(rad), y: cy - r*Math.cos(rad) };
+}
+
+function describeSector(cx, cy, r, startDeg, endDeg){
+  const sweep = endDeg - startDeg;
+  if(sweep >= 359.99){
+    const p1 = polarToCartesian(cx,cy,r,startDeg);
+    const p2 = polarToCartesian(cx,cy,r,startDeg+180);
+    return `M ${p1.x} ${p1.y} A ${r} ${r} 0 1 1 ${p2.x} ${p2.y} A ${r} ${r} 0 1 1 ${p1.x} ${p1.y} Z`;
+  }
+  const startPt = polarToCartesian(cx,cy,r,startDeg);
+  const endPt = polarToCartesian(cx,cy,r,endDeg);
+  const largeArc = sweep > 180 ? 1 : 0;
+  return `M ${cx} ${cy} L ${startPt.x} ${startPt.y} A ${r} ${r} 0 ${largeArc} 1 ${endPt.x} ${endPt.y} Z`;
+}
+
+function renderSpinnerSectors(boxArea){
+  if(boxBalls.length === 0) return;
+  const counts = {};
+  COLORS.forEach(c=>counts[c]=0);
+  boxBalls.forEach(b=>counts[b.color]++);
+  const total = boxBalls.length;
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'spinner-svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+
+  const cx = 50, cy = 50, r = 48;
+  let cursor = 0;
+  COLORS.forEach(color=>{
+    const n = counts[color];
+    if(n<=0) return;
+    const sweep = (n/total)*360;
+    const startDeg = cursor, endDeg = cursor + sweep;
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', describeSector(cx, cy, r, startDeg, endDeg));
+    path.setAttribute('fill', COLOR_HEX[color]);
+    path.setAttribute('stroke', '#2b2b2e');
+    path.setAttribute('stroke-width', '0.6');
+    path.setAttribute('class', 'spinner-sector');
+    path.addEventListener('pointerdown', (ev)=>{ ev.stopPropagation(); });
+    path.addEventListener('pointerup', (ev)=>{
+      ev.stopPropagation();
+      const idx = boxBalls.findIndex(b=>b.color===color);
+      if(idx>=0) removeBallAt(idx);
+    });
+    svg.appendChild(path);
+    cursor = endDeg;
+  });
+
+  const hub = document.createElementNS(ns, 'circle');
+  hub.setAttribute('cx', cx); hub.setAttribute('cy', cy); hub.setAttribute('r', 3.5);
+  hub.setAttribute('fill', '#2b2b2e');
+  hub.style.pointerEvents = 'none';
+  svg.appendChild(hub);
+
+  const pointer = document.createElementNS(ns, 'polygon');
+  pointer.setAttribute('points', `${cx-3},3 ${cx+3},3 ${cx},12`);
+  pointer.setAttribute('fill', '#2b2b2e');
+  pointer.style.pointerEvents = 'none';
+  svg.appendChild(pointer);
+
+  boxArea.appendChild(svg);
+}
+
+function renderTally(){
+  const counts = {};
+  COLORS.forEach(c=>counts[c]=0);
+  boxBalls.forEach(b=>counts[b.color]++);
+  const total = boxBalls.length;
+  const tallyEl = document.getElementById('tally');
+  let html = '';
+  COLORS.forEach(c=>{
+    html += `<div class="tally-row"><span><span class="tally-dot" style="background:${COLOR_HEX[c]}"></span>${c}</span><span>${counts[c]}</span></div>`;
+  });
+  html += `<div class="tally-row tally-total"><span>Total</span><span>${total}</span></div>`;
+  tallyEl.innerHTML = html;
+}
+
+// ---------- THEME (RESKIN) ----------
+const themeSelect = document.getElementById('theme-select');
+const boxAreaEl = document.getElementById('box-area');
+const boxTitleEl = document.getElementById('box-title');
+const boxEmptyMsgEl = document.getElementById('box-empty-msg');
+const levelsHintEl = document.getElementById('levels-hint');
+const backBtnEl = document.getElementById('back-btn');
+
+function applyTheme(id){
+  currentTheme = id;
+  const t = THEMES[id];
+
+  boxAreaEl.setAttribute('data-theme', id);
+  boxTitleEl.textContent = t.containerCaption;
+  boxEmptyMsgEl.innerHTML = t.emptyMsg;
+  levelsHintEl.textContent = t.levelHint;
+  backBtnEl.innerHTML = `&larr; Back to ${t.containerNoun}`;
+
+  // Re-skin the token shape shown in the silos and any balls already in the box
+  document.querySelectorAll('.silo-preview-item').forEach(el=>{
+    el.className = el.className.replace(/\bshape-\S+/g, '').trim() + ' ' + t.shapeClass;
+  });
+  renderBox();
+
+  // Replacement lock / suggested default per context
+  if(t.lockReplacement){
+    setReplacement(t.lockReplacement === 'with');
+  } else if(t.defaultReplacement){
+    setReplacement(t.defaultReplacement === 'with');
+  } else {
+    // keep whatever the user currently has set, just refresh wording/availability
+    setReplacement(withReplacement);
+  }
+
+  updateLevelsCap();
+  updateDrawState();
+}
+
+themeSelect.addEventListener('change', ()=> applyTheme(themeSelect.value));
+
+const clearConfirmOverlay = document.getElementById('clear-confirm-overlay');
+
+function doClearBox(){
+  boxBalls = [];
+  renderBox(); renderTally(); updateLevelsCap(); updateDrawState();
+}
+
+document.getElementById('clear-box').addEventListener('click', ()=>{
+  if(boxBalls.length === 0) return; // nothing to clear, skip the confirmation
+  clearConfirmOverlay.classList.add('active');
+});
+document.getElementById('clear-confirm-no').addEventListener('click', ()=>{
+  clearConfirmOverlay.classList.remove('active');
+});
+document.getElementById('clear-confirm-yes').addEventListener('click', ()=>{
+  clearConfirmOverlay.classList.remove('active');
+  doClearBox();
+});
+
+// ---------- REPLACEMENT TOGGLE ----------
+const btnWith = document.getElementById('btn-with');
+const btnWithout = document.getElementById('btn-without');
+const replacementHint = document.getElementById('replacement-hint');
+const replacementNoteEl = document.getElementById('replacement-note');
+const sideBySideToggle = document.getElementById('side-by-side-toggle');
+
+function replacementHintText(isWith){
+  const t = THEMES[currentTheme];
+  return isWith
+    ? `${capitalize(t.itemPlural)} go back in the ${t.containerNoun} after each draw.`
+    : `${capitalize(t.itemPlural)} are kept out once drawn \u2014 the ${t.containerNoun} empties.`;
+}
+
+function updateReplacementControlsAvailability(){
+  const t = THEMES[currentTheme];
+  const locked = !!t.lockReplacement || sideBySideToggle.checked;
+  btnWith.disabled = locked;
+  btnWithout.disabled = locked;
+
+  if(sideBySideToggle.checked){
+    replacementHint.textContent = 'Showing both trees side by side \u2014 with and without replacement.';
+    replacementNoteEl.style.display = 'none';
+  } else {
+    replacementHint.textContent = replacementHintText(withReplacement);
+    if(t.replacementNote){
+      replacementNoteEl.textContent = t.replacementNote;
+      replacementNoteEl.style.display = 'block';
+    } else {
+      replacementNoteEl.style.display = 'none';
+    }
+  }
+}
+
+function setReplacement(isWith){
+  withReplacement = isWith;
+  btnWith.classList.toggle('active', isWith);
+  btnWithout.classList.toggle('active', !isWith);
+  updateReplacementControlsAvailability();
+  updateLevelsCap(); updateDrawState();
+}
+
+btnWith.addEventListener('click', ()=> setReplacement(true));
+btnWithout.addEventListener('click', ()=> setReplacement(false));
+sideBySideToggle.addEventListener('change', ()=>{
+  updateReplacementControlsAvailability();
+  updateLevelsCap(); updateDrawState();
+});
+
+// ---------- LEVELS ----------
+const levelsInput = document.getElementById('levels-input');
+document.getElementById('level-up').addEventListener('click', ()=>{
+  levelsInput.value = Math.min(parseInt(levelsInput.value||1)+1, parseInt(levelsInput.max));
+  updateDrawState();
+});
+document.getElementById('level-down').addEventListener('click', ()=>{
+  levelsInput.value = Math.max(parseInt(levelsInput.value||1)-1, 1);
+  updateDrawState();
+});
+levelsInput.addEventListener('change', ()=>{
+  let v = parseInt(levelsInput.value)||1;
+  v = Math.max(1, Math.min(v, parseInt(levelsInput.max)));
+  levelsInput.value = v;
+  updateDrawState();
+});
+
+function updateLevelsCap(){
+  const total = boxBalls.length;
+  const needsCap = !withReplacement || sideBySideToggle.checked;
+  let capVal = MAX_LEVELS;
+  if(needsCap) capVal = Math.max(1, Math.min(MAX_LEVELS, total || 1));
+  levelsInput.max = capVal;
+  if(parseInt(levelsInput.value) > capVal) levelsInput.value = capVal;
+  const warnEl = document.getElementById('levels-warn');
+  const t = THEMES[currentTheme];
+  if(needsCap && total>0 && total<MAX_LEVELS){
+    warnEl.style.display='block';
+    warnEl.textContent = `Capped at ${capVal} — that's how many ${t.itemPlural} are in the ${t.containerNoun}.`;
+  } else {
+    warnEl.style.display='none';
+  }
+}
+
+function updateDrawState(){
+  const drawBtn = document.getElementById('draw-btn');
+  const hint = document.getElementById('draw-hint');
+  const t = THEMES[currentTheme];
+  const distinctColors = new Set(boxBalls.map(b=>b.color)).size;
+  const ready = boxBalls.length>0 && distinctColors>0;
+  drawBtn.disabled = !ready;
+  drawBtn.classList.toggle('ready', ready);
+  if(ready){
+    hint.textContent = "Ready! Tap below to draw your tree.";
+    hint.classList.add('ready');
+  } else {
+    hint.textContent = `Add at least one ${t.itemSingular} to the ${t.containerNoun} first`;
+    hint.classList.remove('ready');
+  }
+}
+
+// ---------- FRACTION HELPERS ----------
+function gcd(a,b){ return b===0 ? a : gcd(b, a%b); }
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+function reduceFrac(n,d){
+  if(n===0) return {n:0,d:1};
+  const g = gcd(n,d);
+  return {n:n/g, d:d/g};
+}
+function decimalStr(x){
+  if(Number.isInteger(x)) return x.toFixed(0);
+  let s = x.toFixed(3);
+  s = s.replace(/0+$/,'').replace(/\.$/,'');
+  return s;
+}
+function fracLabel(n,d){
+  const f = reduceFrac(n,d);
+  return `${f.n}/${f.d} = ${decimalStr(n/d)}`;
+}
+function rawFracLabel(n,d){
+  return `${n}/${d} = ${decimalStr(n/d)}`;
+}
+function sumCheckLabel(children){
+  const parts = children.map(c=>{
+    const f = reduceFrac(c.num, c.den);
+    return `${f.n}/${f.d}`;
+  });
+  return parts.join(' + ') + ' = 1 \u2713';
+}
+
+// ---------- BUILD TREE DATA ----------
+function buildTree(counts, levelsLeft, useWithReplacement){
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+  if(levelsLeft===0 || total===0){
+    return { children: [] };
+  }
+  const children = [];
+  COLORS.forEach(color=>{
+    const n = counts[color];
+    if(n>0){
+      const childCounts = Object.assign({}, counts);
+      if(!useWithReplacement) childCounts[color] = n-1;
+      const subtree = buildTree(childCounts, levelsLeft-1, useWithReplacement);
+      children.push({ color, num:n, den:total, children: subtree.children });
+    }
+  });
+  return { children };
+}
+
+function countLeaves(node){
+  if(node.children.length===0) return 1;
+  return node.children.reduce((s,c)=>s+countLeaves(c), 0);
+}
+
+// ---------- LAYOUT + RENDER ----------
+let leafCounter = 0;
+function assignPositions(node, depth, ySpacing, xSpacing){
+  if(node.children.length===0){
+    node.y = leafCounter * ySpacing;
+    leafCounter++;
+    node.x = depth * xSpacing;
+    return node.y;
+  }
+  const ys = node.children.map(c=>assignPositions(c, depth+1, ySpacing, xSpacing));
+  node.y = ys.reduce((a,b)=>a+b,0)/ys.length;
+  node.x = depth * xSpacing;
+  return node.y;
+}
+
+function drawTreeSVG(root, levels, svgId, scrollSelector, leafLabelWidthOverride){
+  leafCounter = 0;
+  const leafCount = countLeaves(root);
+
+  const margin = 60;
+  const leafLabelWidth = leafLabelWidthOverride || 260;
+
+  // Size the layout to the actual space available on screen, so the tree
+  // fills the container edge-to-edge instead of being letterboxed.
+  const container = document.querySelector(scrollSelector);
+  const rect = container.getBoundingClientRect();
+  const availW = Math.max(260, rect.width - 16);
+  const availH = Math.max(200, rect.height - 16);
+
+  const xSpacing = clamp((availW - margin*2 - leafLabelWidth) / Math.max(1, levels), 110, 420);
+  const ySpacing = clamp((availH - margin*2) / leafCount, 16, 90);
+
+  assignPositions(root, 0, ySpacing, xSpacing);
+
+  const width = levels*xSpacing + margin*2 + leafLabelWidth;
+  const height = leafCount*ySpacing + margin*2;
+
+  const svg = document.getElementById(svgId);
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.innerHTML = '';
+
+  const sumCheckEl = document.getElementById('sum-check-toggle');
+  const showSumCheck = sumCheckEl ? sumCheckEl.checked : false;
+
+  const ns = 'http://www.w3.org/2000/svg';
+  function make(tag, attrs){
+    const el = document.createElementNS(ns, tag);
+    for(const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  // ---- node bookkeeping for click-to-highlight ----
+  let nodeCounter = 0;
+  const nodesById = {};   // id -> { id, parentId, els: [SVGElement,...] }
+  let selectedId = null;
+
+  function registerNode(id, parentId){
+    nodesById[id] = { id, parentId, els: [] };
+  }
+  function addEl(id, el){
+    nodesById[id].els.push(el);
+  }
+
+  function getAncestors(id){
+    const result = new Set();
+    let cur = id;
+    while(cur !== null && cur !== undefined){
+      result.add(cur);
+      cur = nodesById[cur].parentId;
+    }
+    return result;
+  }
+  const childrenMap = {};
+  function registerChild(parentId, childId){
+    if(!childrenMap[parentId]) childrenMap[parentId] = [];
+    childrenMap[parentId].push(childId);
+  }
+  function getDescendants(id){
+    const result = new Set();
+    const stack = [id];
+    while(stack.length){
+      const cur = stack.pop();
+      result.add(cur);
+      (childrenMap[cur] || []).forEach(c => stack.push(c));
+    }
+    return result;
+  }
+
+  function applyHighlight(id){
+    selectedId = id;
+    const activeSet = id === null ? null : new Set([...getAncestors(id), ...getDescendants(id)]);
+    Object.values(nodesById).forEach(n=>{
+      const isActive = activeSet === null || activeSet.has(n.id);
+      n.els.forEach(el => el.classList.toggle('dimmed', !isActive));
+    });
+  }
+
+  function onNodeClick(id){
+    return (ev)=>{
+      ev.stopPropagation();
+      applyHighlight(selectedId === id ? null : id);
+    };
+  }
+
+  // clicking empty space on the tree clears the highlight
+  svg.addEventListener('click', ()=> applyHighlight(null));
+
+  // root node
+  const rootId = nodeCounter++;
+  registerNode(rootId, null);
+  const rootX = root.x + margin, rootY = root.y + margin;
+  const rootDot = make('circle', {cx:rootX, cy:rootY, r:6, fill:'#ecebe8', class:'tree-dot'});
+  const rootHit = make('circle', {cx:rootX, cy:rootY, r:16, fill:'transparent', class:'tree-hit'});
+  rootHit.addEventListener('click', onNodeClick(rootId));
+  svg.appendChild(rootDot);
+  svg.appendChild(rootHit);
+  addEl(rootId, rootDot);
+
+  if(showSumCheck && root.children.length>0){
+    const rootSumText = make('text', {
+      x: rootX, y: rootY - 14, fill:'#8ce8ab',
+      'font-family':"'Patrick Hand', cursive", 'font-size':12,
+      'text-anchor':'middle', class:'tree-label'
+    });
+    rootSumText.textContent = sumCheckLabel(root.children);
+    svg.appendChild(rootSumText);
+    addEl(rootId, rootSumText);
+  }
+
+  function recurse(node, cumN, cumD, parentId){
+    const px = node.x + margin, py = node.y + margin;
+    if(showSumCheck && node.children.length>0 && node !== root){
+      const sumText = make('text', {
+        x: px, y: py - 14, fill:'#8ce8ab',
+        'font-family':"'Patrick Hand', cursive", 'font-size':12,
+        'text-anchor':'middle', class:'tree-label'
+      });
+      sumText.textContent = sumCheckLabel(node.children);
+      svg.appendChild(sumText);
+      addEl(parentId, sumText);
+    }
+    node.children.forEach(child=>{
+      const cx = child.x + margin, cy = child.y + margin;
+      const childId = nodeCounter++;
+      registerNode(childId, parentId);
+      registerChild(parentId, childId);
+
+      const line = make('line', {
+        x1:px, y1:py, x2:cx, y2:cy,
+        stroke: COLOR_HEX[child.color], 'stroke-width':3, 'stroke-linecap':'round',
+        class:'tree-line'
+      });
+      svg.appendChild(line);
+      addEl(childId, line);
+
+      const dot = make('circle', {cx:cx, cy:cy, r:5.5, fill: child.children.length ? '#ecebe8' : COLOR_HEX[child.color], class:'tree-dot'});
+      svg.appendChild(dot);
+      addEl(childId, dot);
+
+      // branch label
+      const midx = (px+cx)/2, midy = (py+cy)/2;
+      const angle = Math.atan2(cy-py, cx-px) * 180/Math.PI;
+      const label = make('text', {
+        x: midx, y: midy - 8, fill: COLOR_HEX[child.color],
+        'font-family':"'Patrick Hand', cursive", 'font-size':16,
+        'text-anchor':'middle',
+        transform: `rotate(${angle}, ${midx}, ${midy-8})`,
+        class:'tree-label'
+      });
+      label.textContent = fracLabel(child.num, child.den);
+      svg.appendChild(label);
+      addEl(childId, label);
+
+      // invisible, generously-sized hit target along the branch line for easy tapping
+      const hit = make('line', {
+        x1:px, y1:py, x2:cx, y2:cy,
+        stroke:'transparent', 'stroke-width':22, class:'tree-hit'
+      });
+      svg.appendChild(hit);
+
+      const newN = cumN * child.num, newD = cumD * child.den;
+
+      if(child.children.length===0){
+        // leaf: outcome path + final probability
+        const leafText = make('text', {
+          x: cx+14, y: cy+4, fill:'#ecebe8',
+          'font-family':"'Patrick Hand', cursive", 'font-size':15,
+          class:'tree-leaf'
+        });
+        leafText.textContent = rawFracLabel(newN, newD);
+        svg.appendChild(leafText);
+        addEl(childId, leafText);
+      } else {
+        recurse(child, newN, newD, childId);
+      }
+
+      const clickHandler = onNodeClick(childId);
+      dot.addEventListener('click', clickHandler);
+      hit.addEventListener('click', clickHandler);
+      label.addEventListener('click', clickHandler);
+      dot.classList.add('tree-hit');
+      label.classList.add('tree-hit');
+    });
+  }
+  recurse(root, 1, 1, rootId);
+}
+
+// ---------- SCREEN SWITCH ----------
+const screenBuild = document.getElementById('screen-build');
+const screenTree = document.getElementById('screen-tree');
+const modalOverlay = document.getElementById('modal-overlay');
+const modalText = document.getElementById('modal-text');
+
+let pendingRender = null;
+
+function tryDraw(){
+  const counts = {};
+  COLORS.forEach(c=>counts[c]=0);
+  boxBalls.forEach(b=>counts[b.color]++);
+  const total = boxBalls.length;
+  const sideBySide = sideBySideToggle.checked;
+  const levels = parseInt(levelsInput.value)||1;
+
+  const showWith = sideBySide || withReplacement;
+  const showWithout = sideBySide || !withReplacement;
+
+  const rootWith = showWith ? buildTree(counts, levels, true) : null;
+  const rootWithout = showWithout ? buildTree(counts, levels, false) : null;
+
+  const leavesWith = rootWith ? countLeaves(rootWith) : 0;
+  const leavesWithout = rootWithout ? countLeaves(rootWithout) : 0;
+  const maxLeaves = Math.max(leavesWith, leavesWithout);
+
+  const summaryParts = COLORS.filter(c=>counts[c]>0).map(c=>`${counts[c]} ${c}`).join(', ');
+  const t = THEMES[currentTheme];
+  const modeText = sideBySide
+    ? 'Comparing <b>with</b> vs <b>without</b> replacement'
+    : `<b>${withReplacement?'With':'Without'} replacement</b> &nbsp;|&nbsp; ${maxLeaves} outcome${maxLeaves===1?'':'s'}`;
+  document.getElementById('tree-summary').innerHTML =
+    `${capitalize(t.containerNoun)}: <b>${summaryParts} ${t.itemPlural}</b> &nbsp;|&nbsp; Levels: <b>${levels}</b> &nbsp;|&nbsp; ${modeText}`;
+
+  if(maxLeaves > WARN_LEAVES){
+    modalText.textContent = `This tree will have up to ${maxLeaves} branches, which may be crowded or slow to read. You can still draw it, or go back and reduce the number of levels or colours.`;
+    pendingRender = ()=> renderTreeScreen(rootWith, rootWithout, levels);
+    modalOverlay.classList.add('active');
+    return;
+  }
+  renderTreeScreen(rootWith, rootWithout, levels);
+}
+
+let lastRootWith = null, lastRootWithout = null, lastLevels = null;
+const paneWithEl = document.getElementById('pane-with');
+const paneWithoutEl = document.getElementById('pane-without');
+
+function renderTreeScreen(rootWith, rootWithout, levels){
+  lastRootWith = rootWith; lastRootWithout = rootWithout; lastLevels = levels;
+  screenBuild.classList.remove('active');
+  screenTree.classList.add('active');
+  paneWithEl.classList.toggle('hidden', !rootWith);
+  paneWithoutEl.classList.toggle('hidden', !rootWithout);
+  // Wait a frame so the now-visible containers have real dimensions to measure.
+  requestAnimationFrame(()=>{
+    const leafLabelWidthOverride = (rootWith && rootWithout) ? 190 : undefined;
+    if(rootWith) drawTreeSVG(rootWith, levels, 'tree-svg-with', '#tree-scroll-with', leafLabelWidthOverride);
+    if(rootWithout) drawTreeSVG(rootWithout, levels, 'tree-svg-without', '#tree-scroll-without', leafLabelWidthOverride);
+  });
+}
+
+function redrawCurrentTrees(){
+  if(screenTree.classList.contains('active') && (lastRootWith || lastRootWithout)){
+    const leafLabelWidthOverride = (lastRootWith && lastRootWithout) ? 190 : undefined;
+    if(lastRootWith) drawTreeSVG(lastRootWith, lastLevels, 'tree-svg-with', '#tree-scroll-with', leafLabelWidthOverride);
+    if(lastRootWithout) drawTreeSVG(lastRootWithout, lastLevels, 'tree-svg-without', '#tree-scroll-without', leafLabelWidthOverride);
+  }
+}
+
+window.addEventListener('resize', redrawCurrentTrees);
+document.getElementById('sum-check-toggle').addEventListener('change', redrawCurrentTrees);
+
+document.getElementById('draw-btn').addEventListener('click', tryDraw);
+document.getElementById('back-btn').addEventListener('click', ()=>{
+  screenTree.classList.remove('active');
+  screenBuild.classList.add('active');
+});
+document.getElementById('modal-cancel').addEventListener('click', ()=>{
+  modalOverlay.classList.remove('active');
+  pendingRender = null;
+});
+document.getElementById('modal-continue').addEventListener('click', ()=>{
+  modalOverlay.classList.remove('active');
+  if(pendingRender) pendingRender();
+  pendingRender = null;
+});
+
+// ---------- INIT ----------
+renderTally();
+applyTheme('box');
+
+})();
+</script>
+</body>
+</html>
