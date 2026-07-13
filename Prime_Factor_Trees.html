@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prime Factor Trees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F4F7FB;
+    --grid: #DCE7F2;
+    --ink: #1E3A5F;
+    --pencil: #4A6FA5;
+    --pencil-soft: #8FAACB;
+    --composite-fill: #E9F1FB;
+    --marker-red: #D1402B;
+    --prime-fill: #FFF6F3;
+    --paper-edge: #C9D9EA;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body{
+    margin:0;
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 28px 18px 50px;
+  }
+
+  .page{
+    max-width: 980px;
+    margin: 0 auto;
+    transition: max-width 0.2s ease;
+  }
+  .page.dual-active{
+    max-width: 1180px;
+  }
+
+  header{
+    text-align: center;
+    margin-bottom: 18px;
+  }
+
+  h1{
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: clamp(2.4rem, 6vw, 3.4rem);
+    color: var(--ink);
+    margin: 0 0 2px;
+    position: relative;
+    display: inline-block;
+  }
+
+  h1 svg{
+    position: absolute;
+    left: 4%;
+    bottom: -10px;
+    width: 92%;
+    height: 14px;
+  }
+
+  .subtitle{
+    font-size: 0.95rem;
+    color: var(--pencil);
+    margin: 10px 0 0;
+  }
+
+  .mode-toggle{
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 18px 0 16px;
+    flex-wrap: wrap;
+  }
+  .mode-btn{
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    background: #fff;
+    color: var(--pencil);
+    border: 2px solid var(--paper-edge);
+    border-radius: 999px;
+    padding: 12px 20px;
+    min-height: 44px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+  .mode-btn:hover:not(.active){
+    border-color: var(--pencil);
+    color: var(--ink);
+  }
+  .mode-btn:active{ transform: translateY(1px); }
+  .mode-btn.active{
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .mode-btn:focus-visible{ outline: 3px solid #F2C84B; outline-offset: 2px; }
+
+  [hidden]{ display: none !important; }
+
+  .controls{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: #fff;
+    border: 2px solid var(--paper-edge);
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 2px 0 var(--paper-edge);
+    margin-bottom: 10px;
+  }
+
+  .controls label{
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .controls input[type="text"]{
+    font-family: 'Space Mono', monospace;
+    font-size: 1.2rem;
+    width: 130px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 2px solid var(--pencil-soft);
+    border-radius: 8px;
+    color: var(--ink);
+    background: var(--composite-fill);
+    text-align: center;
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+  }
+
+  .controls input[type="text"]:focus{
+    outline: 3px solid #F2C84B;
+    outline-offset: 1px;
+    border-color: var(--pencil);
+  }
+
+  .controls button{
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    min-height: 44px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+
+  .controls button:hover{ background: var(--pencil); }
+  .controls button:active{ background: var(--pencil); transform: translateY(1px); }
+  .controls button:focus-visible{ outline: 3px solid #F2C84B; outline-offset: 2px; }
+
+  .legend{
+    display:flex;
+    justify-content:center;
+    gap: 22px;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    color: var(--pencil);
+    margin: 4px 0 22px;
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{
+    width: 14px; height: 14px; display:inline-block; border-radius: 4px;
+  }
+  .swatch.comp{ background: var(--composite-fill); border: 2px solid var(--pencil); }
+  .swatch.prime{ background: var(--prime-fill); border: 2px solid var(--marker-red); border-radius: 50%; }
+
+  #message, #messageDual{
+    text-align: center;
+    font-size: 1rem;
+    min-height: 1.4em;
+    margin-bottom: 10px;
+    color: var(--marker-red);
+    font-weight: 600;
+  }
+
+  .canvas-wrap{
+    background: #fff;
+    border: 2px solid var(--paper-edge);
+    border-radius: 14px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 30px 10px 36px;
+    min-height: 200px;
+  }
+
+  /* ---- tree layout: flexbox positions the boxes, JS-measured SVG draws the connector lines ---- */
+  .tree-canvas{
+    position: relative;
+    text-align: center;
+  }
+  .lines-svg{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .tree, .tree ul{
+    display: inline-flex;
+    justify-content: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .tree ul{
+    margin-top: 48px;
+  }
+  .tree li{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 14px;
+    flex: none;
+    list-style: none;
+  }
+
+  .node-box{
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--ink);
+    background: var(--composite-fill);
+    border: 2.5px solid var(--pencil);
+    border-radius: 9px 13px 8px 14px;
+    padding: 10px 16px;
+    min-width: 18px;
+    text-align: center;
+    white-space: nowrap;
+    flex: none;
+    transform: rotate(var(--tilt, 0deg));
+    opacity: 0;
+    animation: growIn 0.35s ease forwards;
+    animation-delay: var(--delay, 0s);
+  }
+
+  .node-box.prime{
+    border: 3px solid var(--marker-red);
+    background: var(--prime-fill);
+    color: var(--marker-red);
+    border-radius: 50% 46% 55% 48% / 55% 48% 53% 47%;
+    padding: 12px 18px;
+  }
+
+  @keyframes growIn{
+    from{ opacity: 0; transform: scale(0.55) rotate(var(--tilt, 0deg)); }
+    to{ opacity: 1; transform: scale(1) rotate(var(--tilt, 0deg)); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .node-box{ animation: none; opacity: 1; }
+  }
+
+  .result-line{
+    text-align: center;
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: clamp(1.3rem, 4vw, 1.9rem);
+    color: var(--marker-red);
+    margin-top: 16px;
+    min-height: 1.3em;
+  }
+  #resultLine{
+    font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+    margin-top: 22px;
+  }
+
+  .result-line .underline-wrap{
+    position: relative;
+    display: inline-block;
+    padding-bottom: 6px;
+  }
+  .result-line svg{
+    position: absolute;
+    left: 0; right: 0; bottom: -4px;
+    width: 100%;
+    height: 10px;
+  }
+
+  /* ---- dual mode ---- */
+  .dual-trees{
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .dual-tree-col{
+    flex: 1 1 320px;
+    min-width: 240px;
+  }
+  .dual-tree-label{
+    text-align: center;
+    font-family: 'Caveat', cursive;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--pencil);
+    margin-bottom: 6px;
+  }
+
+  .venn-panel{
+    margin-top: 30px;
+    text-align: center;
+    background: #fff;
+    border: 2px solid var(--paper-edge);
+    border-radius: 14px;
+    padding: 26px 12px 22px;
+  }
+  .venn-title{
+    font-family: 'Caveat', cursive;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 6px;
+  }
+  .venn-outer{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 28px 0 6px;
+  }
+  .venn{
+    position: relative;
+    width: 420px;
+    height: 220px;
+    margin: 0 auto;
+  }
+  .venn-circle{
+    position: absolute;
+    top: 0;
+    width: 260px;
+    height: 220px;
+    border-radius: 50%;
+    border: 2.5px solid var(--pencil);
+  }
+  .venn-circle.a{ left: 0; background: rgba(74,111,165,0.10); }
+  .venn-circle.b{ left: 160px; background: rgba(209,64,43,0.08); border-color: var(--marker-red); }
+  .venn-zones{
+    position: absolute;
+    inset: 0;
+    display: flex;
+  }
+  .venn-zone{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding-top: 14px;
+    flex-wrap: wrap;
+  }
+  #zoneA{ flex: 0 0 160px; }
+  #zoneShared{ flex: 0 0 100px; }
+  #zoneB{ flex: 0 0 160px; }
+  .venn-chip{
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.92rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--pencil);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+  }
+  .venn-chip.shared{
+    border-color: var(--marker-red);
+    background: #FFF1EE;
+    color: var(--marker-red);
+  }
+  .venn-label{
+    position: absolute;
+    top: -26px;
+    font-family: 'Caveat', cursive;
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  .venn-label.a{ left: 50px; color: var(--pencil); }
+  .venn-label.b{ left: 225px; color: var(--marker-red); }
+  .venn-empty{
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    color: var(--pencil-soft);
+    font-weight: 400;
+  }
+
+  #hcfLcmLine{
+    margin-top: 16px;
+    font-family: 'Caveat', cursive;
+    color: var(--marker-red);
+  }
+  .hcf-line, .lcm-line{
+    font-size: clamp(1.25rem, 3.6vw, 1.7rem);
+    font-weight: 700;
+    margin: 6px 0;
+  }
+
+  footer{
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--pencil-soft);
+    margin-top: 26px;
+  }
+</style>
+</head>
+<body>
+<div class="page" id="page">
+  <header>
+    <h1>
+      Prime Factor Trees
+      <svg viewBox="0 0 300 14" preserveAspectRatio="none"><path d="M2,8 C60,14 120,2 150,7 C180,12 240,3 298,9" stroke="#F2C84B" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+    </h1>
+    <p class="subtitle">Type a number. Watch it split into factor pairs until only primes are left.</p>
+  </header>
+
+  <div class="mode-toggle" role="group" aria-label="Choose mode">
+    <button type="button" id="modeSingleBtn" class="mode-btn active" aria-pressed="true">One number</button>
+    <button type="button" id="modeDualBtn" class="mode-btn" aria-pressed="false">Two numbers · HCF &amp; LCM</button>
+  </div>
+
+  <!-- ===== SINGLE NUMBER MODE ===== -->
+  <div id="singleMode">
+    <div class="controls">
+      <label for="numInput">Number to decompose:</label>
+      <input type="text" id="numInput" inputmode="numeric" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="7" value="60">
+      <button id="goBtn" type="button">Decompose ▸</button>
+    </div>
+
+    <div class="legend">
+      <span><i class="swatch comp"></i> can still be split</span>
+      <span><i class="swatch prime"></i> prime — branch stops here</span>
+    </div>
+
+    <div id="message" role="status"></div>
+
+    <div class="canvas-wrap">
+      <div class="tree-canvas" id="treeCanvas"></div>
+    </div>
+
+    <div id="resultLine" class="result-line"></div>
+  </div>
+
+  <!-- ===== DUAL NUMBER MODE (HCF & LCM) ===== -->
+  <div id="dualMode" hidden>
+    <div class="controls">
+      <label for="numInputA">Number A:</label>
+      <input type="text" id="numInputA" inputmode="numeric" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="7" value="36">
+      <label for="numInputB">Number B:</label>
+      <input type="text" id="numInputB" inputmode="numeric" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="7" value="60">
+      <button id="goBtnDual" type="button">Decompose both ▸</button>
+    </div>
+
+    <div class="legend">
+      <span><i class="swatch comp"></i> can still be split</span>
+      <span><i class="swatch prime"></i> prime — branch stops here</span>
+    </div>
+
+    <div id="messageDual" role="status"></div>
+
+    <div class="dual-trees" id="dualTrees">
+      <div class="dual-tree-col" id="dualColA">
+        <div class="dual-tree-label" id="dualLabelA">Number A</div>
+        <div class="canvas-wrap">
+          <div class="tree-canvas" id="treeCanvasA"></div>
+        </div>
+        <div id="resultLineA" class="result-line"></div>
+      </div>
+      <div class="dual-tree-col" id="dualColB">
+        <div class="dual-tree-label" id="dualLabelB">Number B</div>
+        <div class="canvas-wrap">
+          <div class="tree-canvas" id="treeCanvasB"></div>
+        </div>
+        <div id="resultLineB" class="result-line"></div>
+      </div>
+    </div>
+
+    <div class="venn-panel">
+      <p class="venn-title">Shared prime factors</p>
+      <div class="venn-outer">
+        <div class="venn" id="venn">
+          <span class="venn-label a" id="vennLabelA"></span>
+          <span class="venn-label b" id="vennLabelB"></span>
+          <div class="venn-circle a"></div>
+          <div class="venn-circle b"></div>
+          <div class="venn-zones">
+            <div class="venn-zone" id="zoneA"></div>
+            <div class="venn-zone" id="zoneShared"></div>
+            <div class="venn-zone" id="zoneB"></div>
+          </div>
+        </div>
+      </div>
+      <div id="hcfLcmLine"></div>
+    </div>
+  </div>
+
+  <footer>Numbers from 2 up to 999,999. Each split picks the two factors closest to the square root, so trees stay balanced.</footer>
+</div>
+
+<script>
+(function(){
+  const pageEl = document.getElementById('page');
+
+  // Single mode elements
+  const input = document.getElementById('numInput');
+  const btn = document.getElementById('goBtn');
+  const message = document.getElementById('message');
+  const treeCanvas = document.getElementById('treeCanvas');
+  const resultLine = document.getElementById('resultLine');
+
+  // Dual mode elements
+  const inputA = document.getElementById('numInputA');
+  const inputB = document.getElementById('numInputB');
+  const goBtnDual = document.getElementById('goBtnDual');
+  const messageDual = document.getElementById('messageDual');
+  const treeCanvasA = document.getElementById('treeCanvasA');
+  const treeCanvasB = document.getElementById('treeCanvasB');
+  const resultLineA = document.getElementById('resultLineA');
+  const resultLineB = document.getElementById('resultLineB');
+  const dualTreesEl = document.getElementById('dualTrees');
+  const dualColA = document.getElementById('dualColA');
+  const dualColB = document.getElementById('dualColB');
+  const dualLabelA = document.getElementById('dualLabelA');
+  const dualLabelB = document.getElementById('dualLabelB');
+  const vennLabelA = document.getElementById('vennLabelA');
+  const vennLabelB = document.getElementById('vennLabelB');
+  const zoneAEl = document.getElementById('zoneA');
+  const zoneSharedEl = document.getElementById('zoneShared');
+  const zoneBEl = document.getElementById('zoneB');
+  const hcfLcmLineEl = document.getElementById('hcfLcmLine');
+
+  // Mode toggle elements
+  const modeSingleBtn = document.getElementById('modeSingleBtn');
+  const modeDualBtn = document.getElementById('modeDualBtn');
+  const singleModeEl = document.getElementById('singleMode');
+  const dualModeEl = document.getElementById('dualMode');
+
+  const MAX_VALUE = 999999;
+  let resizeTimer = null;
+  let activeRenders = {};
+  let mode = 'single';
+
+  function isPrime(n){
+    if (n < 2) return false;
+    if (n % 2 === 0) return n === 2;
+    for (let i = 3; i * i <= n; i += 2){
+      if (n % i === 0) return false;
+    }
+    return true;
+  }
+
+  // Find the factor pair closest to the square root, for balanced-looking trees.
+  function bestFactorPair(n){
+    let start = Math.floor(Math.sqrt(n));
+    for (let i = start; i >= 2; i--){
+      if (n % i === 0) return [i, n / i];
+    }
+    return null;
+  }
+
+  function buildTree(n, depth){
+    if (isPrime(n)){
+      return { value: n, prime: true, depth: depth };
+    }
+    const pair = bestFactorPair(n);
+    const [a, b] = pair;
+    return {
+      value: n,
+      prime: false,
+      depth: depth,
+      children: [buildTree(a, depth + 1), buildTree(b, depth + 1)]
+    };
+  }
+
+  function collectPrimeLeaves(node, out){
+    if (node.prime){
+      out.push(node.value);
+    } else {
+      collectPrimeLeaves(node.children[0], out);
+      collectPrimeLeaves(node.children[1], out);
+    }
+    return out;
+  }
+
+  function randomTilt(){
+    return (Math.random() * 4 - 2).toFixed(2) + 'deg';
+  }
+
+  function buildLi(node, edges){
+    const li = document.createElement('li');
+
+    const box = document.createElement('div');
+    box.className = 'node-box' + (node.prime ? ' prime' : '');
+    box.textContent = node.value;
+    box.style.setProperty('--tilt', randomTilt());
+    box.style.setProperty('--delay', (node.depth * 0.12) + 's');
+    li.appendChild(box);
+
+    if (!node.prime){
+      const ul = document.createElement('ul');
+      const childA = buildLi(node.children[0], edges);
+      const childB = buildLi(node.children[1], edges);
+      ul.appendChild(childA.li);
+      ul.appendChild(childB.li);
+      li.appendChild(ul);
+      edges.push([box, childA.box]);
+      edges.push([box, childB.box]);
+    }
+    return { li: li, box: box };
+  }
+
+  function drawLines(edges, svg, canvasEl){
+    const canvasRect = canvasEl.getBoundingClientRect();
+    svg.setAttribute('width', canvasEl.scrollWidth);
+    svg.setAttribute('height', canvasEl.scrollHeight);
+    svg.setAttribute('viewBox', '0 0 ' + canvasEl.scrollWidth + ' ' + canvasEl.scrollHeight);
+    svg.innerHTML = '';
+
+    const ns = 'http://www.w3.org/2000/svg';
+    edges.forEach(function(pair){
+      const parentBox = pair[0], childBox = pair[1];
+      const pRect = parentBox.getBoundingClientRect();
+      const cRect = childBox.getBoundingClientRect();
+
+      const x1 = (pRect.left + pRect.width / 2) - canvasRect.left;
+      const y1 = pRect.bottom - canvasRect.top;
+      const x2 = (cRect.left + cRect.width / 2) - canvasRect.left;
+      const y2 = cRect.top - canvasRect.top;
+      const midY = y1 + (y2 - y1) / 2;
+
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', 'M' + x1 + ',' + y1 + ' L' + x1 + ',' + midY + ' L' + x2 + ',' + midY + ' L' + x2 + ',' + y2);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#8FAACB');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(path);
+    });
+  }
+
+  // Builds a tree into any canvas element and returns its edges + svg, for reuse
+  // across the single canvas and the two dual-mode canvases.
+  function renderTreeInto(node, canvasEl){
+    canvasEl.innerHTML = '';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'lines-svg');
+    canvasEl.appendChild(svg);
+
+    const edges = [];
+    const ul = document.createElement('ul');
+    ul.className = 'tree';
+    const root = buildLi(node, edges);
+    ul.appendChild(root.li);
+    canvasEl.appendChild(ul);
+
+    drawLines(edges, svg, canvasEl);
+    if (document.fonts && document.fonts.ready){
+      document.fonts.ready.then(function(){ drawLines(edges, svg, canvasEl); });
+    }
+    return { edges: edges, svg: svg };
+  }
+
+  function setActive(key, edges, svg, canvasEl){
+    activeRenders[key] = { edges: edges, svg: svg, canvas: canvasEl };
+  }
+  function clearActive(key){
+    delete activeRenders[key];
+  }
+
+  function underlineSVG(){
+    return '<svg viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2,6 C50,10 150,2 198,7" stroke="#D1402B" stroke-width="4" fill="none" stroke-linecap="round"/></svg>';
+  }
+
+  function eqHTML(n, leavesSorted, primeFlag){
+    if (primeFlag){
+      return n + ' is already prime — no splitting needed!';
+    }
+    return '<span class="underline-wrap">' + n + ' = ' + leavesSorted.join(' \u00D7 ') + underlineSVG() + '</span>';
+  }
+
+  function validateNumber(raw){
+    raw = (raw || '').trim();
+    if (raw === '' || !/^\d+$/.test(raw)){
+      return { ok: false, msg: 'Enter a positive whole number, like 60.' };
+    }
+    const n = Number(raw);
+    if (n < 2){
+      if (n === 1){
+        return { ok: false, msg: '1 has no factor tree \u2014 it isn\u2019t prime or composite.' };
+      }
+      return { ok: false, msg: 'Enter a positive whole number, like 60.' };
+    }
+    if (n > MAX_VALUE){
+      return { ok: false, msg: 'Try a number under 1,000,000 so the tree fits on screen.' };
+    }
+    return { ok: true, n: n };
+  }
+
+  // ---------- single mode ----------
+  function process(){
+    message.textContent = '';
+    resultLine.innerHTML = '';
+
+    const res = validateNumber(input.value);
+    if (!res.ok){
+      treeCanvas.innerHTML = '';
+      clearActive('single');
+      message.textContent = res.msg;
+      return;
+    }
+
+    const n = res.n;
+    const tree = buildTree(n, 0);
+    const r = renderTreeInto(tree, treeCanvas);
+    setActive('single', r.edges, r.svg, treeCanvas);
+
+    const leaves = collectPrimeLeaves(tree, []).sort(function(a, b){ return a - b; });
+    resultLine.innerHTML = eqHTML(n, leaves, tree.prime);
+  }
+
+  // ---------- dual mode (HCF & LCM) ----------
+  function toCounts(leavesArr){
+    const m = {};
+    leavesArr.forEach(function(p){ m[p] = (m[p] || 0) + 1; });
+    return m;
+  }
+  function countsToArray(counts){
+    const out = [];
+    Object.keys(counts).map(Number).sort(function(a, b){ return a - b; }).forEach(function(p){
+      for (let i = 0; i < counts[p]; i++) out.push(p);
+    });
+    return out;
+  }
+  function countsToProduct(counts){
+    let result = 1;
+    Object.keys(counts).forEach(function(p){
+      result *= Math.pow(Number(p), counts[p]);
+    });
+    return result;
+  }
+  function fillZone(el, counts, shared){
+    el.innerHTML = '';
+    const arr = countsToArray(counts);
+    if (!arr.length){
+      const span = document.createElement('span');
+      span.className = 'venn-empty';
+      span.textContent = shared ? 'none shared' : '\u2014';
+      el.appendChild(span);
+      return;
+    }
+    arr.forEach(function(p){
+      const chip = document.createElement('span');
+      chip.className = 'venn-chip' + (shared ? ' shared' : '');
+      chip.textContent = p;
+      el.appendChild(chip);
+    });
+  }
+
+  function measureTreeWidth(canvasEl){
+    const treeEl = canvasEl.querySelector('.tree');
+    if (!treeEl) return canvasEl.scrollWidth;
+    return treeEl.getBoundingClientRect().width;
+  }
+
+  function resetDualColumns(){
+    dualColA.style.flexGrow = '';
+    dualColA.style.flexShrink = '';
+    dualColA.style.flexBasis = '';
+    dualColB.style.flexGrow = '';
+    dualColB.style.flexShrink = '';
+    dualColB.style.flexBasis = '';
+  }
+
+  // Gives the wider tree's column extra room (up to the space it actually needs)
+  // and shrinks the narrower tree's column down to what it needs, instead of
+  // splitting the row 50/50 regardless of content.
+  function balanceDualColumns(){
+    if (dualModeEl.hidden) return;
+    const minCol = 240;
+    const gap = 18;
+    const chrome = 30; // canvas-wrap padding + border
+    const totalAvail = dualTreesEl.clientWidth;
+
+    if (totalAvail < minCol * 2 + gap){
+      resetDualColumns();
+      return;
+    }
+
+    const nA = Math.max(measureTreeWidth(treeCanvasA) + chrome, minCol);
+    const nB = Math.max(measureTreeWidth(treeCanvasB) + chrome, minCol);
+    const avail = totalAvail - gap;
+
+    let wA, wB;
+    if (nA + nB <= avail){
+      const extra = avail - nA - nB;
+      if (nA >= nB){ wA = nA + extra; wB = nB; }
+      else { wB = nB + extra; wA = nA; }
+    } else if (nA <= nB){
+      wA = Math.min(nA, avail - minCol);
+      wB = avail - wA;
+    } else {
+      wB = Math.min(nB, avail - minCol);
+      wA = avail - wB;
+    }
+
+    dualColA.style.flexGrow = '0';
+    dualColA.style.flexShrink = '0';
+    dualColA.style.flexBasis = wA + 'px';
+    dualColB.style.flexGrow = '0';
+    dualColB.style.flexShrink = '0';
+    dualColB.style.flexBasis = wB + 'px';
+  }
+
+  function clearDualCanvas(which){
+    if (which === 'A'){
+      treeCanvasA.innerHTML = '';
+      resultLineA.innerHTML = '';
+      clearActive('A');
+    } else {
+      treeCanvasB.innerHTML = '';
+      resultLineB.innerHTML = '';
+      clearActive('B');
+    }
+  }
+  function clearVenn(){
+    zoneAEl.innerHTML = '';
+    zoneSharedEl.innerHTML = '';
+    zoneBEl.innerHTML = '';
+    vennLabelA.textContent = '';
+    vennLabelB.textContent = '';
+    hcfLcmLineEl.innerHTML = '';
+  }
+
+  function processDual(){
+    messageDual.textContent = '';
+
+    const resA = validateNumber(inputA.value);
+    const resB = validateNumber(inputB.value);
+    const problems = [];
+    if (!resA.ok) problems.push('Number A: ' + resA.msg);
+    if (!resB.ok) problems.push('Number B: ' + resB.msg);
+
+    if (problems.length){
+      clearDualCanvas('A');
+      clearDualCanvas('B');
+      clearVenn();
+      resetDualColumns();
+      messageDual.textContent = problems.join('   ');
+      return;
+    }
+
+    const nA = resA.n, nB = resB.n;
+    dualLabelA.textContent = 'Number A: ' + nA;
+    dualLabelB.textContent = 'Number B: ' + nB;
+
+    const treeA = buildTree(nA, 0);
+    const treeB = buildTree(nB, 0);
+
+    const rA = renderTreeInto(treeA, treeCanvasA);
+    const rB = renderTreeInto(treeB, treeCanvasB);
+    setActive('A', rA.edges, rA.svg, treeCanvasA);
+    setActive('B', rB.edges, rB.svg, treeCanvasB);
+    balanceDualColumns();
+    if (document.fonts && document.fonts.ready){
+      document.fonts.ready.then(function(){
+        balanceDualColumns();
+        drawLines(rA.edges, rA.svg, treeCanvasA);
+        drawLines(rB.edges, rB.svg, treeCanvasB);
+      });
+    }
+
+    const leavesA = collectPrimeLeaves(treeA, []).sort(function(a, b){ return a - b; });
+    const leavesB = collectPrimeLeaves(treeB, []).sort(function(a, b){ return a - b; });
+
+    resultLineA.innerHTML = eqHTML(nA, leavesA, treeA.prime);
+    resultLineB.innerHTML = eqHTML(nB, leavesB, treeB.prime);
+
+    const countsA = toCounts(leavesA);
+    const countsB = toCounts(leavesB);
+
+    const sharedCounts = {}, zoneACounts = {}, zoneBCounts = {}, unionCounts = {};
+    const allPrimes = Array.from(new Set(Object.keys(countsA).concat(Object.keys(countsB)))).map(Number).sort(function(a, b){ return a - b; });
+
+    allPrimes.forEach(function(p){
+      const ca = countsA[p] || 0, cb = countsB[p] || 0;
+      const minC = Math.min(ca, cb), maxC = Math.max(ca, cb);
+      if (minC > 0) sharedCounts[p] = minC;
+      if (ca - minC > 0) zoneACounts[p] = ca - minC;
+      if (cb - minC > 0) zoneBCounts[p] = cb - minC;
+      unionCounts[p] = maxC;
+    });
+
+    vennLabelA.textContent = nA;
+    vennLabelB.textContent = nB;
+    fillZone(zoneAEl, zoneACounts, false);
+    fillZone(zoneSharedEl, sharedCounts, true);
+    fillZone(zoneBEl, zoneBCounts, false);
+
+    const hcf = countsToProduct(sharedCounts);
+    const lcm = countsToProduct(unionCounts);
+    const sharedArr = countsToArray(sharedCounts);
+    const unionArr = countsToArray(unionCounts);
+
+    const hcfExpr = sharedArr.length ? sharedArr.join(' \u00D7 ') + ' = ' + hcf : '1 (no common prime factors)';
+    const lcmExpr = unionArr.join(' \u00D7 ') + ' = ' + lcm;
+
+    hcfLcmLineEl.innerHTML =
+      '<div class="hcf-line">HCF(' + nA + ', ' + nB + ') = ' + hcfExpr + '</div>' +
+      '<div class="lcm-line">LCM(' + nA + ', ' + nB + ') = ' + lcmExpr + '</div>';
+  }
+
+  // ---------- mode switching ----------
+  function setMode(m){
+    mode = m;
+    singleModeEl.hidden = (m !== 'single');
+    dualModeEl.hidden = (m !== 'dual');
+    modeSingleBtn.classList.toggle('active', m === 'single');
+    modeDualBtn.classList.toggle('active', m === 'dual');
+    modeSingleBtn.setAttribute('aria-pressed', String(m === 'single'));
+    modeDualBtn.setAttribute('aria-pressed', String(m === 'dual'));
+    pageEl.classList.toggle('dual-active', m === 'dual');
+
+    if (m === 'single') process(); else processDual();
+  }
+
+  modeSingleBtn.addEventListener('click', function(){ setMode('single'); });
+  modeDualBtn.addEventListener('click', function(){ setMode('dual'); });
+
+  input.addEventListener('keydown', function(e){ if (e.key === 'Enter') process(); });
+  btn.addEventListener('click', process);
+
+  inputA.addEventListener('keydown', function(e){ if (e.key === 'Enter') processDual(); });
+  inputB.addEventListener('keydown', function(e){ if (e.key === 'Enter') processDual(); });
+  goBtnDual.addEventListener('click', processDual);
+
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      if (!dualModeEl.hidden) balanceDualColumns();
+      Object.keys(activeRenders).forEach(function(key){
+        const r = activeRenders[key];
+        drawLines(r.edges, r.svg, r.canvas);
+      });
+    }, 150);
+  });
+
+  // Render the default example on load.
+  setMode('single');
+})();
+</script>
+</body>
+</html>
