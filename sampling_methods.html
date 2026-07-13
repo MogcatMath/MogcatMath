@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sampling Methods — A-Level Statistics</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#1a1a2e;color:#e0e0e0;font-family:sans-serif;min-height:100vh;padding:24px;}
+  h1{font-size:18px;font-weight:600;color:#c0c0ff;margin-bottom:4px;}
+  .subtitle{font-size:12px;color:#888;margin-bottom:20px;}
+  .wrap{display:flex;gap:20px;align-items:flex-start;}
+  .btn-col{display:flex;flex-direction:column;gap:8px;min-width:130px;}
+  .col-label{font-size:13px;color:#aaa;margin-bottom:2px;}
+  .s-btn{padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid #444;border-radius:999px;background:#2a2a3e;color:#e0e0e0;text-align:left;transition:background 0.15s,border-color 0.15s;}
+  .s-btn:hover{background:#33334d;border-color:#666;}
+  .s-btn.active{background:#2a2a3e;border-color:#7b7bff;color:#c0c0ff;}
+  .pct-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .pct-row label{font-size:12px;color:#aaa;}
+  .pct-row input{width:58px;font-size:13px;padding:5px 8px;border-radius:8px;border:1.5px solid #444;background:#2a2a3e;color:#e0e0e0;text-align:center;}
+  .pct-info{font-size:11px;color:#888;margin-top:4px;}
+  .legend{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;}
+  .leg{display:flex;align-items:center;gap:5px;font-size:12px;color:#aaa;}
+  .leg-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+  .batches{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0;}
+  .batch{background:#22223a;border:1px solid #333;border-radius:10px;padding:10px 12px;}
+  .batch-label{font-size:11px;color:#888;margin-bottom:7px;}
+  .circles{display:grid;grid-template-columns:repeat(10,20px);gap:5px;}
+  .c{width:20px;height:20px;border-radius:50%;background:#3a3a52;border:1px solid #555;transition:background 0.25s,border-color 0.25s;}
+  .c.lit{background:#4a9eff;border-color:#2277cc;}
+  .info-box{min-width:155px;max-width:175px;background:#22223a;border:1px solid #333;border-radius:12px;padding:14px 16px;opacity:0;transition:opacity 0.4s;pointer-events:none;}
+  .info-box.show{opacity:1;pointer-events:auto;}
+  .info-title{font-size:13px;font-weight:600;color:#c0c0ff;margin-bottom:8px;}
+  .info-body{font-size:12px;color:#aaa;line-height:1.65;}
+</style>
+</head>
+<body>
+<h1>Sampling Methods</h1>
+<p class="subtitle">A-Level Statistics · Click a method to see which items are sampled across the production batches</p>
+
+<div class="wrap">
+  <div class="btn-col">
+    <p class="col-label">Method</p>
+    <button class="s-btn" onclick="sel('census',this)">Census</button>
+    <button class="s-btn" onclick="sel('random',this)">Random</button>
+    <button class="s-btn" onclick="sel('systematic',this)">Systematic</button>
+    <button class="s-btn" onclick="sel('stratified',this)">Stratified</button>
+    <button class="s-btn" onclick="sel('quota',this)">Quota</button>
+    <div class="pct-row">
+      <label for="pct">Sample %</label>
+      <input type="number" id="pct" value="20" min="1" max="100" step="1" oninput="refresh()">
+      <span style="font-size:12px;color:#aaa;">%</span>
+    </div>
+    <p class="pct-info" id="pct-info"></p>
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:#4a9eff;border:1px solid #2277cc;"></div>sampled</div>
+      <div class="leg"><div class="leg-dot" style="background:#3a3a52;border:1px solid #555;"></div>not sampled</div>
+    </div>
+  </div>
+
+  <div class="batches" id="batches"></div>
+
+  <div class="info-box" id="info">
+    <div class="info-title" id="info-title"></div>
+    <div class="info-body" id="info-body"></div>
+  </div>
+</div>
+
+<script>
+const BATCH_SIZES=[10,20,20,20,40];
+const TOT=BATCH_SIZES.reduce((a,b)=>a+b,0);
+let cur=null;
+
+const desc={
+  census:{title:'Census',body:'Every single item is examined. Complete data is collected from all '+TOT+' products across all 5 batches.'},
+  random:{title:'Simple random sampling',body:'Each item has an equal chance of selection. Items are chosen at random across the whole population, with no regard for batch.'},
+  systematic:{title:'Systematic sampling',body:'A starting point is chosen at random, then every kth item is selected. The interval k = population ÷ sample size.'},
+  stratified:{title:'Stratified random sampling',body:'The population is split into strata — here, the 5 batches. Items are chosen randomly within each stratum in proportion to its size. Larger batches contribute more to the sample.'},
+  quota:{title:'Quota sampling',body:'Like stratified, but selection within each group is not random. The researcher picks the first available items until the quota for each batch is filled — proportional to batch size, but with no randomisation.'}
+};
+
+function build(){
+  const cont=document.getElementById('batches');cont.innerHTML='';
+  for(let b=0;b<BATCH_SIZES.length;b++){
+    const sz=BATCH_SIZES[b];
+    const cols=Math.min(10,sz);
+    const d=document.createElement('div');d.className='batch';
+    d.innerHTML=`<div class="batch-label">Batch ${b+1} <span style="color:#666">(${sz} items)</span></div><div class="circles" id="b${b}" style="grid-template-columns:repeat(${cols},20px)"></div>`;
+    cont.appendChild(d);
+    const row=document.getElementById(`b${b}`);
+    for(let i=0;i<sz;i++){const c=document.createElement('div');c.className='c';c.id=`c${b}_${i}`;row.appendChild(c);}
+  }
+}
+
+function clearAll(){
+  for(let b=0;b<BATCH_SIZES.length;b++)
+    for(let i=0;i<BATCH_SIZES[b];i++)
+      document.getElementById(`c${b}_${i}`).className='c';
+}
+
+function light(idx){idx.forEach(({b,i})=>{const e=document.getElementById(`c${b}_${i}`);if(e)e.className='c lit';});}
+
+function getSampleN(){
+  const pct=Math.min(100,Math.max(1,parseInt(document.getElementById('pct').value)||20));
+  return Math.max(1,Math.round(TOT*pct/100));
+}
+
+function censusI(){
+  const o=[];
+  for(let b=0;b<BATCH_SIZES.length;b++) for(let i=0;i<BATCH_SIZES[b];i++) o.push({b,i});
+  return o;
+}
+
+function randI(n){
+  const p=[];
+  for(let b=0;b<BATCH_SIZES.length;b++) for(let i=0;i<BATCH_SIZES[b];i++) p.push({b,i});
+  for(let j=p.length-1;j>0;j--){const k=Math.floor(Math.random()*(j+1));[p[j],p[k]]=[p[k],p[j]];}
+  return p.slice(0,n);
+}
+
+function sysI(n){
+  if(n>=TOT) return censusI();
+  const flat=[];
+  for(let b=0;b<BATCH_SIZES.length;b++) for(let i=0;i<BATCH_SIZES[b];i++) flat.push({b,i});
+  const iv=TOT/n,st=Math.random()*iv,o=[];
+  for(let s=0;s<n;s++){const idx=Math.floor(st+s*iv);if(idx<TOT)o.push(flat[idx]);}
+  return o;
+}
+
+function stratI(n){
+  const o=[];
+  for(let b=0;b<BATCH_SIZES.length;b++){
+    const sz=BATCH_SIZES[b];
+    const take=Math.round(n*sz/TOT);
+    const p=Array.from({length:sz},(_,i)=>i);
+    for(let j=p.length-1;j>0;j--){const k=Math.floor(Math.random()*(j+1));[p[j],p[k]]=[p[k],p[j]];}
+    p.slice(0,take).forEach(i=>o.push({b,i}));
+  }
+  return o;
+}
+
+function quotaI(n){
+  const o=[];
+  for(let b=0;b<BATCH_SIZES.length;b++){
+    const sz=BATCH_SIZES[b];
+    const take=Math.round(n*sz/TOT);
+    for(let i=0;i<take&&i<sz;i++) o.push({b,i});
+  }
+  return o;
+}
+
+function sel(m,btn){
+  cur=m;
+  document.querySelectorAll('.s-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  clearAll();
+  const k=m==='census'?TOT:getSampleN();
+  const idx={census:censusI,random:()=>randI(k),systematic:()=>sysI(k),stratified:()=>stratI(k),quota:()=>quotaI(k)}[m]();
+  light(idx);
+  document.getElementById('info-title').textContent=desc[m].title;
+  document.getElementById('info-body').textContent=desc[m].body;
+  document.getElementById('info').classList.add('show');
+  document.getElementById('pct-info').textContent=`${idx.length} of ${TOT} (${Math.round(idx.length/TOT*100)}%)`;
+}
+
+function refresh(){
+  if(!cur)return;
+  clearAll();
+  const k=cur==='census'?TOT:getSampleN();
+  const idx={census:censusI,random:()=>randI(k),systematic:()=>sysI(k),stratified:()=>stratI(k),quota:()=>quotaI(k)}[cur]();
+  light(idx);
+  document.getElementById('pct-info').textContent=`${idx.length} of ${TOT} (${Math.round(idx.length/TOT*100)}%)`;
+}
+
+build();
+</script>
+</body>
+</html>
