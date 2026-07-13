@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mog's Maths Toolbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --desk: #232323;
+    --desk-dark: #1a1a1a;
+    --paper: #f4efe1;
+    --paper-edge: #e6dfc9;
+    --grid-line: rgba(90,120,150,0.16);
+    --margin-line: rgba(198,74,66,0.35);
+    --ink: #33312c;
+    --ink-soft: #5c584f;
+    --red: #b23a2e;
+    --tab-1: #c9a24b; /* Number */
+    --tab-2: #6d8f6b; /* Algebra & Graphs */
+    --tab-3: #4f7ea8; /* Geometry & Trig */
+    --tab-4: #a0567a; /* Statistics */
+    --tab-5: #8a6a4f; /* Mechanics */
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at top, #2c2c2c, var(--desk-dark) 70%);
+    font-family:'Patrick Hand', cursive;
+    color:var(--ink);
+    padding:36px 16px 80px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .desk-note{
+    max-width:900px;
+    margin:0 auto 22px;
+    text-align:center;
+    color:#9a958a;
+    font-family:'Courier Prime', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    opacity:0.7;
+  }
+
+  .book{
+    position:relative;
+    max-width:900px;
+    width:100%;
+    margin:0 auto;
+  }
+
+  .page{
+    position:relative;
+    background:
+      repeating-linear-gradient(var(--grid-line) 0 1px, transparent 1px 28px),
+      repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 28px),
+      var(--paper);
+    border-radius:3px;
+    box-shadow:
+      0 2px 0 var(--paper-edge),
+      0 18px 40px rgba(0,0,0,0.55),
+      0 2px 8px rgba(0,0,0,0.4);
+    transform: rotate(-0.4deg);
+    padding: 44px 40px 40px 68px;
+  }
+
+  .page::before{
+    content:"";
+    position:absolute;
+    left:44px; top:0; bottom:0;
+    width:1px;
+    background:var(--margin-line);
+  }
+
+  /* torn/ragged left edge suggestion */
+  .page::after{
+    content:"";
+    position:absolute;
+    left:-6px; top:8px; bottom:8px; width:8px;
+    background: repeating-linear-gradient(180deg, transparent 0 6px, rgba(0,0,0,0.12) 6px 8px);
+    opacity:0.5;
+  }
+
+  header{
+    position:relative;
+    margin-bottom:30px;
+  }
+
+  h1{
+    font-family:'Caveat', cursive;
+    font-weight:700;
+    font-size:3.1rem;
+    margin:0 0 2px;
+    color:var(--ink);
+    line-height:1;
+  }
+
+  .underline{
+    width:340px; max-width:70%;
+    margin-bottom:10px;
+  }
+  .underline path{
+    fill:none;
+    stroke:var(--red);
+    stroke-width:3;
+    stroke-linecap:round;
+  }
+
+  .subhead{
+    font-family:'Courier Prime', monospace;
+    font-size:0.82rem;
+    color:var(--ink-soft);
+    letter-spacing:0.03em;
+  }
+  .subhead strong{ color: var(--red); }
+
+  .stamp{
+    position:absolute;
+    top:-6px; right:0;
+    font-family:'Caveat', cursive;
+    font-weight:700;
+    font-size:1.05rem;
+    color:var(--red);
+    border:2px solid var(--red);
+    border-radius:6px;
+    padding:4px 12px;
+    transform:rotate(6deg);
+    opacity:0.85;
+    white-space:nowrap;
+  }
+
+  /* Tab navigation - like exercise book dividers */
+  .tabs{
+    position:absolute;
+    right:-1px;
+    top:120px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    z-index:5;
+  }
+  .tab{
+    font-family:'Courier Prime', monospace;
+    font-size:0.68rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:#fff;
+    padding:8px 6px 8px 10px;
+    border-radius:4px 0 0 4px;
+    writing-mode:vertical-rl;
+    text-orientation:mixed;
+    cursor:pointer;
+    text-decoration:none;
+    box-shadow:-2px 2px 6px rgba(0,0,0,0.3);
+    transition:transform 0.15s ease, padding-right 0.15s ease;
+  }
+  .tab:hover{ transform:translateX(-4px); }
+
+  section{
+    margin-bottom:36px;
+    scroll-margin-top:20px;
+  }
+
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    margin-bottom:6px;
+    padding-bottom:4px;
+    border-bottom:2px dashed rgba(90,120,150,0.4);
+  }
+
+  .section-head .dot{
+    width:14px;height:14px;border-radius:50%;
+    flex:0 0 auto;
+  }
+
+  .section-head h2{
+    font-family:'Caveat', cursive;
+    font-size:1.7rem;
+    margin:0;
+    font-weight:700;
+  }
+
+  .section-head .count{
+    font-family:'Courier Prime', monospace;
+    font-size:0.7rem;
+    color:var(--ink-soft);
+    opacity:0.7;
+  }
+
+  ul.tool-list{
+    list-style:none;
+    margin:10px 0 0;
+    padding:0;
+  }
+
+  li.tool{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:9px 6px;
+    border-radius:5px;
+    transition:background 0.15s ease;
+  }
+  li.tool:hover{
+    background:rgba(178,58,46,0.06);
+  }
+
+  .tick{
+    flex:0 0 auto;
+    width:22px;height:22px;
+    margin-top:2px;
+  }
+  .tick path{
+    fill:none;
+    stroke:var(--red);
+    stroke-width:3;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    opacity:0;
+    stroke-dasharray:40;
+    stroke-dashoffset:40;
+    transition:opacity 0.2s ease, stroke-dashoffset 0.35s ease;
+  }
+  li.tool:hover .tick path{
+    opacity:1;
+    stroke-dashoffset:0;
+  }
+
+  a.tool-link{
+    color:var(--ink);
+    text-decoration:none;
+    font-size:1.28rem;
+    line-height:1.25;
+    border-bottom:1px solid transparent;
+  }
+  li.tool:hover a.tool-link{
+    color:var(--red);
+    border-bottom-color: rgba(178,58,46,0.4);
+  }
+
+  .tool-desc{
+    display:block;
+    font-family:'Courier Prime', monospace;
+    font-size:0.7rem;
+    color:var(--ink-soft);
+    margin-top:2px;
+    letter-spacing:0.01em;
+  }
+
+  footer{
+    margin-top:10px;
+    padding-top:14px;
+    border-top:1px solid rgba(90,120,150,0.3);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    font-family:'Courier Prime', monospace;
+    font-size:0.68rem;
+    color:var(--ink-soft);
+    opacity:0.75;
+  }
+
+  @media (max-width: 640px){
+    .page{ padding:34px 20px 30px 46px; }
+    .page::before{ left:24px; }
+    .tabs{ display:none; }
+    h1{ font-size:2.3rem; }
+    .stamp{ position:static; display:inline-block; margin-top:8px; transform:rotate(-2deg); }
+    header{ display:flex; flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="book">
+  <p class="desk-note">// edit the href on each &lt;a class="tool-link"&gt; to match your uploaded filenames //</p>
+
+  <div class="page" id="top">
+
+    <div class="tabs">
+      <a class="tab" style="background:var(--tab-1)" href="#number">Number</a>
+      <a class="tab" style="background:var(--tab-2)" href="#algebra">Algebra &amp; Graphs</a>
+      <a class="tab" style="background:var(--tab-3)" href="#geometry">Geometry &amp; Trig</a>
+      <a class="tab" style="background:var(--tab-4)" href="#statistics">Statistics</a>
+      <a class="tab" style="background:var(--tab-5)" href="#mechanics">Mechanics</a>
+    </div>
+
+    <header>
+      <h1>Mog's Maths Toolbox</h1>
+      <svg class="underline" viewBox="0 0 340 14" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4,9 C 60,2 120,12 180,6 C 240,1 290,10 336,5"/>
+      </svg>
+      <div class="subhead">Interactive teaching tools &middot; <strong>Key Stage 3–5</strong> &middot; built for the classroom, free to use</div>
+      <div class="stamp">Marked ✓</div>
+    </header>
+
+    <section id="number">
+      <div class="section-head">
+        <span class="dot" style="background:var(--tab-1)"></span>
+        <h2>Number</h2>
+        <span class="count">6 tools</span>
+      </div>
+      <ul class="tool-list">
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="prime-factor-tree.html">Prime Factor Tree</a>
+          <span class="tool-desc">dual-number mode &middot; HCF/LCM &middot; Venn diagram</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="hcf-lcm-visualiser.html">HCF/LCM Visualiser</a>
+          <span class="tool-desc">quick alternative to the factor tree tool</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="sieve-of-eratosthenes.html">Sieve of Eratosthenes</a>
+          <span class="tool-desc">animated prime sieve</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="fractions-plotter.html">Fractions Plotter</a>
+          <span class="tool-desc">visualise and compare fractions</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="place-value-counter.html">Place Value Counter</a>
+          <span class="tool-desc">regroup, cancel and undo, with overflow animation</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="metric-units-visualiser.html">Metric Units Visualiser</a>
+          <span class="tool-desc">converting between metric units</span></div>
+        </li>
+      </ul>
+    </section>
+
+    <section id="algebra">
+      <div class="section-head">
+        <span class="dot" style="background:var(--tab-2)"></span>
+        <h2>Algebra &amp; Graphs</h2>
+        <span class="count">3 tools</span>
+      </div>
+      <ul class="tool-list">
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="roots-and-powers.html">Roots &amp; Powers Graph Visualiser</a>
+          <span class="tool-desc">integer, fractional and negative power tabs</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="multiplication-division-slope.html">Multiplication/Division Slope Visualiser</a>
+          <span class="tool-desc">gradient intuition through repeated scaling</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="trig-graph-transformations.html">Trigonometric Graph Transformations</a>
+          <span class="tool-desc">translations, reflections and stretches of sin/cos/tan</span></div>
+        </li>
+      </ul>
+    </section>
+
+    <section id="geometry">
+      <div class="section-head">
+        <span class="dot" style="background:var(--tab-3)"></span>
+        <h2>Geometry &amp; Trig</h2>
+        <span class="count">4 tools</span>
+      </div>
+      <ul class="tool-list">
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="pythagorean-triples-3d.html">3D Pythagorean Triples Visualiser</a>
+          <span class="tool-desc">explore triples in three dimensions</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="3d-trigonometry.html">3D Trigonometry Tool</a>
+          <span class="tool-desc">cuboid &amp; pyramid modes, with worksheet generation</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="sine-cosine-rule-quiz.html">Sine/Cosine Rule Quiz</a>
+          <span class="tool-desc">quiz mode with worksheet output</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="unit-circle.html">Unit Circle Tool</a>
+          <span class="tool-desc">linking angles, coordinates and trig ratios</span></div>
+        </li>
+      </ul>
+    </section>
+
+    <section id="statistics">
+      <div class="section-head">
+        <span class="dot" style="background:var(--tab-4)"></span>
+        <h2>Statistics</h2>
+        <span class="count">7 tools</span>
+      </div>
+      <ul class="tool-list">
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="mean-from-frequency-tables.html">Mean from Frequency Tables</a>
+          <span class="tool-desc">staged pedagogical reveals</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="averages-visualiser.html">Statistics Averages Visualiser</a>
+          <span class="tool-desc">mode, median, mean and range, with liquid animation</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="frequency-polygon-builder.html">Frequency Polygon Builder</a>
+          <span class="tool-desc">animated, sequential construction</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="stem-and-leaf.html">Stem-and-Leaf Diagram</a>
+          <span class="tool-desc">with back-to-back mode</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="pie-chart-tool.html">Pie Chart Tool</a>
+          <span class="tool-desc">draggable slice dividers</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="sampling-methods.html">Sampling Methods Explainer</a>
+          <span class="tool-desc">random, stratified, systematic and more</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="ratio-visualiser.html">Ratio Visualiser</a>
+          <span class="tool-desc">2- and 3-part modes, three calculation modes</span></div>
+        </li>
+      </ul>
+    </section>
+
+    <section id="mechanics">
+      <div class="section-head">
+        <span class="dot" style="background:var(--tab-5)"></span>
+        <h2>Mechanics <span style="font-size:1rem; opacity:0.6;">(A-level)</span></h2>
+        <span class="count">3 tools</span>
+      </div>
+      <ul class="tool-list">
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="suvat-visualiser.html">SUVAT Visualiser</a>
+          <span class="tool-desc">kinematics equations in motion</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="friction-on-a-slope.html">Friction on a Slope Simulator</a>
+          <span class="tool-desc">forces, friction and inclined planes</span></div>
+        </li>
+        <li class="tool">
+          <svg class="tick" viewBox="0 0 24 24"><path d="M4 12 L10 18 L20 5"/></svg>
+          <div><a class="tool-link" href="equilibrium-of-forces.html">Equilibrium of Forces Simulator</a>
+          <span class="tool-desc">balancing force diagrams interactively</span></div>
+        </li>
+      </ul>
+    </section>
+
+    <footer>
+      <span>Built for teachers, by a teacher</span>
+      <span>Free to use in the classroom</span>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
