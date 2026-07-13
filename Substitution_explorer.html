@@ -1,0 +1,176 @@
+<style>
+h2.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.wrap{padding:0.75rem 0;max-width:640px;margin:0 auto;font-family:var(--font-sans)}
+label{font-size:26px;color:var(--color-text-secondary);display:block;margin-bottom:3px}
+  select{width:100%;margin-bottom:0.75rem;font-size:26px}
+.slider-row{display:flex;align-items:center;gap:12px;margin-bottom:0.6rem}
+.slider-row input[type=range]{flex:1}
+.xval{font-size:30px;font-weight:500;min-width:40px;text-align:right;color:var(--color-text-primary)}
+.ans-box{min-height:40px;margin-bottom:0.6rem;padding:8px 14px;border-radius:8px;border:0.5px solid #ccc;background:#f8f8f8;font-size:28px}
+.ans-box .working{color:#888;font-size:24px;margin-bottom:2px}
+.ans-box .result{font-size:32px;font-weight:500}
+button#reveal{width:100%;margin-bottom:0.6rem;padding:7px;cursor:pointer;font-size:26px}
+canvas#graph{display:block;border:1px solid #ccc;border-radius:8px}
+.coord-label{text-align:center;font-size:24px;color:#888;margin-top:4px}
+</style>
+<h2 class="sr-only">Substitution explorer</h2>
+<div class="wrap">
+  <label for="eq-sel">Choose an equation</label>
+  <select id="eq-sel">
+    <option value="0">y = 2x + 3</option>
+    <option value="1">y = −x + 5</option>
+    <option value="2">y = x² − 4</option>
+    <option value="3">y = 2x² − 3x + 1</option>
+    <option value="4">y = −x² + 2x + 8</option>
+  </select>
+
+  <label>Select a value of x</label>
+  <div class="slider-row">
+    <span style="font-size:13px;color:#888">−10</span>
+    <input type="range" id="xslider" min="-10" max="10" step="1" value="0">
+    <span style="font-size:13px;color:#888">10</span>
+    <span class="xval" id="xdisp">x = 0</span>
+  </div>
+
+  <div class="ans-box" id="ans-box">
+    <div style="color:#888;font-size:13px">Press the button to reveal y</div>
+  </div>
+
+  <button id="reveal">Find y</button>
+
+  <canvas id="graph" width="600" height="400"></canvas>
+  <div class="coord-label" id="coord-label"></div>
+</div>
+
+<script>
+const eqs=[
+  {fn:x=>2*x+3,        working:x=>`y = 2(${x}) + 3 = ${2*x} + 3`},
+  {fn:x=>-x+5,         working:x=>`y = −(${x}) + 5 = ${-x} + 5`},
+  {fn:x=>x*x-4,        working:x=>`y = (${x})² − 4 = ${x*x} − 4`},
+  {fn:x=>2*x*x-3*x+1,  working:x=>`y = 2(${x})² − 3(${x}) + 1 = ${2*x*x} − ${3*x} + 1`},
+  {fn:x=>-x*x+2*x+8,   working:x=>`y = −(${x})² + 2(${x}) + 8 = ${-x*x} + ${2*x} + 8`}
+];
+
+let revealed=false;
+const eqSel=document.getElementById('eq-sel');
+const slider=document.getElementById('xslider');
+const xdisp=document.getElementById('xdisp');
+const ansBox=document.getElementById('ans-box');
+const coordLabel=document.getElementById('coord-label');
+const canvas=document.getElementById('graph');
+const ctx=canvas.getContext('2d');
+
+const W=600,H=400;
+const PAD={top:20,right:20,bottom:40,left:50};
+const plotW=W-PAD.left-PAD.right;
+const plotH=H-PAD.top-PAD.bottom;
+const xMin=-10,xMax=10,yMin=-100,yMax=100;
+
+function toPixel(x,y){
+  const px=PAD.left+(x-xMin)/(xMax-xMin)*plotW;
+  const py=PAD.top+(yMax-y)/(yMax-yMin)*plotH;
+  return [px,py];
+}
+
+function drawChart(){
+  const eq=eqs[+eqSel.value];
+  const x=+slider.value;
+  ctx.clearRect(0,0,W,H);
+
+  // background
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,W,H);
+
+  // grid lines
+  ctx.strokeStyle='rgba(0,0,0,0.08)';
+  ctx.lineWidth=0.5;
+  for(let gx=xMin;gx<=xMax;gx+=2){
+    const [px]=toPixel(gx,0);
+    ctx.beginPath();ctx.moveTo(px,PAD.top);ctx.lineTo(px,PAD.top+plotH);ctx.stroke();
+  }
+  for(let gy=-100;gy<=100;gy+=20){
+    const [,py]=toPixel(0,gy);
+    ctx.beginPath();ctx.moveTo(PAD.left,py);ctx.lineTo(PAD.left+plotW,py);ctx.stroke();
+  }
+
+  // x and y axes
+  ctx.strokeStyle='rgba(0,0,0,0.5)';
+  ctx.lineWidth=1.5;
+  // y=0 horizontal axis
+  const [,zeroY]=toPixel(0,0);
+  ctx.beginPath();ctx.moveTo(PAD.left,zeroY);ctx.lineTo(PAD.left+plotW,zeroY);ctx.stroke();
+  // x=0 vertical axis
+  const [zeroX]=toPixel(0,0);
+  ctx.beginPath();ctx.moveTo(zeroX,PAD.top);ctx.lineTo(zeroX,PAD.top+plotH);ctx.stroke();
+
+  // tick labels x
+  ctx.fillStyle='rgba(0,0,0,0.45)';
+  ctx.font='22px sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='top';
+  for(let gx=xMin;gx<=xMax;gx+=2){
+    const [px]=toPixel(gx,0);
+    ctx.fillText(gx,px,PAD.top+plotH+5);
+  }
+  // tick labels y
+  ctx.textAlign='right';
+  ctx.textBaseline='middle';
+  for(let gy=-100;gy<=100;gy+=20){
+    const [,py]=toPixel(0,gy);
+    ctx.fillText(gy,PAD.left-6,py);
+  }
+
+  // curve
+  ctx.strokeStyle='#534AB7';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  let first=true;
+  for(let i=0;i<=400;i++){
+    const cx=xMin+i*(xMax-xMin)/400;
+    const cy=eq.fn(cx);
+    const [px,py]=toPixel(cx,cy);
+    if(first){ctx.moveTo(px,py);first=false;}
+    else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  // red dot
+  if(revealed){
+    const y=eq.fn(x);
+    const [px,py]=toPixel(x,y);
+    ctx.beginPath();
+    ctx.arc(px,py,7,0,2*Math.PI);
+    ctx.fillStyle='#E24B4A';
+    ctx.fill();
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=2;
+    ctx.stroke();
+  }
+
+  // border
+  ctx.strokeStyle='#ccc';
+  ctx.lineWidth=1;
+  ctx.strokeRect(PAD.left,PAD.top,plotW,plotH);
+}
+
+function resetAns(){
+  revealed=false;
+  ansBox.innerHTML=`<div style="color:#888;font-size:13px">Press the button to reveal y</div>`;
+  coordLabel.textContent='';
+}
+
+function showAns(){
+  revealed=true;
+  const eq=eqs[+eqSel.value];
+  const x=+slider.value;
+  const y=eq.fn(x);
+  ansBox.innerHTML=`<div class="working">${eq.working(x)}</div><div class="result">y = ${y}</div>`;
+  coordLabel.textContent=`Selected point: (${x}, ${y})`;
+  drawChart();
+}
+
+slider.addEventListener('input',()=>{xdisp.textContent=`x = ${+slider.value}`;resetAns();drawChart();});
+eqSel.addEventListener('change',()=>{resetAns();drawChart();});
+document.getElementById('reveal').addEventListener('click',showAns);
+drawChart();
+</script>
