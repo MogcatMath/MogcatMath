@@ -4,69 +4,170 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sieve of Eratosthenes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --paper:       #F4F7FB;
+    --grid:        #DCE7F2;
+    --ink:         #1E3A5F;
+    --pencil:      #4A6FA5;
+    --pencil-soft: #8FAACB;
+    --panel:       #2b3a50;
+    --panel-btn:   #354761;
+    --border:      #5a7799;
+    --hl6-bg:      #fdf0c0;
+    --hl6-ink:     #5a3f00;
+    --hl6-border:  #b8860b;
+    --hlP-bg:      #fff0f0;
+    --hlP-ink:     #8b1a1a;
+    --hlP-border:  #c0392b;
+  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Georgia, serif; background: #2b2b2b; color: #ddd; padding: 2rem; max-width: 780px; margin: 0 auto; }
-  h1 { font-size: 1.6rem; font-weight: normal; letter-spacing: 0.01em; margin-bottom: 0.25rem; }
-  .subtitle { font-size: 0.9rem; color: #999; margin-bottom: 1.75rem; font-style: italic; }
-  hr { border: none; border-top: 1px solid #444; margin-bottom: 1.75rem; }
-  .section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 0.6rem; }
-  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.5rem; }
+
+  body {
+    font-family: 'Patrick Hand', sans-serif;
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 2rem 1.5rem 3rem;
+  }
+
+  .page { max-width: 780px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 1.5rem; }
+  h1 {
+    font-family: 'Caveat', cursive;
+    font-size: clamp(2rem, 6vw, 3rem);
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.15rem;
+  }
+  .subtitle { font-size: 0.95rem; color: var(--pencil); font-style: italic; }
+
+  hr { border: none; border-top: 1.5px solid var(--grid); margin: 1.25rem 0 1.5rem; }
+
+  /* Dark panel for controls */
+  .controls {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .section-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pencil-soft);
+    margin-bottom: 0.5rem;
+  }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .btns:last-child { margin-bottom: 0; }
+
   button {
-    padding: 6px 14px; font-size: 0.82rem; font-family: Georgia, serif;
-    border: 1px solid #666; background: #383838; color: #ccc;
-    cursor: pointer; border-radius: 3px; transition: background 0.15s, border-color 0.15s;
+    padding: 6px 14px;
+    font-family: 'Patrick Hand', sans-serif;
+    font-size: 0.9rem;
+    border: 1px solid var(--border);
+    background: var(--panel-btn);
+    color: #cde;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s, border-color 0.15s;
   }
-  button:hover:not(:disabled) { background: #444; border-color: #888; }
-  button:disabled { opacity: 0.38; cursor: not-allowed; }
-  button.active { background: #444; border-color: #aaa; color: #eee; }
-  button.reset { border-color: #666; font-style: italic; }
-  .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-bottom: 1.25rem; }
+  button:hover:not(:disabled) { background: #44607f; border-color: #8FAACB; }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  button.active { background: #44607f; border-color: #a8c4de; color: #e8f2ff; }
+  button.reset { font-style: italic; }
+
+  /* Grid */
+  .grid-wrap {
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--grid);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+  }
   .cell {
-    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 0.8rem; border: 1px solid #444; border-radius: 2px;
-    background: #383838; color: #ccc; transition: background 0.2s, color 0.2s, opacity 0.2s;
-    font-family: 'Courier New', monospace;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Patrick Hand', sans-serif;
+    font-size: 1rem;
+    border: 1px solid var(--grid);
+    border-radius: 3px;
+    background: var(--paper);
+    color: var(--ink);
+    transition: background 0.2s, color 0.2s, opacity 0.2s;
   }
-  .cell.one     { background: #323232; color: #666; }
-  .cell.removed { background: #323232; color: #555; text-decoration: line-through; opacity: 0.5; }
-  .cell.hl6     { background: #fffbea; color: #7a5800; border-color: #d4a017; }
-  .cell.hlP     { background: #fff0f0; color: #8b1a1a; border-color: #c0392b; }
-  .cell.removed.hl6 { background: #fffbea; opacity: 0.4; }
-  .cell.removed.hlP { background: #fff0f0; opacity: 0.4; }
-  .status { font-size: 0.82rem; color: #888; min-height: 1.4em; margin-bottom: 1rem; font-style: italic; }
-  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.78rem; color: #888; margin-top: 0.25rem; }
+  .cell.one     { background: #e8edf5; color: var(--pencil-soft); }
+  .cell.removed { background: #e8edf5; color: #aab; text-decoration: line-through; opacity: 0.5; }
+  .cell.hl6     { background: var(--hl6-bg); color: var(--hl6-ink); border-color: var(--hl6-border); }
+  .cell.hlP     { background: var(--hlP-bg); color: var(--hlP-ink); border-color: var(--hlP-border); }
+  .cell.removed.hl6 { background: var(--hl6-bg); opacity: 0.45; }
+  .cell.removed.hlP { background: var(--hlP-bg); opacity: 0.45; }
+
+  .status {
+    font-size: 0.88rem;
+    color: var(--pencil);
+    font-style: italic;
+    min-height: 1.4em;
+    margin-bottom: 0.5rem;
+  }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.82rem; color: var(--pencil); }
   .legend-item { display: flex; align-items: center; gap: 6px; }
-  .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid; flex-shrink: 0; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid; flex-shrink: 0; }
 </style>
 </head>
 <body>
+<div class="page">
 
-<h1>Sieve of Eratosthenes</h1>
-<p class="subtitle">An ancient algorithm for finding all prime numbers up to a given limit.</p>
-<hr>
+  <header>
+    <h1>Sieve of Eratosthenes</h1>
+    <p class="subtitle">An ancient algorithm for finding all prime numbers up to a given limit.</p>
+  </header>
+  <hr>
 
-<p class="section-label">Filters</p>
-<div class="btns" id="filter-btns">
-  <button onclick="removeMultiples(2,this)">Remove multiples of 2</button>
-  <button onclick="removeMultiples(3,this)">Remove multiples of 3</button>
-  <button onclick="removeMultiples(5,this)">Remove multiples of 5</button>
-  <button onclick="removeMultiples(7,this)">Remove multiples of 7</button>
-  <button onclick="removeSquares(this)">Remove squares</button>
-  <button onclick="removeCubes(this)">Remove cubes</button>
+  <div class="controls">
+    <p class="section-label">Filters — remove composites</p>
+    <div class="btns" id="filter-btns">
+      <button onclick="removeMultiples(2,this)">Remove multiples of 2</button>
+      <button onclick="removeMultiples(3,this)">Remove multiples of 3</button>
+      <button onclick="removeMultiples(5,this)">Remove multiples of 5</button>
+      <button onclick="removeMultiples(7,this)">Remove multiples of 7</button>
+      <button onclick="removeSquares(this)">Remove squares</button>
+      <button onclick="removeCubes(this)">Remove cubes</button>
+    </div>
+
+    <p class="section-label">Highlights</p>
+    <div class="btns">
+      <button id="btn6" onclick="toggleSix(this)">Highlight multiples of 6</button>
+      <button id="btnP" onclick="togglePrimes(this)">Highlight primes</button>
+      <button class="reset" onclick="resetGrid()">↺ Reset</button>
+    </div>
+  </div>
+
+  <div class="status" id="status">Use the filters above to sieve the grid.</div>
+
+  <div class="grid-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
 </div>
-
-<p class="section-label">Highlights</p>
-<div class="btns">
-  <button id="btn6" onclick="toggleSix(this)">Highlight multiples of 6</button>
-  <button id="btnP" onclick="togglePrimes(this)">Highlight primes</button>
-  <button class="reset" onclick="resetGrid()">↺ Reset</button>
-</div>
-
-<div class="status" id="status">Use the filters above to sieve the grid.</div>
-<div class="grid" id="grid"></div>
-<div class="legend" id="legend"></div>
-
 <script>
   const removed = new Set();
   let showSix = false, showPrimes = false;
@@ -116,7 +217,7 @@
     if (showPrimes)
       l.innerHTML += `<span class="legend-item"><span class="legend-swatch" style="background:#fff0f0;border-color:#c0392b"></span> Prime</span>`;
     if ((showSix || showPrimes) && removed.size > 0)
-      l.innerHTML += `<span class="legend-item"><span class="legend-swatch" style="background:#323232;border-color:#444"></span> Removed</span>`;
+      l.innerHTML += `<span class="legend-item"><span class="legend-swatch" style="background:#e8edf5;border-color:#dce7f2"></span> Removed</span>`;
   }
 
   function removeMultiples(p, btn) {
