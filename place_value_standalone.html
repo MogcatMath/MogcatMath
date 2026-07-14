@@ -4,58 +4,110 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Place Value Counting Machine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --paper:  #F4F7FB;
+    --grid:   #DCE7F2;
+    --ink:    #1E3A5F;
+    --pencil: #4A6FA5;
+    --soft:   #8FAACB;
+    --panel:  #ffffff;
+    --border: #A8C0DA;
+  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: system-ui, sans-serif;
-    background: #2a2a2a;
-    color: #e8e8e8;
+    font-family: 'Patrick Hand', sans-serif;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    color: var(--ink);
     padding: 1.5rem;
     min-height: 100vh;
   }
-  h1 { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.25rem; }
-  .subtitle { font-size: 0.85rem; color: #aaa; margin-bottom: 1.25rem; }
+  h1 { font-family: 'Caveat', cursive; font-size: 2.25rem; font-weight: 700; color: var(--ink); margin-bottom: 0.2rem; }
+  .subtitle { font-size: 1.2rem; color: var(--pencil); margin-bottom: 1.25rem; }
   .total-display { margin-bottom: 1.25rem; }
-  .total-display .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #aaa; }
-  .total-display .number { font-size: 3rem; font-weight: 500; line-height: 1.1; }
+  .total-display .label { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soft); }
+  .total-display .number { font-family: 'Caveat', cursive; font-size: 3.75rem; font-weight: 700; color: var(--ink); line-height: 1.1; }
+
+  /* ── Add controls row ── */
   .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
   .controls button {
-    padding: 8px 16px; font-size: 0.875rem; font-weight: 500;
-    cursor: pointer; border: 1px solid #555; border-radius: 6px;
-    background: #3a3a3a; color: #e8e8e8; transition: background 0.12s;
+    padding: 8px 16px; font-size: 1.2rem; font-family: 'Patrick Hand', sans-serif;
+    cursor: pointer; border: 1.5px solid var(--border); border-radius: 6px;
+    background: var(--panel); color: var(--ink); transition: background 0.12s;
   }
-  .controls button:hover { background: #444; }
-  .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .controls input[type=number] {
-    width: 68px; padding: 7px 8px; font-size: 0.875rem;
-    border: 1px solid #555; border-radius: 6px;
-    background: #3a3a3a; color: #e8e8e8; text-align: center;
+  .controls button:hover { background: var(--grid); }
+  .controls button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* custom-add group */
+  .custom-group {
+    display: flex; align-items: center;
+    border: 1.5px solid var(--pencil); border-radius: 6px;
+    overflow: hidden; background: var(--panel);
   }
-  .reset-btn {
-    padding: 7px 14px; font-size: 0.8rem; cursor: pointer;
-    border: 1px solid #555; border-radius: 6px;
-    background: #3a3a3a; color: #aaa;
+  .custom-group input[type=number] {
+    width: 68px; padding: 7px 8px; font-size: 1.2rem;
+    font-family: 'Patrick Hand', sans-serif;
+    border: none; border-right: 1.5px solid var(--border);
+    background: var(--panel); color: var(--ink); text-align: center;
+    outline: none;
   }
-  .reset-btn:hover { background: #444; color: #e8e8e8; }
+  .custom-group button {
+    padding: 8px 16px; font-size: 1.2rem; font-family: 'Patrick Hand', sans-serif;
+    cursor: pointer; border: none; border-radius: 0;
+    background: var(--panel); color: var(--ink); transition: background 0.12s;
+  }
+  .custom-group button:hover { background: var(--grid); }
+  .custom-group button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Canvas rows ── */
   .col-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; position: relative; }
   .col-meta { min-width: 90px; }
-  .col-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #aaa; margin-bottom: 2px; }
-  .col-value { font-size: 1.5rem; font-weight: 500; }
+  .col-label { font-size: 0.95rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soft); margin-bottom: 2px; }
+  .col-value { font-family: 'Caveat', cursive; font-size: 2.05rem; font-weight: 700; color: var(--pencil); }
   .canvas-wrap { position: relative; display: inline-block; }
-  canvas {
-    border: 1.5px solid #888;
-    border-radius: 6px;
-    background: #2a2a2a;
-    display: block;
+  canvas { border: 1.5px solid var(--border); border-radius: 6px; background: var(--panel); display: block; }
+  canvas.overlay { position: absolute; top: 0; left: 0; border: none; background: transparent; pointer-events: none; }
+
+  .msg { font-size: 1.15rem; color: var(--pencil); min-height: 1.4em; margin-top: 0.25rem; font-style: italic; }
+
+  /* ── Utility controls (below display) ── */
+  .utility-controls { display: flex; align-items: center; gap: 8px; margin-top: 1.25rem; }
+  .util-btn {
+    padding: 8px 18px; font-size: 1.1rem; font-family: 'Patrick Hand', sans-serif;
+    cursor: pointer; border: 1.5px solid var(--border); border-radius: 6px;
+    background: var(--panel); color: var(--pencil); transition: background 0.12s;
   }
-  canvas.overlay {
-    position: absolute;
-    top: 0; left: 0;
-    border: none;
-    background: transparent;
-    pointer-events: none;
+  .util-btn:hover { background: var(--grid); color: var(--ink); }
+  .util-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Confirm dialog ── */
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(30,58,95,0.25); backdrop-filter: blur(2px);
+    z-index: 100; align-items: center; justify-content: center;
   }
-  .msg { font-size: 0.8rem; color: #aaa; min-height: 1.2em; margin-top: 0.5rem; font-style: italic; }
+  .confirm-overlay.visible { display: flex; }
+  .confirm-box {
+    background: var(--panel); border: 2px solid var(--border); border-radius: 10px;
+    padding: 1.75rem 2rem; max-width: 320px; width: 90%; text-align: center;
+    box-shadow: 0 4px 24px rgba(30,58,95,0.15);
+  }
+  .confirm-box p { font-family: 'Patrick Hand', sans-serif; font-size: 1.2rem; color: var(--ink); margin-bottom: 1.25rem; }
+  .confirm-btns { display: flex; gap: 12px; justify-content: center; }
+  .confirm-btns button {
+    padding: 8px 24px; font-size: 1.1rem; font-family: 'Patrick Hand', sans-serif;
+    cursor: pointer; border: 1.5px solid var(--border); border-radius: 6px;
+    background: var(--panel); color: var(--ink); transition: background 0.12s;
+  }
+  .confirm-btns button:hover { background: var(--grid); }
+  .confirm-btns .yes-btn { border-color: var(--pencil); color: var(--pencil); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -72,10 +124,10 @@
   <button id="btn1">+1</button>
   <button id="btn10">+10</button>
   <button id="btn100">+100</button>
-  <input type="number" id="custom-in" min="1" max="999" value="5" />
-  <button id="btn-custom">Add</button>
-  <button class="reset-btn" id="btn-reset">↺ Reset</button>
-  <button class="reset-btn" id="btn-ff">⏭ Fast forward</button>
+  <div class="custom-group">
+    <input type="number" id="custom-in" min="1" max="999" value="5" />
+    <button id="btn-custom">Add</button>
+  </div>
 </div>
 
 <div class="col-wrap">
@@ -113,6 +165,22 @@
 
 <div class="msg" id="msg"></div>
 
+<div class="utility-controls">
+  <button class="util-btn" id="btn-ff">⏭ Fast forward</button>
+  <button class="util-btn" id="btn-reset">↺ Reset</button>
+</div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <p>Reset the counter to zero?</p>
+    <div class="confirm-btns">
+      <button class="yes-btn" id="confirm-yes">Yes</button>
+      <button id="confirm-no">No</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   const MAX = 999;
@@ -141,17 +209,14 @@
   const xU   = cU.getContext('2d'),  xT   = cT.getContext('2d'),  xH   = cH.getContext('2d');
   const xOvU = ovU.getContext('2d'), xOvT = ovT.getContext('2d'), xOvH = ovH.getContext('2d');
 
-  const C = { u: '#F5C842', t: '#F5C842', h: '#F5C842', stroke: 'rgba(0,0,0,0.25)' };
+  const C = { u: '#F5C842', t: '#F5C842', h: '#F5C842', stroke: 'rgba(30,58,95,0.35)' };
 
   function ball(ctx, col, row, fill) {
     const r = BALL_D / 2 - 1;
     ctx.beginPath();
     ctx.arc(PAD + col * BALL_D + BALL_D / 2, PAD + row * BALL_D + BALL_D / 2, r, 0, Math.PI * 2);
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.strokeStyle = C.stroke;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = C.stroke; ctx.lineWidth = 1; ctx.stroke();
   }
 
   function drawUnits() {
@@ -159,14 +224,12 @@
     const u = total % 10;
     for (let i = 0; i < u; i++) ball(xU, i, 0, C.u);
   }
-
   function drawTens() {
     xT.clearRect(0, 0, cT.width, cT.height);
     const t = Math.floor(total / 10) % 10;
     for (let r = 0; r < t; r++)
       for (let c = 0; c < T_COLS; c++) ball(xT, c, r, C.t);
   }
-
   function drawHundreds() {
     xH.clearRect(0, 0, cH.width, cH.height);
     const h = Math.floor(total / 100);
@@ -191,45 +254,39 @@
   const sleep = ms => new Promise(res => setTimeout(res, ms));
   const setMsg = m => { document.getElementById('msg').textContent = m; };
 
-  // Generic overflow animation between two canvases.
-  // Phase 1 (0–0.4): src balls fall & fade out.
-  // Phase 2 (0.4–0.6): pause.
-  // Phase 3 (0.6–1.0): dst balls drop in from top, fade out at fadeOutFraction of dst height.
+  function setAddButtons(disabled) {
+    ['btn1','btn10','btn100','btn-custom'].forEach(id => {
+      document.getElementById(id).disabled = disabled;
+    });
+    document.getElementById('custom-in').disabled = disabled;
+  }
+
   function animateOverflow(srcOv, dstOv, srcCv, dstCv, srcBalls, dstBalls, color, dur, fadeOutFraction) {
     return new Promise(resolve => {
       const start = performance.now();
       const fadeOutY = dstCv.height * fadeOutFraction;
       const r = BALL_D / 2 - 1;
-
       function frame(now) {
         const t = Math.min((now - start) / dur, 1);
         srcOv.clearRect(0, 0, srcCv.width, srcCv.height);
         dstOv.clearRect(0, 0, dstCv.width, dstCv.height);
-
         if (t < 0.4) {
-          // fall & fade out of src
           const p = t / 0.4;
-          const fallDist = srcCv.height * 0.6 * p;
-          srcOv.save();
-          srcOv.globalAlpha = 1 - p;
+          srcOv.save(); srcOv.globalAlpha = 1 - p;
           for (const b of srcBalls) {
             srcOv.beginPath();
-            srcOv.arc(PAD + b.col * BALL_D + BALL_D / 2, PAD + b.row * BALL_D + BALL_D / 2 + fallDist, r, 0, Math.PI * 2);
+            srcOv.arc(PAD + b.col * BALL_D + BALL_D / 2, PAD + b.row * BALL_D + BALL_D / 2 + srcCv.height * 0.6 * p, r, 0, Math.PI * 2);
             srcOv.fillStyle = color; srcOv.fill();
             srcOv.strokeStyle = C.stroke; srcOv.lineWidth = 1; srcOv.stroke();
           }
           srcOv.restore();
         } else if (t >= 0.6) {
-          // drop into dst
           const p = (t - 0.6) / 0.4;
           dstOv.save();
           for (const b of dstBalls) {
             const finalY = PAD + b.row * BALL_D + BALL_D / 2;
             const cy = -BALL_D + (finalY + BALL_D) * p;
-            let alpha;
-            if (p < 0.1)       { alpha = p / 0.1; }
-            else if (cy < fadeOutY) { alpha = 1; }
-            else { alpha = Math.max(0, 1 - (cy - fadeOutY) / (dstCv.height * 0.15)); }
+            let alpha = p < 0.1 ? p / 0.1 : cy < fadeOutY ? 1 : Math.max(0, 1 - (cy - fadeOutY) / (dstCv.height * 0.15));
             dstOv.globalAlpha = alpha;
             dstOv.beginPath();
             dstOv.arc(PAD + b.col * BALL_D + BALL_D / 2, cy, r, 0, Math.PI * 2);
@@ -238,8 +295,6 @@
           }
           dstOv.restore();
         }
-        // phase 2 (0.4–0.6): both cleared, nothing drawn
-
         if (t < 1) { requestAnimationFrame(frame); }
         else { srcOv.clearRect(0, 0, srcCv.width, srcCv.height); dstOv.clearRect(0, 0, dstCv.width, dstCv.height); resolve(); }
       }
@@ -247,31 +302,20 @@
     });
   }
 
-  function unitToTensBalls(tensRow) {
-    return Array.from({ length: T_COLS }, (_, c) => ({ col: c, row: tensRow }));
-  }
-  function tensToHundredsBalls(hundredsRow) {
-    return Array.from({ length: H_COLS }, (_, c) => ({ col: c, row: hundredsRow }));
-  }
+  const unitToTensBalls     = row => Array.from({ length: T_COLS }, (_, c) => ({ col: c, row }));
+  const tensToHundredsBalls = row => Array.from({ length: H_COLS }, (_, c) => ({ col: c, row }));
 
   async function addBalls(n) {
     if (animating) return;
-    animating = true;
-    ffPending = 0;
-    setMsg('');
-    document.querySelectorAll('.controls button:not(#btn-ff)').forEach(b => b.disabled = true);
+    animating = true; ffPending = 0;
+    setMsg(''); setAddButtons(true);
 
     for (let i = 0; i < n; i++) {
       if (total >= MAX) { setMsg('Maximum of 999 reached!'); break; }
-
-      // fast-forward: jump straight to end
       if (ffPending > 0) {
         total = Math.min(total + (n - i), MAX);
-        ffPending = 0;
-        clearOverlays();
-        break;
+        ffPending = 0; clearOverlays(); break;
       }
-
       total++;
       const u     = total % 10;
       const prevT = Math.floor((total - 1) / 10) % 10;
@@ -280,52 +324,39 @@
       const newH  = Math.floor(total / 100);
 
       if (u === 0 && newH !== prevH) {
-        // tens → hundreds overflow
         setMsg('10 rows of 10 → dropped to hundreds!');
         const srcBalls = [];
         for (let row = 0; row < T_ROWS; row++)
           for (let col = 0; col < T_COLS; col++) srcBalls.push({ col, row });
-        const dstBalls = tensToHundredsBalls(newH - 1);
-        // show tens full, clear immediately for animation
         const saved = total;
-        total = saved - 1; drawHundreds();
-        total = saved;
+        total = saved - 1; drawHundreds(); total = saved;
         document.getElementById('total-num').textContent = total;
         xT.clearRect(0, 0, cT.width, cT.height);
-        if (ffPending === 0) {
-          await animateOverflow(xOvT, xOvH, cT, cH, srcBalls, dstBalls, C.h, 800, 0.70);
-        }
+        if (ffPending === 0) await animateOverflow(xOvT, xOvH, cT, cH, srcBalls, tensToHundredsBalls(newH - 1), C.h, 800, 0.70);
         render();
-
       } else if (u === 0 && newT !== prevT) {
-        // units → tens overflow
         setMsg('10 units → dropped to tens!');
-        const srcBalls = Array.from({ length: 10 }, (_, c) => ({ col: c, row: 0 }));
-        const dstBalls = unitToTensBalls(newT - 1);
         const saved = total;
-        total = saved - 1; drawTens();
-        total = saved;
+        total = saved - 1; drawTens(); total = saved;
         document.getElementById('total-num').textContent = total;
-        // briefly show all 10 units
         for (let j = 0; j < 10; j++) ball(xU, j, 0, C.u);
         if (ffPending === 0) await sleep(300);
         xU.clearRect(0, 0, cU.width, cU.height);
-        if (ffPending === 0) {
-          await animateOverflow(xOvU, xOvT, cU, cT, srcBalls, dstBalls, C.t, 700, 0.33);
-        }
+        if (ffPending === 0) await animateOverflow(xOvU, xOvT, cU, cT, Array.from({length:10},(_,c)=>({col:c,row:0})), unitToTensBalls(newT - 1), C.t, 700, 0.33);
         render();
-
       } else {
         render();
         if (ffPending === 0) await sleep(n === 1 ? 100 : n <= 10 ? 70 : 18);
       }
     }
 
-    clearOverlays();
-    animating = false;
-    document.querySelectorAll('.controls button:not(#btn-ff)').forEach(b => b.disabled = false);
-    render();
+    clearOverlays(); animating = false; setAddButtons(false); render();
   }
+
+  // ── Confirm dialog ──
+  const overlay = document.getElementById('confirm-overlay');
+  const showConfirm = () => overlay.classList.add('visible');
+  const hideConfirm = () => overlay.classList.remove('visible');
 
   document.getElementById('btn1').onclick       = () => addBalls(1);
   document.getElementById('btn10').onclick      = () => addBalls(10);
@@ -334,11 +365,11 @@
     const v = parseInt(document.getElementById('custom-in').value) || 1;
     addBalls(Math.min(Math.max(v, 1), MAX));
   };
-  document.getElementById('btn-ff').onclick = () => { if (animating) ffPending = MAX; };
-  document.getElementById('btn-reset').onclick  = () => {
-    if (animating) return;
-    total = 0; setMsg(''); clearOverlays(); render();
-  };
+  document.getElementById('btn-ff').onclick      = () => { if (animating) ffPending = MAX; };
+  document.getElementById('btn-reset').onclick   = () => { if (!animating) showConfirm(); };
+  document.getElementById('confirm-yes').onclick = () => { hideConfirm(); total = 0; setMsg(''); clearOverlays(); render(); };
+  document.getElementById('confirm-no').onclick  = hideConfirm;
+  overlay.addEventListener('click', e => { if (e.target === overlay) hideConfirm(); });
 
   render();
 })();
