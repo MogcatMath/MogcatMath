@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Trigonometry Quiz</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,sans-serif;background:#2a2a2a;color:#e0e0e0;}
+#app{display:flex;flex-direction:column;height:100vh;min-height:520px;}
+#diagram-area{height:50vh;display:flex;align-items:center;justify-content:center;background:#f5f5f3;border-bottom:1px solid #1a1a1a;overflow:hidden;}
+#diagram-area svg{display:block;}
+#bottom{flex:1;display:flex;flex-direction:column;padding:16px 24px;gap:12px;overflow-y:auto;}
+#mode-bar{display:flex;gap:8px;flex-wrap:wrap;}
+button{padding:8px 18px;font-size:14px;border:1px solid #555;border-radius:8px;background:#3d3d3d;color:#e0e0e0;cursor:pointer;transition:background .15s;}
+button:hover{background:#4a4a4a;}
+button.primary{background:#5a5a5a;color:#fff;border-color:#777;}
+button.primary:hover{background:#686868;}
+button.mode-btn{font-size:13px;padding:5px 14px;}
+button.mode-btn.active{background:#707070;color:#fff;border-color:#999;}
+#question-text{font-size:15px;line-height:1.6;min-height:44px;}
+#actions{display:flex;gap:10px;flex-wrap:wrap;}
+#hint-box{font-size:13px;color:#90b8e0;background:#1e2d3d;border:1px solid #3a5a7a;border-radius:8px;padding:10px 14px;display:none;}
+#answer-box{font-size:13px;line-height:1.7;background:#333;border:1px solid #555;border-radius:8px;padding:12px 16px;opacity:0;transition:opacity .4s;display:none;}
+#answer-box.visible{opacity:1;}
+.ans-step{margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="diagram-area">
+    <svg id="tri-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <div id="bottom">
+    <div id="mode-bar">
+      <button class="mode-btn active" id="btn-mode1" onclick="setMode(1)">Basic</button>
+      <button class="mode-btn" id="btn-mode2" onclick="setMode(2)">Paired leg</button>
+      <button class="mode-btn" id="btn-mode3" onclick="setMode(3)">Paired leg-hyp</button>
+      <button onclick="createWorksheet()" style="margin-left:8px">📄 Create Worksheet</button>
+    </div>
+    <div id="question-text"></div>
+    <div id="actions">
+      <button onclick="showHint()">💡 Hint</button>
+      <button onclick="showAnswer()">Show worked answer</button>
+      <button class="primary" onclick="newQuestion()">Next question →</button>
+    </div>
+    <div id="hint-box"></div>
+    <div id="answer-box"></div>
+  </div>
+</div>
+<script>
+const svgEl=document.getElementById('tri-svg');
+const RED='#D85A30',BLUE='#185fa5',GREY='#555',BLACK='#111';
+const VW=480,VH=280;
+let current={},currentMode=1,activeModes=new Set([1]);
+
+const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const randF=(mn,mx)=>Math.round((mn+Math.random()*(mx-mn))*10)/10;
+const r4=x=>Math.round(x*10000)/10000;
+const fmt=x=>parseFloat(x.toFixed(1)).toString();
+const rad=d=>d*Math.PI/180;
+const norm=(dx,dy)=>{const l=Math.hypot(dx,dy)||1;return{x:dx/l,y:dy/l};};
+
+function getSvg(){return window._svgTarget||svgEl;}
+
+function mkEl(tag,attrs,text){
+  const e=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);
+  if(text!==undefined)e.textContent=text;
+  return e;
+}
+function fitAndRotate(basePts,rotation,margin){
+  const s=getSvg();
+  s.setAttribute('viewBox',`0 0 ${VW} ${VH}`);
+  if(s===svgEl){s.style.width='100%';s.style.height='50vh';}
+  const cos=Math.cos(rotation),sin=Math.sin(rotation);
+  const rotated=basePts.map(p=>({...p,x:p.x*cos-p.y*sin,y:p.x*sin+p.y*cos}));
+  const xs=rotated.map(p=>p.x),ys=rotated.map(p=>p.y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const sc=Math.min((VW-margin*2)/(maxX-minX||1),(VH-margin*2)/(maxY-minY||1));
+  const ox=VW/2-(minX+maxX)/2*sc,oy=VH/2-(minY+maxY)/2*sc;
+  return rotated.map(p=>({...p,x:p.x*sc+ox,y:p.y*sc+oy}));
+}
+function drawPoly(pts,fill){
+  getSvg().appendChild(mkEl('polygon',{points:pts.map(p=>`${p.x},${p.y}`).join(' '),fill,stroke:BLACK,'stroke-width':'2','stroke-linejoin':'round'}));
+}
+function drawRightAngleSq(vx,vy,n1x,n1y,n2x,n2y){
+  const s=11,d1=norm(n1x-vx,n1y-vy),d2=norm(n2x-vx,n2y-vy);
+  const p1={x:vx+d1.x*s,y:vy+d1.y*s},p2={x:vx+(d1.x+d2.x)*s,y:vy+(d1.y+d2.y)*s},p3={x:vx+d2.x*s,y:vy+d2.y*s};
+  getSvg().appendChild(mkEl('polyline',{points:`${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`,fill:'none',stroke:BLACK,'stroke-width':'1.5'}));
+}
+function drawSideLabel(p1,p2,val,isUnknown,triCx,triCy){
+  if(val===null||val==='')return;
+  const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2,dx=p2.x-p1.x,dy=p2.y-p1.y;
+  const perp=norm(-dy,dx);
+  const dot=perp.x*(mx-triCx)+perp.y*(my-triCy);
+  const dir=dot>=0?1:-1;
+  getSvg().appendChild(mkEl('text',{x:mx+perp.x*dir*18,y:my+perp.y*dir*18,'font-size':'14',fill:isUnknown?RED:GREY,'font-weight':isUnknown?'700':'400','text-anchor':'middle','dominant-baseline':'central'},val));
+}
+function drawAngleArc(vx,vy,n1x,n1y,n2x,n2y,txt,isUnknown){
+  const color=isUnknown?RED:BLUE;
+  const arcR=24,t1=Math.atan2(n1y-vy,n1x-vx),t2=Math.atan2(n2y-vy,n2x-vx);
+  const cross=(n1x-vx)*(n2y-vy)-(n1y-vy)*(n2x-vx),sweep=cross>0?1:0;
+  getSvg().appendChild(mkEl('path',{d:`M ${vx+arcR*Math.cos(t1)} ${vy+arcR*Math.sin(t1)} A ${arcR} ${arcR} 0 0 ${sweep} ${vx+arcR*Math.cos(t2)} ${vy+arcR*Math.sin(t2)}`,fill:'none',stroke:color,'stroke-width':'1.5'}));
+  const d1=norm(n1x-vx,n1y-vy),d2=norm(n2x-vx,n2y-vy);
+  let bx=d1.x+d2.x,by=d1.y+d2.y;
+  if(Math.hypot(bx,by)<0.01){bx=-d1.y;by=d1.x;}
+  const nb=norm(bx,by);
+  getSvg().appendChild(mkEl('text',{x:vx+nb.x*(arcR+18),y:vy+nb.y*(arcR+18),'font-size':'12',fill:color,'font-weight':isUnknown?'700':'500','text-anchor':'middle','dominant-baseline':'central'},txt));
+}
+function drawVertexLabel(label,vx,vy,neighbours,gcx,gcy){
+  const dirs=neighbours.map(n=>norm(n.x-vx,n.y-vy));
+  let bx=dirs.reduce((s,d)=>s+d.x,0),by=dirs.reduce((s,d)=>s+d.y,0);
+  if(Math.hypot(bx,by)<0.01){bx=-dirs[0].y;by=dirs[0].x;}
+  const nb=norm(bx,by);
+  const out=(vx+nb.x-gcx)**2+(vy+nb.y-gcy)**2>(vx-nb.x-gcx)**2+(vy-nb.y-gcy)**2?1:-1;
+  getSvg().appendChild(mkEl('text',{x:vx+nb.x*out*16,y:vy+nb.y*out*16,'font-size':'13',fill:BLACK,'font-weight':'500','text-anchor':'middle','dominant-baseline':'central'},label));
+}
+
+// ── MODE 1 ──────────────────────────────────────────────────────────
+function generateMode1(){
+  const a=randF(3,20),b=randF(3,20),c=r4(Math.sqrt(a*a+b*b));
+  const angleA=parseFloat((Math.atan(a/b)*180/Math.PI).toFixed(1));
+  const type=['pythagoras','trig','invtrig'][rand(0,2)];
+  const unknown=['a','b','c'][rand(0,2)];
+  const knownSides=['a','b','c'].filter(k=>k!==unknown);
+  const shownSide=type==='trig'?knownSides[rand(0,1)]:null;
+  const invPair=type==='invtrig'?['a','b','c'][rand(0,2)]:null;
+  return{mode:1,type,a,b,c,unknown,angleA,shownSide,invPair,rotation:Math.random()*2*Math.PI,
+    hint:type==='pythagoras'?'Use the Pythagorean theorem: BC²+AB²=AC².'
+      :type==='trig'?`Which trig ratio connects angle BAC (${angleA.toFixed(1)}°) to the sides? sin=opp/hyp, cos=adj/hyp, tan=opp/adj.`
+      :'Which two sides are shown? Choose sin⁻¹, cos⁻¹ or tan⁻¹ based on their relationship to angle BAC.',
+    answer:type==='pythagoras'?buildPythAnswer(a,b,c,unknown)
+      :type==='trig'?buildTrigAnswer(a,b,c,angleA,unknown,shownSide)
+      :buildInvTrigAnswer(a,b,c,angleA,invPair),
+    question:type==='pythagoras'?buildPythQuestion(a,b,c,unknown)
+      :type==='trig'?buildTrigQuestion(a,b,c,angleA,unknown,shownSide)
+      :buildInvTrigQuestion(a,b,c,angleA,invPair)};
+}
+function buildPythQuestion(a,b,c,u){
+  const sl={a:'BC',b:'AB',c:'AC'},sd={a:'opposite',b:'adjacent',c:'hypotenuse'};
+  const given=Object.entries({a,b,c}).filter(([k])=>k!==u).map(([k,v])=>`${sl[k]}=${fmt(v)}`);
+  return`Find <strong>${sl[u]}</strong> (${sd[u]}) using Pythagoras. Given: ${given.join(', ')}.`;
+}
+function buildPythAnswer(a,b,c,u){
+  if(u==='c')return[`BC²+AB²=AC²`,`${fmt(a)}²+${fmt(b)}²=AC²`,`AC=√${r4(a*a+b*b)}=<strong>${fmt(c)}</strong>`];
+  if(u==='a')return[`BC²=AC²−AB²=${r4(c*c)}−${r4(b*b)}=${r4(c*c-b*b)}`,`BC=<strong>${fmt(a)}</strong>`];
+  return[`AB²=AC²−BC²=${r4(c*c)}−${r4(a*a)}=${r4(c*c-a*a)}`,`AB=<strong>${fmt(b)}</strong>`];
+}
+function buildTrigQuestion(a,b,c,angleA,u,shown){
+  const sl={a:'BC',b:'AB',c:'AC'},sd={a:'opposite',b:'adjacent',c:'hypotenuse'};
+  const sv={a:fmt(a),b:fmt(b),c:fmt(c)};
+  return`Given angle BAC=<strong>${angleA.toFixed(1)}°</strong> and ${sl[shown]}=${sv[shown]}, find <strong>${sl[u]}</strong> (${sd[u]}).`;
+}
+function buildTrigAnswer(a,b,c,angleA,u,shown){
+  const sinA=r4(Math.sin(rad(angleA))),cosA=r4(Math.cos(rad(angleA))),tanA=r4(Math.tan(rad(angleA)));
+  if(u==='c'){
+    if(shown==='a')return[`sin(BAC)=BC/AC → AC=BC/sin(BAC)`,`AC=${fmt(a)}/${sinA}=<strong>${fmt(r4(a/sinA))}</strong>`];
+    return[`cos(BAC)=AB/AC → AC=AB/cos(BAC)`,`AC=${fmt(b)}/${cosA}=<strong>${fmt(r4(b/cosA))}</strong>`];
+  }
+  if(u==='a'){
+    if(shown==='c')return[`sin(BAC)=BC/AC`,`BC=${fmt(c)}×${sinA}=<strong>${fmt(r4(c*sinA))}</strong>`];
+    return[`tan(BAC)=BC/AB`,`BC=${fmt(b)}×${tanA}=<strong>${fmt(r4(b*tanA))}</strong>`];
+  }
+  if(shown==='c')return[`cos(BAC)=AB/AC`,`AB=${fmt(c)}×${cosA}=<strong>${fmt(r4(c*cosA))}</strong>`];
+  return[`tan(BAC)=BC/AB → AB=BC/tan(BAC)`,`AB=${fmt(a)}/${tanA}=<strong>${fmt(r4(a/tanA))}</strong>`];
+}
+function buildInvTrigQuestion(a,b,c,angleA,hidden){
+  const sl={a:'BC',b:'AB',c:'AC'};
+  const shown=Object.entries({a,b,c}).filter(([k])=>k!==hidden).map(([k,v])=>`${sl[k]}=${fmt(v)}`);
+  return`Given ${shown.join(', ')}, find <strong>angle BAC</strong>.`;
+}
+function buildInvTrigAnswer(a,b,c,angleA,hidden){
+  const ang=`<strong>${angleA.toFixed(1)}°</strong>`;
+  if(hidden==='c'){
+    const tanV=r4(a/b);
+    return[`tan(BAC)=BC/AB=opposite/adjacent`,`tan(BAC)=${fmt(a)}/${fmt(b)}=${tanV}`,`angle BAC=tan⁻¹(${tanV})=${ang}`];
+  }else if(hidden==='a'){
+    const cosV=r4(b/c);
+    return[`cos(BAC)=AB/AC=adjacent/hypotenuse`,`cos(BAC)=${fmt(b)}/${fmt(c)}=${cosV}`,`angle BAC=cos⁻¹(${cosV})=${ang}`];
+  }else{
+    const sinV=r4(a/c);
+    return[`sin(BAC)=BC/AC=opposite/hypotenuse`,`sin(BAC)=${fmt(a)}/${fmt(c)}=${sinV}`,`angle BAC=sin⁻¹(${sinV})=${ang}`];
+  }
+}
+function drawMode1(q){
+  getSvg().innerHTML='';
+  const pts=fitAndRotate([{x:-130,y:90,n:'B'},{x:130,y:90,n:'A'},{x:-130,y:-90,n:'C'}],q.rotation,46);
+  const pB=pts.find(p=>p.n==='B'),pA=pts.find(p=>p.n==='A'),pC=pts.find(p=>p.n==='C');
+  const gcx=(pA.x+pB.x+pC.x)/3,gcy=(pA.y+pB.y+pC.y)/3;
+  drawPoly([pA,pB,pC],'#fff');
+  drawRightAngleSq(pB.x,pB.y,pA.x,pA.y,pC.x,pC.y);
+  const sides=[{key:'a',p1:pC,p2:pB},{key:'b',p1:pA,p2:pB},{key:'c',p1:pC,p2:pA}];
+  if(q.type==='pythagoras'){
+    sides.forEach(({key,p1,p2})=>drawSideLabel(p1,p2,key===q.unknown?'x':fmt(q[key]),key===q.unknown,gcx,gcy));
+  }else if(q.type==='trig'){
+    drawAngleArc(pA.x,pA.y,pB.x,pB.y,pC.x,pC.y,`${q.angleA.toFixed(1)}°`,false);
+    sides.forEach(({key,p1,p2})=>{
+      if(key===q.unknown)drawSideLabel(p1,p2,'x',true,gcx,gcy);
+      else if(key===q.shownSide)drawSideLabel(p1,p2,fmt(q[key]),false,gcx,gcy);
+    });
+  }else{
+    drawAngleArc(pA.x,pA.y,pB.x,pB.y,pC.x,pC.y,'x',true);
+    sides.forEach(({key,p1,p2})=>{
+      if(key!==q.invPair)drawSideLabel(p1,p2,fmt(q[key]),false,gcx,gcy);
+    });
+  }
+  [{label:'A',p:pA,nb:[pB,pC]},{label:'B',p:pB,nb:[pA,pC]},{label:'C',p:pC,nb:[pA,pB]}]
+    .forEach(({label,p,nb})=>drawVertexLabel(label,p.x,p.y,nb,gcx,gcy));
+}
+
+// ── MODE 2 ──────────────────────────────────────────────────────────
+function generateMode2(){
+  const a1=randF(3,15),b1=randF(3,15),c1=r4(Math.sqrt(a1*a1+b1*b1));
+  const a2=randF(3,15),b2=b1,c2=r4(Math.sqrt(a2*a2+b2*b2));
+  const angleA1=parseFloat((Math.atan(b1/a1)*180/Math.PI).toFixed(1));
+  const angleA2=parseFloat((Math.atan(b2/a2)*180/Math.PI).toFixed(1));
+  const tri1shown=Math.random()<0.5?'a1':'c1';
+  const step2type=Math.random()<0.5?'findSide':'findAngle';
+  const step2unknown=step2type==='findSide'?(Math.random()<0.5?'a2':'c2'):'angleA2';
+  const step2shownSide=step2type==='findAngle'?(Math.random()<0.5?'a2':'c2'):null;
+  return{mode:2,a1,b1,c1,angleA1,a2,b2,c2,angleA2,tri1shown,step2type,step2unknown,step2shownSide,
+    rotation:Math.random()*2*Math.PI,
+    question:`<strong>Step 1:</strong> In triangle ABC, angle BAC=<strong>${angleA1.toFixed(1)}°</strong>.<br>Find the shared side BC, then find the missing value in triangle DBC (marked x).`,
+    hint:`Use the given angle and known side in triangle ABC to find BC. Then use BC in triangle DBC.`,
+    answer:buildMode2Answer(a1,b1,c1,angleA1,a2,b2,c2,angleA2,step2type,step2unknown,tri1shown,step2shownSide)};
+}
+function buildMode2Answer(a1,b1,c1,angleA1,a2,b2,c2,angleA2,step2type,step2unknown,tri1shown,step2shownSide){
+  const shared=fmt(b1);
+  const step1=tri1shown==='a1'?[
+    `<strong>Step 1:</strong> Find BC`,`tan(BAC)=BC/AB → BC=AB×tan(BAC)`,
+    `BC=${fmt(a1)}×${r4(Math.tan(rad(angleA1)))}=<strong>${shared}</strong>`
+  ]:[
+    `<strong>Step 1:</strong> Find BC`,`sin(BAC)=BC/AC`,
+    `BC=${fmt(c1)}×${r4(Math.sin(rad(angleA1)))}=<strong>${shared}</strong>`
+  ];
+  let step2;
+  if(step2type==='findSide'){
+    const ang2=`${angleA2.toFixed(1)}°`;
+    if(step2unknown==='a2'){
+      const tanA2=r4(Math.tan(rad(angleA2)));
+      step2=[`<strong>Step 2:</strong> In △DBC, BC=${shared}, angle BDC=${ang2}`,`tan(BDC)=BC/DB → DB=BC/tan(BDC)`,`DB=${shared}/${tanA2}=<strong>${r4(b1/tanA2)}</strong>`];
+    }else{
+      const sinA2=r4(Math.sin(rad(angleA2)));
+      step2=[`<strong>Step 2:</strong> In △DBC, BC=${shared}, angle BDC=${ang2}`,`sin(BDC)=BC/DC → DC=BC/sin(BDC)`,`DC=${shared}/${sinA2}=<strong>${r4(b1/sinA2)}</strong>`];
+    }
+  }else{
+    const givenVal=step2shownSide==='a2'?fmt(a2):fmt(c2);
+    const givenLabel=step2shownSide==='a2'?'DB':'DC';
+    const ratio=step2shownSide==='a2'?`tan(BDC)=BC/DB`:`sin(BDC)=BC/DC`;
+    const calc=step2shownSide==='a2'
+      ?`angle BDC=tan⁻¹(${shared}/${givenVal})=<strong>${r4(angleA2)}°</strong>`
+      :`angle BDC=sin⁻¹(${shared}/${givenVal})=<strong>${r4(angleA2)}°</strong>`;
+    step2=[`<strong>Step 2:</strong> In △DBC, BC=${shared}, ${givenLabel}=${givenVal}`,ratio,calc];
+  }
+  return[...step1,'---',...step2];
+}
+function drawMode2(q){
+  getSvg().innerHTML='';
+  const h=110,w1=Math.round(h*q.a1/q.b1),w2=Math.round(h*q.a2/q.b2);
+  const pts=fitAndRotate([{x:0,y:0,n:'B'},{x:0,y:-2*h,n:'C'},{x:w1,y:0,n:'A'},{x:-w2,y:0,n:'D'}],q.rotation,46);
+  const pB=pts.find(p=>p.n==='B'),pC=pts.find(p=>p.n==='C'),pA=pts.find(p=>p.n==='A'),pD=pts.find(p=>p.n==='D');
+  const gc1x=(pA.x+pB.x+pC.x)/3,gc1y=(pA.y+pB.y+pC.y)/3;
+  const gc2x=(pD.x+pB.x+pC.x)/3,gc2y=(pD.y+pB.y+pC.y)/3;
+  const gcx=(pA.x+pB.x+pC.x+pD.x)/4,gcy=(pA.y+pB.y+pC.y+pD.y)/4;
+  drawPoly([pD,pB,pC],'#eef3ff');
+  drawPoly([pA,pB,pC],'#fff');
+  drawRightAngleSq(pB.x,pB.y,pA.x,pA.y,pC.x,pC.y);
+  drawRightAngleSq(pB.x,pB.y,pD.x,pD.y,pC.x,pC.y);
+  drawAngleArc(pA.x,pA.y,pB.x,pB.y,pC.x,pC.y,`${q.angleA1.toFixed(1)}°`,false);
+  if(q.tri1shown==='a1')drawSideLabel(pA,pB,fmt(q.a1),false,gc1x,gc1y);
+  else drawSideLabel(pA,pC,fmt(q.c1),false,gc1x,gc1y);
+  if(q.step2type==='findSide'){
+    drawAngleArc(pD.x,pD.y,pB.x,pB.y,pC.x,pC.y,`${q.angleA2.toFixed(1)}°`,false);
+    drawSideLabel(pD,pB,q.step2unknown==='a2'?'x':null,q.step2unknown==='a2',gc2x,gc2y);
+    drawSideLabel(pD,pC,q.step2unknown==='c2'?'x':null,q.step2unknown==='c2',gc2x,gc2y);
+  }else{
+    drawSideLabel(pD,pB,q.step2shownSide==='a2'?fmt(q.a2):null,false,gc2x,gc2y);
+    drawSideLabel(pD,pC,q.step2shownSide==='c2'?fmt(q.c2):null,false,gc2x,gc2y);
+    drawAngleArc(pD.x,pD.y,pB.x,pB.y,pC.x,pC.y,'x',true);
+  }
+  drawVertexLabel('A',pA.x,pA.y,[pB,pC],gcx,gcy);
+  drawVertexLabel('B',pB.x,pB.y,[pA,pC,pD],gcx,gcy);
+  drawVertexLabel('C',pC.x,pC.y,[pA,pB,pD],gcx,gcy);
+  drawVertexLabel('D',pD.x,pD.y,[pB,pC],gcx,gcy);
+}
+
+// ── MODE 3 ──────────────────────────────────────────────────────────
+function generateMode3(){
+  const a1=randF(3,15),b1=randF(3,15),c1=r4(Math.sqrt(a1*a1+b1*b1));
+  const angleA1=parseFloat((Math.atan(a1/b1)*180/Math.PI).toFixed(1));
+  const a2=randF(3,15);
+  const c2=r4(Math.sqrt(c1*c1+a2*a2));
+  const angleA2=parseFloat((Math.atan(c1/a2)*180/Math.PI).toFixed(1));
+  const tri1mode=['angleAB','angleBC','sides'][rand(0,2)];
+  const step2type=Math.random()<0.5?'findSide':'findAngle';
+  const step2unknown=step2type==='findSide'?(Math.random()<0.5?'a2':'c2'):'angleA2';
+  const step2shownSide=step2type==='findAngle'?(Math.random()<0.5?'a2':'c2'):null;
+  return{mode:3,a1,b1,c1,angleA1,a2,c2,angleA2,tri1mode,step2type,step2unknown,step2shownSide,
+    rotation:Math.random()*2*Math.PI,
+    question:buildMode3Question(a1,b1,c1,angleA1,tri1mode),
+    hint:tri1mode==='sides'?'Use Pythagoras on △ABC to find AC.':`Use trig on △ABC with the given angle and side to find AC.`,
+    answer:buildMode3Answer(a1,b1,c1,angleA1,a2,c2,angleA2,tri1mode,step2type,step2unknown,step2shownSide)};
+}
+function buildMode3Question(a1,b1,c1,angleA1,tri1mode){
+  let given;
+  if(tri1mode==='angleAB')given=`angle BAC=<strong>${angleA1.toFixed(1)}°</strong>, AB=${fmt(b1)}`;
+  else if(tri1mode==='angleBC')given=`angle BAC=<strong>${angleA1.toFixed(1)}°</strong>, BC=${fmt(a1)}`;
+  else given=`AB=${fmt(b1)}, BC=${fmt(a1)}`;
+  return`<strong>Step 1:</strong> In △ABC, ${given}.<br>Find shared side AC, then find the missing value in △ACD (marked x).`;
+}
+function buildMode3Answer(a1,b1,c1,angleA1,a2,c2,angleA2,tri1mode,step2type,step2unknown,step2shownSide){
+  const shared=fmt(c1);
+  let step1;
+  if(tri1mode==='sides'){
+    step1=[`<strong>Step 1:</strong> Find AC`,`AC=√(AB²+BC²)=√(${r4(b1*b1)}+${r4(a1*a1)})=<strong>${shared}</strong>`];
+  }else if(tri1mode==='angleAB'){
+    const cosA=r4(Math.cos(rad(angleA1)));
+    step1=[`<strong>Step 1:</strong> Find AC`,`cos(BAC)=AB/AC → AC=AB/cos(BAC)`,`AC=${fmt(b1)}/${cosA}=<strong>${shared}</strong>`];
+  }else{
+    const sinA=r4(Math.sin(rad(angleA1)));
+    step1=[`<strong>Step 1:</strong> Find AC`,`sin(BAC)=BC/AC → AC=BC/sin(BAC)`,`AC=${fmt(a1)}/${sinA}=<strong>${shared}</strong>`];
+  }
+  let step2;
+  if(step2type==='findSide'){
+    const ang2=`${angleA2.toFixed(1)}°`;
+    if(step2unknown==='a2'){
+      const tanA2=r4(Math.tan(rad(angleA2)));
+      step2=[`<strong>Step 2:</strong> In △ACD, AC=${shared}, angle ADC=${ang2}`,`tan(ADC)=AC/AD → AD=AC/tan(ADC)`,`AD=${shared}/${tanA2}=<strong>${r4(c1/tanA2)}</strong>`];
+    }else{
+      const sinA2=r4(Math.sin(rad(angleA2)));
+      step2=[`<strong>Step 2:</strong> In △ACD, AC=${shared}, angle ADC=${ang2}`,`sin(ADC)=AC/DC → DC=AC/sin(ADC)`,`DC=${shared}/${sinA2}=<strong>${r4(c1/sinA2)}</strong>`];
+    }
+  }else{
+    if(step2shownSide==='a2'){
+      step2=[`<strong>Step 2:</strong> In △ACD, AC=${shared} (from Step 1), CD=${fmt(a2)}`,
+        `sin(ADC)=AC/DC`,`angle ADC=sin⁻¹(${shared}/${fmt(c2)})=<strong>${r4(angleA2)}°</strong>`];
+    }else{
+      step2=[`<strong>Step 2:</strong> In △ACD, AC=${shared} (from Step 1), AD=${fmt(a2)}`,
+        `tan(ADC)=AC/AD`,`angle ADC=tan⁻¹(${shared}/${fmt(a2)})=<strong>${r4(angleA2)}°</strong>`];
+    }
+  }
+  return[...step1,'---',...step2];
+}
+function drawMode3(q){
+  getSvg().innerHTML='';
+  const sc1=80/Math.max(q.a1,q.b1,q.c1);
+  const bx0=0,by0=0,ax0=q.b1*sc1,ay0=0,cx0=0,cy0=-q.a1*sc1;
+  const ACvx=cx0-ax0,ACvy=cy0-ay0,ACmag=Math.hypot(ACvx,ACvy);
+  const uACx=ACvx/ACmag,uACy=ACvy/ACmag;
+  const perpACx=-uACy,perpACy=uACx;
+  const d1x=ax0+q.a2*sc1*perpACx,d1y=ay0+q.a2*sc1*perpACy;
+  const d2x=ax0-q.a2*sc1*perpACx,d2y=ay0-q.a2*sc1*perpACy;
+  const crossB=(ACvx)*(by0-ay0)-(ACvy)*(bx0-ax0);
+  const cross1=(ACvx)*(d1y-ay0)-(ACvy)*(d1x-ax0);
+  const dx0=Math.sign(cross1)!==Math.sign(crossB)?d1x:d2x;
+  const dy0=Math.sign(cross1)!==Math.sign(crossB)?d1y:d2y;
+  const pts=fitAndRotate([{x:bx0,y:by0,n:'B'},{x:ax0,y:ay0,n:'A'},{x:cx0,y:cy0,n:'C'},{x:dx0,y:dy0,n:'D'}],q.rotation,46);
+  const pB=pts.find(p=>p.n==='B'),pA=pts.find(p=>p.n==='A'),pC=pts.find(p=>p.n==='C'),pD=pts.find(p=>p.n==='D');
+  const gc1x=(pA.x+pB.x+pC.x)/3,gc1y=(pA.y+pB.y+pC.y)/3;
+  const gc2x=(pA.x+pC.x+pD.x)/3,gc2y=(pA.y+pC.y+pD.y)/3;
+  const gcx=(pA.x+pB.x+pC.x+pD.x)/4,gcy=(pA.y+pB.y+pC.y+pD.y)/4;
+  drawPoly([pA,pC,pD],'#eef3ff');
+  drawPoly([pA,pB,pC],'#fff');
+  drawRightAngleSq(pB.x,pB.y,pA.x,pA.y,pC.x,pC.y);
+  drawRightAngleSq(pA.x,pA.y,pC.x,pC.y,pD.x,pD.y);
+  if(q.tri1mode==='sides'){
+    drawSideLabel(pA,pB,fmt(q.b1),false,gc1x,gc1y);
+    drawSideLabel(pB,pC,fmt(q.a1),false,gc1x,gc1y);
+  }else if(q.tri1mode==='angleAB'){
+    drawAngleArc(pA.x,pA.y,pB.x,pB.y,pC.x,pC.y,`${q.angleA1.toFixed(1)}°`,false);
+    drawSideLabel(pA,pB,fmt(q.b1),false,gc1x,gc1y);
+  }else{
+    drawAngleArc(pA.x,pA.y,pB.x,pB.y,pC.x,pC.y,`${q.angleA1.toFixed(1)}°`,false);
+    drawSideLabel(pB,pC,fmt(q.a1),false,gc1x,gc1y);
+  }
+  if(q.step2type==='findSide'){
+    drawAngleArc(pD.x,pD.y,pA.x,pA.y,pC.x,pC.y,`${q.angleA2.toFixed(1)}°`,false);
+    drawSideLabel(pC,pD,q.step2unknown==='a2'?'x':null,q.step2unknown==='a2',gc2x,gc2y);
+    drawSideLabel(pA,pD,q.step2unknown==='c2'?'x':null,q.step2unknown==='c2',gc2x,gc2y);
+  }else{
+    drawSideLabel(pC,pD,q.step2shownSide==='a2'?fmt(q.a2):null,false,gc2x,gc2y);
+    drawSideLabel(pA,pD,q.step2shownSide==='c2'?fmt(q.c2):null,false,gc2x,gc2y);
+    drawAngleArc(pD.x,pD.y,pA.x,pA.y,pC.x,pC.y,'x',true);
+  }
+  drawVertexLabel('A',pA.x,pA.y,[pB,pC,pD],gcx,gcy);
+  drawVertexLabel('B',pB.x,pB.y,[pA,pC],gcx,gcy);
+  drawVertexLabel('C',pC.x,pC.y,[pA,pB,pD],gcx,gcy);
+  drawVertexLabel('D',pD.x,pD.y,[pA,pC],gcx,gcy);
+}
+
+// ── WORKSHEET ───────────────────────────────────────────────────────
+function createWorksheet(){
+  const modes=[...activeModes];
+  const qs=[];
+  modes.forEach(m=>qs.push(m===1?generateMode1():m===2?generateMode2():generateMode3()));
+  while(qs.length<4){
+    const m=modes[Math.floor(Math.random()*modes.length)];
+    qs.push(m===1?generateMode1():m===2?generateMode2():generateMode3());
+  }
+  for(let i=qs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[qs[i],qs[j]]=[qs[j],qs[i]];}
+  openBlob(buildSheetHTML(qs,false));
+  openBlob(buildSheetHTML(qs,true));
+}
+function openBlob(html){
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.target='_blank';a.rel='noopener';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+function buildSheetHTML(qs,isAnswers){
+  const title=isAnswers?'Answer Sheet':'Worksheet';
+  const modeNames={1:'Basic',2:'Paired Leg',3:'Paired Leg-Hyp'};
+  const questionsHTML=qs.map((q,i)=>buildQuestionHTML(q,i+1,isAnswers,modeNames)).join('');
+  return`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Trigonometry ${title}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,sans-serif;background:#fff;color:#111;width:190mm;margin:0 auto;padding:10mm 0;}
+h1{font-size:15px;font-weight:700;margin-bottom:2px;}
+.subtitle{font-size:11px;color:#666;margin-bottom:12px;}
+.question{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;}
+.q-num{font-size:14px;font-weight:700;min-width:20px;padding-top:2px;}
+.q-body{flex:1;min-width:0;}
+.q-type{font-size:10px;color:#888;margin-bottom:3px;}
+.q-text{font-size:11px;line-height:1.5;margin-bottom:6px;}
+.answer-box{border:0.5px solid #bbb;border-radius:4px;padding:6px 8px;font-size:11px;line-height:1.7;background:#fafafa;}
+.answer-step{display:block;}
+.workbox{border:0.5px solid #bbb;border-radius:4px;height:40mm;margin-top:4px;}
+hr.divider{border:none;border-top:0.5px solid #ddd;margin:12px 0;}
+@media print{html,body{width:210mm;margin:0;padding:10mm;}@page{size:A4 portrait;margin:10mm;}}
+</style></head><body>
+<h1>Trigonometry ${title}</h1>
+<div class="subtitle">${isAnswers?'Worked solutions':'Show your working clearly for each question.'}</div>
+${questionsHTML}
+</body></html>`;
+}
+function buildQuestionHTML(q,num,isAnswers,modeNames){
+  const svgStr=buildSVGString(q,160,140);
+  const ans=q.answer;
+  const bodyContent=isAnswers&&Array.isArray(ans)
+    ?`<div class="answer-box">${ans.map(s=>s==='---'
+        ?'<hr style="margin:3px 0;border:none;border-top:0.5px solid #ccc">'
+        :`<span class="answer-step">${s}</span>`).join('')}</div>`
+    :`<div class="workbox"></div>`;
+  return`<div class="question">
+  <div class="q-num">${num}.</div>
+  <div style="flex-shrink:0">${svgStr}</div>
+  <div class="q-body">
+    <div class="q-type">${modeNames[q.mode]}</div>
+    <div class="q-text">${q.question}</div>
+    ${bodyContent}
+  </div>
+</div>${num<4?'<hr class="divider">':''}`;
+}
+function buildSVGString(q,w,h){
+  const tmp=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  tmp.setAttribute('viewBox',`0 0 ${VW} ${VH}`);
+  tmp.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  tmp.style.cssText='position:absolute;left:-9999px;top:-9999px;';
+  document.body.appendChild(tmp);
+  window._svgTarget=tmp;
+  if(q.mode===1)drawMode1(q);
+  else if(q.mode===2)drawMode2(q);
+  else drawMode3(q);
+  window._svgTarget=null;
+  const inner=tmp.innerHTML;
+  document.body.removeChild(tmp);
+  return`<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${inner}</svg>`;
+}
+
+// ── UI ──────────────────────────────────────────────────────────────
+function setMode(m){
+  if(activeModes.has(m)&&activeModes.size>1)activeModes.delete(m);
+  else activeModes.add(m);
+  [1,2,3].forEach(i=>document.getElementById(`btn-mode${i}`).classList.toggle('active',activeModes.has(i)));
+  newQuestion();
+}
+function newQuestion(){
+  const modes=[...activeModes];
+  currentMode=modes[Math.floor(Math.random()*modes.length)];
+  current=currentMode===1?generateMode1():currentMode===2?generateMode2():generateMode3();
+  document.getElementById('question-text').innerHTML=current.question;
+  document.getElementById('hint-box').style.display='none';
+  const ab=document.getElementById('answer-box');
+  ab.style.display='none';ab.classList.remove('visible');
+  if(currentMode===1)drawMode1(current);
+  else if(currentMode===2)drawMode2(current);
+  else drawMode3(current);
+}
+function showHint(){
+  const h=document.getElementById('hint-box');
+  h.textContent=current.hint;h.style.display='block';
+}
+function showAnswer(){
+  const ab=document.getElementById('answer-box');
+  ab.style.display='block';
+  ab.innerHTML='<strong style="display:block;margin-bottom:6px">Worked solution:</strong>'+
+    current.answer.map(s=>s==='---'?'<hr style="margin:6px 0;border:none;border-top:0.5px solid #555">':
+    `<div class="ans-step">${s}</div>`).join('');
+  requestAnimationFrame(()=>ab.classList.add('visible'));
+}
+window.addEventListener('resize',()=>{
+  if(!current.mode)return;
+  if(currentMode===1)drawMode1(current);
+  else if(currentMode===2)drawMode2(current);
+  else drawMode3(current);
+});
+newQuestion();
+</script>
+</body>
+</html>
