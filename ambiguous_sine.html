@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ambiguous Case</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #1a1f35;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 { font-size: 1.1rem; color: #94a3b8; margin-bottom: 2px; letter-spacing: 0.05em; }
+  h2 { font-size: 1.5rem; color: #f1f5f9; margin-bottom: 12px; }
+  canvas { background: #222840; border-radius: 12px; border: 1px solid #2e3558; display: block; }
+  .row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 870px; margin-top: 12px; }
+  .row label { font-size: 0.95rem; color: #94a3b8; white-space: nowrap; min-width: 80px; }
+  input[type=range] { flex: 1; accent-color: #6366f1; cursor: pointer; }
+  .val-lbl { font-size: 1rem; font-weight: 700; color: #a5b4fc; min-width: 44px; text-align: right; }
+  .side-inputs { display: flex; gap: 20px; width: 100%; max-width: 870px; margin-top: 10px; align-items: center; }
+  .side-group { display: flex; align-items: center; gap: 8px; }
+  .side-group label { font-size: 0.95rem; color: #94a3b8; }
+  .side-group input[type=number] {
+    width: 64px; padding: 4px 8px;
+    background: #1e293b; border: 1px solid #475569;
+    border-radius: 6px; color: #f1f5f9; font-size: 1rem;
+    text-align: center;
+  }
+  .scale-btn {
+    margin-left: auto;
+    padding: 6px 16px;
+    background: #4f46e5;
+    border: none; border-radius: 7px;
+    color: #fff; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .scale-btn:hover { background: #6366f1; }
+  .info {
+    margin-top: 10px; width: 100%; max-width: 870px;
+    background: #1e293b; border-radius: 10px; border: 1px solid #334155;
+    padding: 12px 16px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center;
+  }
+  .info-item .lbl { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; }
+  .info-item .val { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+  .blue   { color: #60a5fa; }
+  .orange { color: #fb923c; }
+  .status-two  { color: #34d399; }
+  .status-one  { color: #fbbf24; }
+  .status-none { color: #f87171; }
+  .legend { margin-top: 8px; display: flex; gap: 18px; font-size: 0.82rem; color: #94a3b8; flex-wrap: wrap; justify-content: center; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<h1>The Sine Rule</h1>
+<h2>Ambiguous Case (SSA)</h2>
+<canvas id="c" width="870" height="480"></canvas>
+
+<div class="row">
+  <label>Angle A =</label>
+  <input type="range" id="slider" min="1" max="89" value="35">
+  <span class="val-lbl" id="angleLbl">35°</span>
+  <button class="scale-btn" id="stepBtn">Step: 1°</button>
+</div>
+
+<div class="side-inputs">
+  <div class="side-group">
+    <label>a (opposite A):</label>
+    <input type="number" id="inputA" value="7" min="1" max="30" step="0.5">
+  </div>
+  <div class="side-group">
+    <label>b (adj to A):</label>
+    <input type="number" id="inputB" value="10" min="1" max="30" step="0.5">
+  </div>
+  <button class="scale-btn" id="scaleBtn">⤢ Scale to fit</button>
+</div>
+
+<div class="info">
+  <div class="info-item">
+    <div class="lbl">Angle B₁ (blue)</div>
+    <div class="val blue" id="b1lbl">—</div>
+  </div>
+  <div class="info-item">
+    <div class="lbl">Angle B₂ (orange)</div>
+    <div class="val orange" id="b2lbl">—</div>
+  </div>
+  <div class="info-item">
+    <div class="lbl">Case</div>
+    <div class="val" id="status">—</div>
+  </div>
+</div>
+
+<div class="legend">
+  <span><div class="dot" style="background:#b07ef5"></div> Shared sides</span>
+  <span><div class="dot" style="background:#4db8f0"></div> Triangle 1 (B₁)</span>
+  <span><div class="dot" style="background:#f0933a"></div> Triangle 2 (B₂)</span>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const slider = document.getElementById('slider');
+const angleLbl = document.getElementById('angleLbl');
+const b1El = document.getElementById('b1lbl');
+const b2El = document.getElementById('b2lbl');
+const statusEl = document.getElementById('status');
+const inputA = document.getElementById('inputA');
+const inputB = document.getElementById('inputB');
+const scaleBtn = document.getElementById('scaleBtn');
+
+const W = canvas.width, H = canvas.height;
+const PAD = 70;
+
+// Fixed scale in pixels-per-unit; Scale to Fit button overrides this
+let fixedScale = 30;
+
+function deg(r) { return r * 180 / Math.PI; }
+function rad(d) { return d * Math.PI / 180; }
+
+function angleBetween(ox, oy, ax, ay, bx, by) {
+  const vax = ax-ox, vay = ay-oy, vbx = bx-ox, vby = by-oy;
+  const cos = (vax*vbx+vay*vby)/(Math.hypot(vax,vay)*Math.hypot(vbx,vby));
+  return deg(Math.acos(Math.max(-1,Math.min(1,cos))));
+}
+
+// Label along a line, offset perpendicular by `offset` pixels
+// side: 1 = left of direction A->B, -1 = right
+function midLabel(x1, y1, x2, y2, txt, color, offset) {
+  const mx = (x1+x2)/2, my = (y1+y2)/2;
+  const nx = -(y2-y1), ny = x2-x1;
+  const nl = Math.hypot(nx,ny) || 1;
+  const ox = nx/nl * offset, oy = ny/nl * offset;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(txt, mx+ox, my+oy);
+  ctx.restore();
+}
+
+// Like midLabel but offsets toward a reference point (e.g. the opposite vertex)
+function midLabelToward(x1, y1, x2, y2, rx, ry, txt, color, offset) {
+  const mx = (x1+x2)/2, my = (y1+y2)/2;
+  // perpendicular normals
+  const nx = -(y2-y1), ny = x2-x1;
+  const nl = Math.hypot(nx,ny) || 1;
+  // pick the normal that points toward reference point (rx,ry)
+  const dot = nx*(rx-mx) + ny*(ry-my);
+  const sign = dot >= 0 ? 1 : -1;
+  const ox = nx/nl * offset * sign, oy = ny/nl * offset * sign;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(txt, mx+ox, my+oy);
+  ctx.restore();
+}
+
+// Draw an angle arc and label at vertex (ox,oy), between rays to (ax,ay) and (bx,by)
+function drawAngleLabel(ox, oy, ax, ay, bx, by, txt, color, arcR) {
+  const a1 = Math.atan2(ay - oy, ax - ox);
+  const a2 = Math.atan2(by - oy, bx - ox);
+
+  // Always sweep the shorter arc
+  let diff = a2 - a1;
+  while (diff > Math.PI)  diff -= 2 * Math.PI;
+  while (diff < -Math.PI) diff += 2 * Math.PI;
+
+  const start = a1;
+  const end   = a1 + diff;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  if (diff >= 0) ctx.arc(ox, oy, arcR, start, end);
+  else           ctx.arc(ox, oy, arcR, end, start);
+  ctx.stroke();
+
+  // Label at midpoint angle, pushed outward
+  const mid = start + diff / 2;
+  const lx = ox + (arcR + 16) * Math.cos(mid);
+  const ly = oy + (arcR + 16) * Math.sin(mid);
+  ctx.fillStyle = color;
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(txt, lx, ly);
+  ctx.restore();
+}
+
+// Compute geometry in unit space for current settings
+function computeGeometry(scale) {
+  const angleA_deg = +slider.value;
+  const a = parseFloat(inputA.value) || 7;
+  const b = parseFloat(inputB.value) || 10;
+  const A = rad(angleA_deg);
+
+  const dx = Math.cos(A), dy = -Math.sin(A);
+
+  // Intersect ray from origin with circle of radius a centred at (b, 0)
+  const ex = -b;
+  const qb2 = ex * dx; // ey=0
+  const qc = ex*ex - a*a;
+  const disc = qb2*qb2 - qc;
+
+  let B1u = null, B2u = null;
+  if (disc >= 0) {
+    const t1 = -qb2 + Math.sqrt(disc);
+    const t2 = -qb2 - Math.sqrt(disc);
+    if (t1 > 1e-6) B1u = { x: t1*dx, y: t1*dy };
+    if (t2 > 1e-6 && Math.abs(t2-t1) > 1e-4) B2u = { x: t2*dx, y: t2*dy };
+  }
+
+  return { angleA_deg, a, b, A, dx, dy, B1u, B2u };
+}
+
+function bestFitScale() {
+  const { b, dx, dy, B1u, B2u } = computeGeometry(1);
+  const pts = [{ x:0, y:0 }, { x:b, y:0 }];
+  if (B1u) pts.push(B1u);
+  if (B2u) pts.push(B2u);
+
+  const minX = Math.min(...pts.map(p=>p.x));
+  const maxX = Math.max(...pts.map(p=>p.x));
+  const minY = Math.min(...pts.map(p=>p.y));
+  const maxY = Math.max(...pts.map(p=>p.y));
+
+  const availW = canvas.width - 2*PAD;
+  const availH = canvas.height - 2*PAD;
+  const sx = availW / ((maxX - minX) || 1);
+  const sy = availH / ((maxY - minY) || 1);
+  return Math.min(sx, sy);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  const { angleA_deg, a, b, A, dx, dy, B1u, B2u } = computeGeometry(fixedScale);
+  const scale = fixedScale;
+
+  // Origin anchor: place A so triangle sits nicely centred-left
+  const Ax = PAD + 20, Ay = H - PAD;
+
+  function tx(x) { return Ax + x * scale; }
+  function ty(y) { return Ay + y * scale; } // dy already negated in geometry
+
+  const Cx = tx(b), Cy = Ay;
+  const B1 = B1u ? { x: tx(B1u.x), y: ty(B1u.y) } : null;
+  const B2 = B2u ? { x: tx(B2u.x), y: ty(B2u.y) } : null;
+
+  // Triangle 2 (orange) — behind
+  if (B2) {
+    ctx.save();
+    ctx.strokeStyle = '#f0933a';
+    ctx.fillStyle = 'rgba(240,147,58,0.07)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(Ax,Ay); ctx.lineTo(B2.x,B2.y); ctx.lineTo(Cx,Cy);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    // Label AB2 length — offset away from C (exterior side)
+    const ab2len = Math.hypot(B2u.x, B2u.y);
+    midLabelToward(Ax, Ay, B2.x, B2.y, Cx, Cy, ab2len.toFixed(1), '#f0933a', -28);
+
+    // Label a= ABOVE the B2C line
+    // "above" means on the side away from A (origin).
+    // Determine which perpendicular side is "above" by checking dot with outward normal
+    const lx = Cx - B2.x, ly = Cy - B2.y;   // line direction B2->C
+    const nx = -ly, ny = lx;                  // normal (rotated 90°)
+    // vector from midpoint to A
+    const mx2 = (B2.x+Cx)/2, my2 = (B2.y+Cy)/2;
+    const toAx = Ax - mx2, toAy = Ay - my2;
+    const dot = nx*toAx + ny*toAy;
+    // We want offset AWAY from A, so sign opposite to dot
+    const sign = dot > 0 ? -1 : 1;
+    const nl = Math.hypot(nx,ny) || 1;
+    const offX = nx/nl * 16 * sign, offY = ny/nl * 16 * sign;
+    ctx.save();
+    ctx.fillStyle = '#f0933a';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('a = '+a.toFixed(1), mx2 + offX, my2 + offY);
+    ctx.restore();
+
+    // Arc at B₂ between rays to A and C
+    const angleB2val = 180 - angleBetween(B1.x, B1.y, Ax, Ay, Cx, Cy);
+    const arcA = Math.atan2(Ay - B2.y, Ax - B2.x);
+    const arcC = Math.atan2(Cy - B2.y, Cx - B2.x);
+    let arcDiff = arcC - arcA;
+    while (arcDiff > Math.PI)  arcDiff -= 2*Math.PI;
+    while (arcDiff < -Math.PI) arcDiff += 2*Math.PI;
+    ctx.save();
+    ctx.strokeStyle = '#f0933a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (arcDiff >= 0) ctx.arc(B2.x, B2.y, 22, arcA, arcA + arcDiff);
+    else              ctx.arc(B2.x, B2.y, 22, arcA + arcDiff, arcA);
+    ctx.stroke();
+    // Label to the left of B₂, clear of the arc
+    ctx.fillStyle = '#f0933a';
+    ctx.font = 'bold 21px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('B₂', B2.x - 28, B2.y - 16);
+    ctx.font = 'bold 15px sans-serif';
+    ctx.fillText(angleB2val.toFixed(1)+'°', B2.x - 28, B2.y + 4);
+    ctx.restore();
+  }
+
+  // Triangle 1 (blue) — front
+  if (B1) {
+    ctx.save();
+    ctx.strokeStyle = '#4db8f0';
+    ctx.fillStyle = 'rgba(77,184,240,0.10)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(Ax,Ay); ctx.lineTo(B1.x,B1.y); ctx.lineTo(Cx,Cy);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    // Label B2->B1 distance — offset away from C (exterior side)
+    const b2b1len = Math.hypot(B1u.x - B2u.x, B1u.y - B2u.y);
+    midLabelToward(B2.x, B2.y, B1.x, B1.y, Cx, Cy, b2b1len.toFixed(1), '#4db8f0', -20);
+    // Angle at B₁
+    const angleB1val = angleBetween(B1.x, B1.y, Ax, Ay, Cx, Cy);
+    drawAngleLabel(B1.x, B1.y, Ax, Ay, Cx, Cy, angleB1val.toFixed(1)+'°', '#4db8f0', 30);
+    midLabel(B1.x, B1.y, Cx, Cy, 'a = '+a.toFixed(1), '#4db8f0', -38);
+    ctx.save();
+    ctx.fillStyle = '#4db8f0';
+    ctx.font = 'bold 21px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('B₁', B1.x + 16, B1.y - 10);
+    ctx.restore();
+  }
+
+  // Shared side AC (purple)
+  ctx.save();
+  ctx.strokeStyle = '#b07ef5';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(Ax,Ay); ctx.lineTo(Cx,Cy); ctx.stroke();
+  ctx.restore();
+  midLabel(Ax, Ay, Cx, Cy, 'b = '+b.toFixed(1), '#b07ef5', 18);
+
+  // Angle arc at A
+  ctx.save();
+  ctx.strokeStyle = '#fde68a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(Ax, Ay, 28, -A, 0);
+  ctx.stroke();
+  ctx.fillStyle = '#fde68a';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(angleA_deg+'°', Ax + 32, Ay - 8);
+  ctx.restore();
+
+  // Vertex labels A, C
+  ctx.save();
+  ctx.fillStyle = '#b07ef5';
+  ctx.font = 'bold 21px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('A', Ax - 8, Ay + 5);
+  ctx.textAlign = 'left';
+  ctx.fillText('C', Cx + 8, Cy + 5);
+  ctx.restore();
+
+  // Info panel
+  let angleB1 = null, angleB2 = null;
+  if (B1u) angleB1 = angleBetween(B1u.x, B1u.y, 0, 0, b, 0);
+  if (B2u) angleB2 = angleBetween(B2u.x, B2u.y, 0, 0, b, 0);
+
+  if (B1 && B2) {
+    b1El.textContent = angleB1.toFixed(1)+'°';
+    b2El.textContent = angleB2.toFixed(1)+'°';
+    statusEl.textContent = '✓ Two triangles';
+    statusEl.className = 'val status-two';
+  } else if (B1) {
+    b1El.textContent = angleB1 ? angleB1.toFixed(1)+'°' : '—';
+    b2El.textContent = '—';
+    statusEl.textContent = '△ One triangle';
+    statusEl.className = 'val status-one';
+  } else {
+    b1El.textContent = '—';
+    b2El.textContent = '—';
+    statusEl.textContent = '✗ No triangle';
+    statusEl.className = 'val status-none';
+  }
+}
+
+scaleBtn.addEventListener('click', () => {
+  fixedScale = bestFitScale();
+  draw();
+});
+
+let stepSize = 1;
+
+stepBtn.addEventListener('click', () => {
+  stepSize = stepSize === 1 ? 0.1 : 1;
+  slider.step = stepSize;
+  stepBtn.textContent = 'Step: ' + stepSize + '°';
+});
+
+slider.addEventListener('input', () => { angleLbl.textContent = slider.value+'°'; draw(); });
+inputA.addEventListener('input', draw);
+inputB.addEventListener('input', draw);
+
+draw();
+</script>
+</body>
+</html>
