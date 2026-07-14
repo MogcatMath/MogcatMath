@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two-Step Function Machine</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f7f7f5; color: #1a1a1a; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
+  h1 { font-size: 1.65rem; font-weight: 500; color: #555; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 2rem; }
+
+  .machine { background: #fff; border: 1.5px solid #ddd; border-radius: 12px; padding: 2rem 2rem 1.5rem; width: 100%; max-width: 700px; margin-bottom: 1.5rem; }
+
+  .flow { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: nowrap; }
+  .node { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .node label { font-size: 16.5px; color: #999; text-transform: uppercase; letter-spacing: 0.05em; }
+  .io-box { background: #f7f7f5; border: 1.5px solid #ccc; border-radius: 8px; width: 70px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.65rem; font-weight: 500; color: #333; }
+  .arrow { font-size: 1.95rem; color: #bbb; margin: 0 4px; padding-top: 18px; }
+
+  .op-box { border-radius: 8px; width: 110px; height: 52px; display: flex; align-items: center; justify-content: center; }
+  .op-box.step1 { background: #eef3ff; border: 1.5px solid #b0c4f5; }
+  .op-box.step2 { background: #edf7f1; border: 1.5px solid #9ed4b5; }
+  .op-box select { background: transparent; border: none; outline: none; font-size: 1.575rem; font-weight: 500; cursor: pointer; width: 100%; text-align: center; }
+  .op-box.step1 select { color: #2a4db5; }
+  .op-box.step2 select { color: #1a7a4a; }
+
+  .mid-val { background: #fff; border: 1.5px dashed #ccc; border-radius: 8px; width: 70px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.65rem; font-weight: 500; color: #888; }
+
+  .equation-row { margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid #eee; text-align: center; font-size: 1.725rem; color: #333; }
+  .equation-row span { font-style: italic; }
+  .eq-val { font-weight: 500; color: #1a1a1a; }
+
+  .test-panel { background: #fff; border: 1.5px solid #ddd; border-radius: 12px; padding: 1.5rem 2rem; width: 100%; max-width: 700px; }
+  .test-panel h2 { font-size: 1.2rem; font-weight: 500; color: #999; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.2rem; }
+
+  .test-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .test-row label { font-size: 21px; color: #555; }
+  .test-row input { width: 100px; padding: 8px 12px; border: 1.5px solid #ccc; border-radius: 8px; font-size: 1.65rem; text-align: center; background: #f7f7f5; outline: none; }
+  .test-row input:focus { border-color: #7a9ee8; }
+
+  .working { margin-top: 1.2rem; display: none; }
+  .working.show { display: block; }
+  .step-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .step-badge { font-size: 16.5px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+  .step-badge.s1 { background: #eef3ff; color: #2a4db5; }
+  .step-badge.s2 { background: #edf7f1; color: #1a7a4a; }
+  .step-text { color: #444; font-size: 1.425rem; }
+  .result-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 1.5rem; }
+  .result-val { font-weight: 500; font-size: 1.65rem; }
+
+  .clear-btn { font-size: 18px; color: #aaa; background: none; border: none; cursor: pointer; margin-left: auto; }
+  .clear-btn:hover { color: #666; }
+</style>
+</head>
+<body>
+<h1>Two-Step Function Machine</h1>
+
+<div class="machine">
+  <div class="flow">
+    <div class="node">
+      <label>Input</label>
+      <div class="io-box" id="inputDisplay">—</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="node">
+      <label>Step 1</label>
+      <div class="op-box step1">
+        <select id="op1" onchange="update()">
+          <option value="">— pick —</option>
+          <option value="+1">+ 1</option>
+          <option value="+2">+ 2</option>
+          <option value="+3">+ 3</option>
+          <option value="+5">+ 5</option>
+          <option value="+10">+ 10</option>
+          <option value="-1">− 1</option>
+          <option value="-2">− 2</option>
+          <option value="-3">− 3</option>
+          <option value="-5">− 5</option>
+          <option value="-10">− 10</option>
+          <option value="*2">× 2</option>
+          <option value="*3">× 3</option>
+          <option value="*4">× 4</option>
+          <option value="*5">× 5</option>
+          <option value="*10">× 10</option>
+          <option value="/2">÷ 2</option>
+          <option value="/5">÷ 5</option>
+          <option value="/10">÷ 10</option>
+        </select>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="node">
+      <label>After step 1</label>
+      <div class="mid-val" id="midDisplay">—</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="node">
+      <label>Step 2</label>
+      <div class="op-box step2">
+        <select id="op2" onchange="update()">
+          <option value="">— pick —</option>
+          <option value="+1">+ 1</option>
+          <option value="+2">+ 2</option>
+          <option value="+3">+ 3</option>
+          <option value="+5">+ 5</option>
+          <option value="+10">+ 10</option>
+          <option value="-1">− 1</option>
+          <option value="-2">− 2</option>
+          <option value="-3">− 3</option>
+          <option value="-5">− 5</option>
+          <option value="-10">− 10</option>
+          <option value="*2">× 2</option>
+          <option value="*3">× 3</option>
+          <option value="*4">× 4</option>
+          <option value="*5">× 5</option>
+          <option value="*10">× 10</option>
+          <option value="/2">÷ 2</option>
+          <option value="/5">÷ 5</option>
+          <option value="/10">÷ 10</option>
+        </select>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="node">
+      <label>Output</label>
+      <div class="io-box" id="outputDisplay">—</div>
+    </div>
+  </div>
+
+  <div class="equation-row" id="eqRow">
+    <span>Choose both operations to see the equation</span>
+  </div>
+</div>
+
+<div class="test-panel">
+  <div style="display:flex;align-items:center;">
+    <h2>Test the machine</h2>
+    <button class="clear-btn" onclick="clearWorking()">Clear</button>
+  </div>
+  <div class="test-row">
+    <label for="testInput">Input value:</label>
+    <input type="number" id="testInput" placeholder="e.g. 5" step="0.1" oninput="liveTest()" />
+  </div>
+  <div class="working" id="working">
+    <div class="step-row">
+      <span class="step-badge s1">Step 1</span>
+      <span class="step-text" id="step1text"></span>
+    </div>
+    <div class="step-row">
+      <span class="step-badge s2">Step 2</span>
+      <span class="step-text" id="step2text"></span>
+    </div>
+    <div class="result-row">
+      Output: <span class="result-val" id="resultVal"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+function applyOp(val, op) {
+  if (!op) return null;
+  var n = parseFloat(op.slice(1));
+  if (op[0] === '+') return val + n;
+  if (op[0] === '-') return val - n;
+  if (op[0] === '*') return val * n;
+  if (op[0] === '/') return n === 0 ? null : val / n;
+  return null;
+}
+
+function fmt(n) {
+  if (n === null || isNaN(n)) return '—';
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
+function opLabel(op) {
+  if (!op) return '?';
+  var sym = {'+':'+', '-':'−', '*':'×', '/':'÷'}[op[0]];
+  return sym + ' ' + op.slice(1);
+}
+
+function gcd(a, b) {
+  a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b));
+  while (b) { var t = b; b = a % b; a = t; }
+  return a;
+}
+
+function toFrac(num, den) {
+  if (den === 0) return null;
+  var sign = (num * den < 0) ? -1 : 1;
+  num = Math.abs(Math.round(num)); den = Math.abs(Math.round(den));
+  var g = gcd(num, den);
+  return { num: sign * (num / g), den: den / g };
+}
+
+function fracCoeffHTML(num, den) {
+  var f = toFrac(num, den);
+  if (!f) return null;
+  var neg = f.num < 0, absNum = Math.abs(f.num);
+  if (f.den === 1) return absNum === 1 ? (neg ? '−' : '') : (neg ? '−' : '') + absNum;
+  return (neg ? '−' : '') +
+    '<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.1;font-size:0.78em;margin:0 1px">' +
+    '<span style="border-bottom:1.5px solid currentColor;padding:0 2px">' + absNum + '</span>' +
+    '<span style="padding:0 2px">' + f.den + '</span></span>';
+}
+
+function fracConstHTML(num, den) {
+  var f = toFrac(num, den);
+  if (!f) return null;
+  var absNum = Math.abs(f.num);
+  if (f.den === 1) return { sign: f.num < 0 ? '−' : '+', str: String(absNum) };
+  var str = '<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.1;font-size:0.78em;margin:0 1px">' +
+    '<span style="border-bottom:1.5px solid currentColor;padding:0 2px">' + absNum + '</span>' +
+    '<span style="padding:0 2px">' + f.den + '</span></span>';
+  return { sign: f.num < 0 ? '−' : '+', str: str };
+}
+
+function buildEquation(op1, op2) {
+  if (!op1 || !op2) return null;
+  var a1 = op1[0], n1 = parseFloat(op1.slice(1));
+  var a2 = op2[0], n2 = parseFloat(op2.slice(1));
+  var aN, aD, bN, bD;
+
+  if      (a1==='*'&&a2==='*') { aN=n1*n2; aD=1;    bN=0;      bD=1; }
+  else if (a1==='*'&&a2==='+') { aN=n1;    aD=1;    bN=n2;     bD=1; }
+  else if (a1==='*'&&a2==='-') { aN=n1;    aD=1;    bN=-n2;    bD=1; }
+  else if (a1==='+'&&a2==='*') { aN=n2;    aD=1;    bN=n1*n2;  bD=1; }
+  else if (a1==='-'&&a2==='*') { aN=n2;    aD=1;    bN=-n1*n2; bD=1; }
+  else if (a1==='+'&&a2==='+') { aN=1;     aD=1;    bN=n1+n2;  bD=1; }
+  else if (a1==='+'&&a2==='-') { aN=1;     aD=1;    bN=n1-n2;  bD=1; }
+  else if (a1==='-'&&a2==='+') { aN=1;     aD=1;    bN=-n1+n2; bD=1; }
+  else if (a1==='-'&&a2==='-') { aN=1;     aD=1;    bN=-n1-n2; bD=1; }
+  else if (a1==='/'&&a2==='+') { aN=1;     aD=n1;   bN=n2;     bD=1; }
+  else if (a1==='/'&&a2==='-') { aN=1;     aD=n1;   bN=-n2;    bD=1; }
+  else if (a1==='/'&&a2==='*') { aN=n2;    aD=n1;   bN=0;      bD=1; }
+  else if (a1==='*'&&a2==='/') { aN=n1;    aD=n2;   bN=0;      bD=1; }
+  else if (a1==='+'&&a2==='/') { aN=1;     aD=n2;   bN=n1;     bD=n2; }
+  else if (a1==='-'&&a2==='/') { aN=1;     aD=n2;   bN=-n1;    bD=n2; }
+  else if (a1==='/'&&a2==='/') { aN=1;     aD=n1*n2;bN=0;      bD=1; }
+  else                          { aN=1;     aD=1;    bN=0;      bD=1; }
+
+  var coeff = fracCoeffHTML(aN, aD);
+  var eq = 'y = ' + coeff + 'x';
+  if (bN !== 0) {
+    var bc = fracConstHTML(bN, bD);
+    if (bc) eq += ' ' + bc.sign + ' ' + bc.str;
+  }
+  return eq;
+}
+
+function update() {
+  var op1 = document.getElementById('op1').value;
+  var op2 = document.getElementById('op2').value;
+  var eqRow = document.getElementById('eqRow');
+  if (op1 && op2) {
+    var eq = buildEquation(op1, op2);
+    eqRow.innerHTML = eq
+      ? 'Equation: <span class="eq-val" style="font-size:1.35rem">' + eq + '</span>'
+      : '<span>Choose both operations to see the equation</span>';
+  } else {
+    eqRow.innerHTML = '<span>Choose both operations to see the equation</span>';
+  }
+  liveTest();
+}
+
+function liveTest() {
+  var op1 = document.getElementById('op1').value;
+  var op2 = document.getElementById('op2').value;
+  var raw = document.getElementById('testInput').value;
+  var working = document.getElementById('working');
+
+  if (!op1 || !op2 || raw === '') { working.classList.remove('show'); resetDisplays(); return; }
+
+  var x = parseFloat(raw);
+  if (isNaN(x)) { working.classList.remove('show'); resetDisplays(); return; }
+
+  var mid = applyOp(x, op1);
+  var out = applyOp(mid, op2);
+
+  document.getElementById('inputDisplay').textContent = fmt(x);
+  document.getElementById('midDisplay').textContent = fmt(mid);
+  document.getElementById('outputDisplay').textContent = fmt(out);
+  document.getElementById('step1text').textContent = fmt(x) + ' ' + opLabel(op1) + ' = ' + fmt(mid);
+  document.getElementById('step2text').textContent = fmt(mid) + ' ' + opLabel(op2) + ' = ' + fmt(out);
+  document.getElementById('resultVal').textContent = fmt(out);
+  working.classList.add('show');
+}
+
+function resetDisplays() {
+  ['inputDisplay','midDisplay','outputDisplay'].forEach(function(id) {
+    document.getElementById(id).textContent = '—';
+  });
+}
+
+function clearWorking() {
+  document.getElementById('testInput').value = '';
+  document.getElementById('working').classList.remove('show');
+  resetDisplays();
+}
+</script>
+</body>
+</html>
