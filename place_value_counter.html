@@ -7,6 +7,13 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: sans-serif; font-size: 14px; background: #1e1e2e; padding: 12px; }
+body.pastel-bg {
+  background-color: #f5f2eb;
+  background-image:
+    linear-gradient(to right, #c8c8c8 1px, transparent 1px),
+    linear-gradient(to bottom, #c8c8c8 1px, transparent 1px);
+  background-size: 24px 24px;
+}
 #app { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
 #grid-wrapper { display: flex; align-items: stretch; gap: 6px; }
 .edge-btns { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex-shrink: 0; }
@@ -43,11 +50,13 @@ body { font-family: sans-serif; font-size: 14px; background: #1e1e2e; padding: 1
 #setup-error { font-size: 14px; color: #e74c3c; min-height: 16px; }
 #source-boxes { display: flex; gap: 14px; justify-content: center; align-items: center; padding: 4px 8px; flex-wrap: wrap; }
 .src-label { font-size: 14px; color: #aaa; text-align: center; line-height: 1.5; }
-.source-box { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: grab; border: 2px solid rgba(255,255,255,0.15); font-size: 22px; font-weight: 700; user-select: none; transition: transform 0.1s; flex-shrink: 0; box-shadow: 0 3px 8px rgba(0,0,0,0.5); }
+.source-box { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: grab; border: 2px solid rgba(255,255,255,0.15); font-size: 22px; font-weight: 700; user-select: none; transition: transform 0.1s, border 0.2s; flex-shrink: 0; box-shadow: 0 3px 8px rgba(0,0,0,0.5); }
+body.pastel-bg .source-box { border: 2px solid rgba(0,0,0,0.35); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
 .source-box:active { cursor: grabbing; transform: scale(0.95); }
 .source-box.yellow { background: radial-gradient(circle at 35% 35%, #ffe066, #e6a800); color: #7a5c00; }
 .source-box.red    { background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b); color: #fff; }
 .source-box.zero   { position: relative; background: #1e1e2e; border: 2px solid #555; overflow: hidden; }
+body.pastel-bg .source-box.zero { background: #eee; border: 2px solid rgba(0,0,0,0.35); }
 .zero-half { position: absolute; width: 100%; height: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
 .zero-half.top { top: 0; background: radial-gradient(circle at 35% 35%, #ffe066, #e6a800); color: #7a5c00; }
 .zero-half.bot { bottom: 0; background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b); color: #fff; }
@@ -329,6 +338,7 @@ function renderGrid() {
     const col = document.createElement('div');
     col.className = 'pv-col';
     col.style.border = `1px solid ${getPvBorder()}`;
+    if (!darkMode) col.style.border = '2px solid #555';
 
     const lbl = document.createElement('div');
     lbl.className = 'col-label';
@@ -357,7 +367,7 @@ function renderGrid() {
       dot.dataset.colIdx = i;
       dot.dataset.ci = ci;
       dot.dataset.color = type;
-      if (readySet.has(ci)) dot.classList.add('regroup-ready');
+      dot.style.border = darkMode ? '2px solid rgba(255,255,255,0.1)' : '2px solid rgba(0,0,0,0.35)';
       if (newCounters.has(`${i}-${ci}`)) dot.classList.add('popping');
       dot.draggable = true;
       addTouchDragToCounter(dot, i, ci, type);
@@ -577,8 +587,32 @@ document.getElementById('btn-regroup').addEventListener('click', ()=>{ pushHisto
 document.getElementById('btn-darkmode').addEventListener('click', ()=>{
   darkMode=!darkMode;
   document.getElementById('btn-darkmode').textContent=darkMode?'Pastel Mode':'Dark Mode';
+  // Toggle light page background when in pastel (non-dark) mode
+  document.body.classList.toggle('pastel-bg', !darkMode);
+  applyPageTheme();
   renderGrid();
 });
+
+function applyPageTheme() {
+  const light = !darkMode;
+  const gridArea = document.getElementById('grid-area');
+  gridArea.style.background = light ? 'rgba(255,255,255,0.55)' : '#2a2a3e';
+  gridArea.style.borderColor = light ? '#555' : '#3a3a52';
+  // Action row buttons
+  document.querySelectorAll('#action-row button:not(#btn-clear):not(#btn-clear-yes):not(#btn-clear-no)').forEach(b => {
+    b.style.background   = light ? '#fff' : '#2a2a3e';
+    b.style.borderColor  = light ? '#aaa' : '#444';
+    b.style.color        = light ? '#333' : '#ccc';
+  });
+  document.getElementById('total-display').style.color = light ? '#222' : '#eee';
+  document.querySelectorAll('.edge-btns button').forEach(b => {
+    b.style.background  = light ? '#fff' : '#2a2a3e';
+    b.style.borderColor = light ? '#aaa' : '#444';
+    b.style.color       = light ? '#333' : '#ccc';
+  });
+  document.getElementById('setup-overlay').style.background = light ? 'rgba(245,242,235,0.95)' : '#2a2a3e';
+  document.querySelector('.src-label').style.color = light ? '#555' : '#aaa';
+}
 
 document.getElementById('btn-displaymode').addEventListener('click', ()=>{
   displayMode=!displayMode;
@@ -784,6 +818,8 @@ function addTouchDragToCounter(dot, colIdx, ci, color) {
 }
 
 // ── Init ──────────────────────────────────────────────────
+document.body.classList.add('pastel-bg');
+applyPageTheme();
 renderGrid(); updateTotal(); checkOverlay();
 </script>
 </body>
