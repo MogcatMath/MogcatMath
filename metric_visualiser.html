@@ -1,49 +1,37 @@
-<h2 class="sr-only">Metric units visualiser — type a value, pick units, and see the conversion with a visual comparison</h2>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font-sans);color:var(--color-text-primary);padding:1rem}
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-select,input[type=number]{height:48px;padding:0 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);font-size:22px}
-select:focus,input[type=number]:focus{outline:none;box-shadow:0 0 0 2px var(--color-border-info)}
-button{cursor:pointer;padding:9px 21px;border:2px solid #888;border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);font-size:19px;transition:background .15s,border-color .15s}
-button:hover{background:var(--color-background-secondary)}
+body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#ffffff;padding:1rem}
+select,input[type=number]{height:48px;padding:0 10px;border:1px solid #aaa;border-radius:6px;background:#fff;color:#1a1a1a;font-size:22px}
+select:focus,input[type=number]:focus{outline:none;box-shadow:0 0 0 2px #4a90d9}
+button{cursor:pointer;padding:9px 21px;border:2px solid #888;border-radius:6px;background:#fff;color:#1a1a1a;font-size:19px;transition:background .15s}
+button:hover{background:#f0f0f0}
 button.active{background:#185FA5;color:#fff;border:2px solid #185FA5}
-button:hover{background:var(--color-background-secondary)}
-button.active{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
-.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem}
+.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:1rem 1.25rem;margin-bottom:14px}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.label{font-size:19px;color:var(--color-text-secondary)}
-.multiplier-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 16px;text-align:center;flex:1;min-width:180px}
-.mult-main{font-size:33px;font-weight:500;color:var(--color-text-primary)}
-.mult-sub{font-size:18px;color:var(--color-text-secondary);margin-top:2px}
-.result-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 16px;flex:1;min-width:180px}
-.res-label{font-size:18px;color:var(--color-text-secondary);margin-bottom:4px}
+.multiplier-box{background:#f5f5f5;border-radius:6px;padding:10px 16px;text-align:center;flex:1;min-width:180px}
+.mult-main{font-size:33px;font-weight:500;color:#1a1a1a}
+.mult-sub{font-size:18px;color:#666;margin-top:2px}
+.result-box{background:#f5f5f5;border-radius:6px;padding:10px 16px;flex:1;min-width:180px}
+.res-label{font-size:18px;color:#666;margin-bottom:4px}
 .res-val{font-size:33px;font-weight:500}
-.vis-area{border-radius:var(--border-radius-md);overflow:hidden;position:relative;min-height:160px}
+.vis-area{border-radius:6px;overflow:hidden;position:relative;min-height:160px}
 </style>
 
-<div style="display:flex;flex-direction:column;gap:14px">
-
 <div class="card">
-  <div class="row" style="gap:12px">
-    <div>
-      <div class="label" style="margin-bottom:4px">Quantity type</div>
-      <select id="qtype" style="min-width:200px"></select>
+  <div class="row" style="margin-bottom:14px">
+    <select id="qtype" style="font-size:28px;font-weight:600;height:56px;padding:0 10px"></select>
+  </div>
+  <div class="row" style="gap:12px;margin-bottom:16px">
+    <div style="display:flex;border:2px solid #888;border-radius:6px;overflow:hidden">
+      <input type="number" id="valIn" value="1" style="width:140px;border:none;border-right:2px solid #888;border-radius:0;text-align:right" min="0" step="any">
+      <select id="fromUnit" style="border:none;border-radius:0"></select>
     </div>
-    <div>
-      <div class="label" style="margin-bottom:4px">Value</div>
-      <input type="number" id="valIn" value="1" style="width:140px" min="0" step="any">
-    </div>
-    <div>
-      <div class="label" style="margin-bottom:4px">From unit</div>
-      <select id="fromUnit"></select>
-    </div>
-    <div style="font-size:30px;padding-top:24px;color:var(--color-text-secondary)">→</div>
-    <div>
-      <div class="label" style="margin-bottom:4px">To unit</div>
-      <select id="toUnit"></select>
+    <div style="font-size:22px;color:#888">convert into</div>
+    <div style="display:flex;border:2px solid #888;border-radius:6px;overflow:hidden">
+      <select id="toUnit" style="border:none;border-radius:0"></select>
     </div>
   </div>
+  <div id="barModel"></div>
 </div>
 
 <div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
@@ -55,38 +43,27 @@ button.active{background:var(--color-background-info);color:var(--color-text-inf
     <div class="res-label">Result</div>
     <div class="res-val" id="resVal">—</div>
   </div>
-
 </div>
 
-<div class="card">
-  <div class="row" style="margin-bottom:12px;justify-content:space-between">
-    <span style="font-size:22px;font-weight:500">Visualisation</span>
-    <div class="row" style="gap:6px">
-      <button id="btnBars" class="active" onclick="setMode('bars')">Side-by-side bars</button>
-      <button id="btnZoom" onclick="setMode('zoom')">Animated zoom</button>
-    </div>
-  </div>
-  <div id="visArea" class="vis-area"></div>
-</div>
 
-</div>
 
 <script>
-const UNITS = {
-  metres:      {label:'Length',    base:'m',   prefixes:['km','m','cm','mm'],   factors:{km:1000,m:1,cm:0.01,mm:0.001}},
-  grams:       {label:'Mass',      base:'g',   prefixes:['kg','g','cg','mg'],   factors:{kg:1000,g:1,cg:0.01,mg:0.001}},
-  litres:      {label:'Volume',    base:'L',   prefixes:['kL','L','cL','mL'],   factors:{kL:1000,L:1,cL:0.01,mL:0.001}},
-  newtons:     {label:'Force',     base:'N',   prefixes:['kN','N','cN','mN'],   factors:{kN:1000,N:1,cN:0.01,mN:0.001}},
-  watts:       {label:'Power',     base:'W',   prefixes:['kW','W','cW','mW'],   factors:{kW:1000,W:1,cW:0.01,mW:0.001}},
-  sqmetres:    {label:'Area',      base:'m²',  prefixes:['km²','m²','cm²','mm²'], factors:{'km²':1e6,'m²':1,'cm²':1e-4,'mm²':1e-6}},
-  cubicmetres: {label:'Volume 3D', base:'m³',  prefixes:['km³','m³','cm³','mm³'], factors:{'km³':1e9,'m³':1,'cm³':1e-6,'mm³':1e-9}}
+const UNITS={
+  metres:      {label:'Length',    base:'m',  prefixes:['km','m','cm','mm'],     factors:{km:1000,m:1,cm:0.01,mm:0.001}},
+  grams:       {label:'Mass',      base:'g',  prefixes:['kg','g','cg','mg'],     factors:{kg:1000,g:1,cg:0.01,mg:0.001}},
+  litres:      {label:'Volume',    base:'L',  prefixes:['kL','L','cL','mL'],     factors:{kL:1000,L:1,cL:0.01,mL:0.001}},
+  newtons:     {label:'Force',     base:'N',  prefixes:['kN','N','cN','mN'],     factors:{kN:1000,N:1,cN:0.01,mN:0.001}},
+  watts:       {label:'Power',     base:'W',  prefixes:['kW','W','cW','mW'],     factors:{kW:1000,W:1,cW:0.01,mW:0.001}},
+  sqmetres:    {label:'Area',      base:'m²', prefixes:['km²','m²','cm²','mm²'], factors:{'km²':1e6,'m²':1,'cm²':1e-4,'mm²':1e-6}},
+  cubicmetres: {label:'Volume 3D', base:'m³', prefixes:['km³','m³','cm³','mm³'], factors:{'km³':1e9,'m³':1,'cm³':1e-6,'mm³':1e-9}}
 };
 
 const COLORS=[['#185FA5','#E6F1FB'],['#0F6E56','#E1F5EE'],['#993C1D','#FAECE7'],['#854F0B','#FAEEDA'],['#533AB7','#EEEDFE'],['#639922','#EAF3DE'],['#993556','#FBEAF0']];
+const LINEAR_UNITS=['metres','grams','newtons','watts','litres'];
+const AREA_UNITS=['sqmetres'];
+const CUBIC_UNITS=['cubicmetres'];
 
-let mode='bars';
-let animHandle=null;
-
+let mode='zoom', animHandle=null;
 const qtSel=document.getElementById('qtype');
 const fromSel=document.getElementById('fromUnit');
 const toSel=document.getElementById('toUnit');
@@ -98,20 +75,13 @@ Object.entries(UNITS).forEach(([k,v])=>{
   qtSel.appendChild(o);
 });
 
-function qColor(){
-  return COLORS[Object.keys(UNITS).indexOf(qtSel.value)%COLORS.length];
-}
+function qColor(){return COLORS[Object.keys(UNITS).indexOf(qtSel.value)%COLORS.length];}
 
 function populateUnits(){
   const q=UNITS[qtSel.value];
   [fromSel,toSel].forEach((sel,i)=>{
-    const prev=sel.value;
-    sel.innerHTML='';
-    q.prefixes.forEach(p=>{
-      const o=document.createElement('option');
-      o.value=p; o.textContent=p;
-      sel.appendChild(o);
-    });
+    const prev=sel.value; sel.innerHTML='';
+    q.prefixes.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});
     if(q.prefixes.includes(prev)) sel.value=prev;
     else sel.value=i===0?q.prefixes[1]:q.prefixes[2];
   });
@@ -119,433 +89,200 @@ function populateUnits(){
 
 function plainNum(n){
   if(n===0) return '0';
-  // Work out how many decimal places are needed to show at least 4 significant figures
   if(Number.isInteger(n)) return n.toLocaleString('en-GB');
   const abs=Math.abs(n);
-  let dp=0;
-  if(abs<1) dp=Math.max(0,-Math.floor(Math.log10(abs)))+3;
-  else dp=Math.max(0,4-Math.floor(Math.log10(abs))-1);
+  let dp=abs<1?Math.max(0,-Math.floor(Math.log10(abs)))+3:Math.max(0,4-Math.floor(Math.log10(abs))-1);
   return parseFloat(n.toFixed(dp)).toLocaleString('en-GB',{maximumFractionDigits:dp,minimumFractionDigits:0});
 }
 
-function getStepText(fromU,toU,q){
-  if(fromU===toU) return 'Same unit — no conversion needed';
-  const fromIdx=q.prefixes.indexOf(fromU);
-  const toIdx=q.prefixes.indexOf(toU);
-  if(fromIdx<0||toIdx<0) return '—';
-  const dir=toIdx>fromIdx?1:-1;
-  const steps=[];
-  for(let i=fromIdx;i!==toIdx;i+=dir){
-    const a=q.prefixes[i], b=q.prefixes[i+dir];
-    const r=q.factors[b]/q.factors[a];
-    steps.push(r>=1 ? '× '+Math.round(r).toLocaleString('en-GB') : '÷ '+Math.round(1/r).toLocaleString('en-GB'));
+function drawBarModel(val,fromU,toU,result){
+  const el=document.getElementById('barModel');
+  const [dark,light]=qColor();
+  if(!val||val<=0){el.innerHTML='';return;}
+  const W=el.clientWidth||600;
+  const BAR_H=48,GAP=10;
+  const fromSegs=Math.min(Math.round(val),100);
+  const toSegs=Math.min(Math.round(result),1000);
+  const fromLabel=plainNum(val/fromSegs)+' '+fromU;
+  const toLabel=plainNum(result/toSegs)+' '+toU;
+  function barSVG(segs,label,fillCol,strokeCol,totalW,altFill){
+    const cw=totalW/segs; let rects='',texts='',lines='';
+    for(let i=0;i<segs;i++){
+      const f=altFill&&i%2===1?altFill:fillCol;
+      rects+=`<rect x="${i*cw+0.5}" y="0.5" width="${cw-1}" height="${BAR_H-1}" fill="${f}" stroke="${strokeCol}" stroke-width="1" rx="2"/>`;
+      if(cw>30) texts+=`<text x="${i*cw+cw/2}" y="${BAR_H/2}" text-anchor="middle" dominant-baseline="central" font-size="14" fill="${strokeCol}" font-family="Arial,sans-serif">${label}</text>`;
+    }
+    for(let i=1;i<segs;i++) lines+=`<line x1="${i*cw}" y1="0" x2="${i*cw}" y2="${BAR_H}" stroke="${strokeCol}" stroke-width="0.5"/>`;
+    return `<svg width="${totalW}" height="${BAR_H}" style="display:block"><rect x="0" y="0" width="${totalW}" height="${BAR_H}" fill="none" stroke="${strokeCol}" stroke-width="2" rx="3"/>${rects}${lines}${texts}</svg>`;
   }
-  return steps.join(' → ');
+  el.innerHTML=`
+<div style="margin-bottom:4px;font-size:16px;font-weight:500;color:${dark}">${plainNum(val)} ${fromU}</div>
+${barSVG(fromSegs,fromLabel,light,dark,W,'#ffffff')}
+<div style="height:${GAP}px"></div>
+<div style="margin-bottom:4px;font-size:16px;font-weight:500;color:${dark}">${plainNum(result)} ${toU}</div>
+${barSVG(toSegs,toLabel,dark,dark,W,light)}`;
 }
 
 function update(){
   const q=UNITS[qtSel.value];
-  const fromU=fromSel.value, toU=toSel.value;
-  const fromF=q.factors[fromU], toF=q.factors[toU];
+  const fromU=fromSel.value,toU=toSel.value;
+  const fromF=q.factors[fromU],toF=q.factors[toU];
   const val=parseFloat(valIn.value)||0;
   const result=val*fromF/toF;
   const multiplier=fromF/toF;
-
   document.getElementById('resVal').textContent=plainNum(result)+' '+toU;
-
   const mVal=Math.abs(multiplier)>=1?Math.round(Math.abs(multiplier)):Math.round(1/Math.abs(multiplier));
   const mStr=multiplier>=1?'× '+mVal.toLocaleString('en-GB'):'÷ '+mVal.toLocaleString('en-GB');
   document.getElementById('multMain').textContent=mStr;
   document.getElementById('multSub').textContent=fromU+' → '+toU+' multiplier';
-
-
-  drawVis(val,result,fromU,toU,multiplier,q);
+  drawBarModel(val,fromU,toU,result);
 }
 
-function setMode(m){
-  mode=m;
-  document.getElementById('btnBars').classList.toggle('active',m==='bars');
-  document.getElementById('btnZoom').classList.toggle('active',m==='zoom');
-  update();
+function zoomHeader(area,count,bigger,smaller,dark){
+  area.innerHTML=`<div style="padding:16px 20px 8px"><p style="font-size:19px;color:#666;margin-bottom:12px;text-align:center">1 <strong style="color:${dark}">${bigger}</strong> = <strong style="color:${dark}">${count.toLocaleString('en-GB')}</strong> <strong style="color:${dark}">${smaller}</strong></p><div id="zoomBox" style="position:relative;margin:0 auto;"></div><p id="zoomCount" style="font-size:18px;text-align:center;color:#888;margin-top:10px"></p></div>`;
 }
 
-function drawVis(val,result,fromU,toU,mult,q){
-  if(animHandle){cancelAnimationFrame(animHandle);animHandle=null;}
-  const area=document.getElementById('visArea');
-  if(mode==='bars') drawBars(area,val,result,fromU,toU,q);
-  else drawZoom(area,val,result,fromU,toU,mult);
-}
-
-function drawBars(area,val,result,fromU,toU,q){
+function drawZoomLinear(area,val,result,fromU,toU,mult){
   const [dark,light]=qColor();
-  if(val===0&&result===0){
-    area.innerHTML='<p style="padding:2rem;text-align:center;color:var(--color-text-secondary)">Enter a value above</p>';
-    return;
+  const ratio=mult>=1?mult:1/mult;
+  const bigger=mult>=1?fromU:toU,smaller=mult>=1?toU:fromU;
+  const count=Math.round(ratio);
+  zoomHeader(area,count,bigger,smaller,dark);
+  const box=document.getElementById('zoomBox'),countEl=document.getElementById('zoomCount');
+  if(count<1||count>1000){box.innerHTML=`<p style="font-size:19px;padding:1rem;text-align:center;color:#888">Ratio ${count.toLocaleString('en-GB')} — too large. Try bar view.</p>`;return;}
+  const W=document.getElementById('visArea').clientWidth-40||560,BAR_H=60,cellW=W/count;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',W);svg.setAttribute('height',BAR_H);
+  svg.style.cssText=`display:block;border:3px solid ${dark};border-radius:4px;background:${light}`;
+  box.style.width=W+'px';box.appendChild(svg);
+  let drawn=0;
+  function addCell(){
+    if(drawn>=count){
+      for(let c=1;c<count;c++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',c*cellW);l.setAttribute('y1',0);l.setAttribute('x2',c*cellW);l.setAttribute('y2',BAR_H);l.setAttribute('stroke',dark);l.setAttribute('stroke-width','1');svg.appendChild(l);}
+      countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;return;
+    }
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',drawn*cellW+1);rect.setAttribute('y',1);rect.setAttribute('width',Math.max(1,cellW-1));rect.setAttribute('height',BAR_H-2);rect.setAttribute('fill',dark);rect.setAttribute('opacity','0');svg.appendChild(rect);
+    drawn++;let op=0;function fadeIn(){op=Math.min(1,op+0.2);rect.setAttribute('opacity',op);if(op<1)requestAnimationFrame(fadeIn);}requestAnimationFrame(fadeIn);
+    animHandle=setTimeout(addCell,count<=10?30:count<=100?6:1);
   }
-  const fromF=q.factors[fromU], toF=q.factors[toU];
-  const valInBase=val*fromF;
-  const resInBase=result*toF;
-  const maxBase=Math.max(valInBase,resInBase);
-  const MAX_H=140, MIN_H=2;
-  const hA=maxBase>0?Math.max(MIN_H,(valInBase/maxBase)*MAX_H):MIN_H;
-  const hB=maxBase>0?Math.max(MIN_H,(resInBase/maxBase)*MAX_H):MIN_H;
-
-  area.innerHTML=`
-<div style="display:flex;align-items:flex-end;justify-content:center;gap:48px;padding:20px 20px 0;min-height:${MAX_H+70}px">
-  <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-    <div style="font-size:22px;font-weight:500;color:${dark}">${plainNum(val)} ${fromU}</div>
-    <div style="width:80px;height:${hA}px;background:${dark};border-radius:4px 4px 0 0"></div>
-    <div style="font-size:18px;color:var(--color-text-secondary)">${fromU}</div>
-  </div>
-  <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-    <div style="font-size:22px;font-weight:500;color:${dark}">${plainNum(result)} ${toU}</div>
-    <div style="width:80px;height:${hB}px;background:${light};border:2px solid ${dark};border-radius:4px 4px 0 0"></div>
-    <div style="font-size:18px;color:var(--color-text-secondary)">${toU}</div>
-  </div>
-</div>
-<div style="border-top:0.5px solid var(--color-border-tertiary);margin:0 20px"></div>
-<p style="font-size:18px;text-align:center;color:var(--color-text-secondary);padding:8px">Bar heights represent the same physical quantity — equal values produce equal bars</p>`;
+  addCell();
 }
 
-const LINEAR_UNITS=['metres','grams','newtons','watts'];
-const AREA_UNITS=['sqmetres'];
-const CUBIC_UNITS=['cubicmetres'];
+function drawZoomArea(area,val,result,fromU,toU,mult){
+  const [dark,light]=qColor();
+  const ratio=mult>=1?mult:1/mult;
+  const bigger=mult>=1?fromU:toU,smaller=mult>=1?toU:fromU;
+  const count=Math.round(ratio);
+  zoomHeader(area,count,bigger,smaller,dark);
+  const box=document.getElementById('zoomBox'),countEl=document.getElementById('zoomCount');
+  if(count<1||count>10000){box.innerHTML=`<p style="font-size:19px;padding:1rem;text-align:center;color:#888">Ratio too large. Try bar view.</p>`;return;}
+  const cols=count<=10?count:count<=100?10:count<=1000?25:100;
+  const rows=Math.ceil(count/cols);
+  const CELL=count<=10?56:count<=100?32:count<=1000?14:5;
+  const W=cols*CELL,H=rows*CELL;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',W);svg.setAttribute('height',H);svg.style.cssText=`display:block;border:3px solid ${dark};border-radius:4px;background:${light}`;
+  box.style.width=W+'px';box.appendChild(svg);
+  let drawn=0;
+  function addCell(){
+    if(drawn>=count){
+      for(let c=1;c<cols;c++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',c*CELL);l.setAttribute('y1',0);l.setAttribute('x2',c*CELL);l.setAttribute('y2',H);l.setAttribute('stroke',dark);l.setAttribute('stroke-width','1');svg.appendChild(l);}
+      for(let r=1;r<rows;r++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',0);l.setAttribute('y1',r*CELL);l.setAttribute('x2',W);l.setAttribute('y2',r*CELL);l.setAttribute('stroke',dark);l.setAttribute('stroke-width','1');svg.appendChild(l);}
+      countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;return;
+    }
+    const col=drawn%cols,row=Math.floor(drawn/cols);
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',col*CELL+1);rect.setAttribute('y',row*CELL+1);rect.setAttribute('width',CELL-1);rect.setAttribute('height',CELL-1);rect.setAttribute('fill',dark);rect.setAttribute('opacity','0');svg.appendChild(rect);
+    drawn++;let op=0;function fadeIn(){op=Math.min(1,op+0.15);rect.setAttribute('opacity',op);if(op<1)requestAnimationFrame(fadeIn);}requestAnimationFrame(fadeIn);
+    animHandle=setTimeout(addCell,count<=10?30:count<=100?6:1);
+  }
+  addCell();
+}
 
-function drawZoomCubic(box,countEl,count,bigger,smaller,dark,light){
-  // n = cube root of count (should be 10 or 100 for valid cubic conversions)
+function drawZoomCubic(area,val,result,fromU,toU,mult){
+  const [dark,light]=qColor();
+  const ratio=mult>=1?mult:1/mult;
+  const bigger=mult>=1?fromU:toU,smaller=mult>=1?toU:fromU;
+  const count=Math.round(ratio);
+  zoomHeader(area,count,bigger,smaller,dark);
+  const box=document.getElementById('zoomBox'),countEl=document.getElementById('zoomCount');
   const n=Math.round(Math.cbrt(count));
-  const useGrid = n>10; // for n=100 (1,000,000 cubes) just draw grid lines on faces
+  const useGrid=n>10;
+  const CELL=useGrid?4:(n<=10?28:10);
+  const cx=CELL,cy=CELL*0.5;
+  const W=(n*2)*cx+20,H=(n*2)*cy+n*CELL+20;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',W);svg.setAttribute('height',H);svg.style.cssText='display:block;overflow:visible';
+  box.style.width=W+'px';box.appendChild(svg);
 
-  // Isometric cell size
-  const CELL = useGrid ? 4 : (n<=10 ? 28 : 10);
-  const cx = CELL, cy = CELL*0.5; // isometric x/y step
+  function hexToRgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+  function lighten(hex,a){const[r,g,b]=hexToRgb(hex);return`rgb(${Math.min(255,r+a)},${Math.min(255,g+a)},${Math.min(255,b+a)})`;}
+  function darken(hex,a){const[r,g,b]=hexToRgb(hex);return`rgb(${Math.max(0,r-a)},${Math.max(0,g-a)},${Math.max(0,b-a)})`;}
+  const faceTop=lighten(dark,60),faceLeft=dark,faceRight=darken(dark,40);
+  const ox=n*cx+10,oy=H-10;
+  function isoX(x,y,z){return ox+x*cx-y*cx;}
+  function isoY(x,y,z){return oy-z*CELL-x*cy-y*cy;}
 
-  const W = (n*2)*cx + 20;
-  const H = (n*2)*cy + n*CELL + 20;
+  const wireColor='#00cc00',wireW='2.5';
+  const wireEdges=[[[0,0,0],[n,0,0]],[[n,0,0],[n,n,0]],[[n,n,0],[0,n,0]],[[0,n,0],[0,0,0]],[[0,0,n],[n,0,n]],[[n,0,n],[n,n,n]],[[n,n,n],[0,n,n]],[[0,n,n],[0,0,n]],[[0,0,0],[0,0,n]],[[n,0,0],[n,0,n]],[[n,n,0],[n,n,n]],[[0,n,0],[0,n,n]]];
+  const visibleEdges=[[[0,0,n],[n,0,n]],[[n,0,n],[n,n,n]],[[n,n,n],[0,n,n]],[[0,n,n],[0,0,n]],[[0,0,0],[0,0,n]],[[n,0,0],[n,0,n]],[[0,n,0],[0,n,n]]];
 
-  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('width', W);
-  svg.setAttribute('height', H);
-  svg.style.cssText = `display:block;overflow:visible`;
-  box.style.width = W+'px';
-  box.appendChild(svg);
+  function drawWireEdges(edges){
+    edges.forEach(([[x1,y1,z1],[x2,y2,z2]])=>{
+      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',isoX(x1,y1,z1));l.setAttribute('y1',isoY(x1,y1,z1));l.setAttribute('x2',isoX(x2,y2,z2));l.setAttribute('y2',isoY(x2,y2,z2));
+      l.setAttribute('stroke',wireColor);l.setAttribute('stroke-width',wireW);l.setAttribute('stroke-linecap','round');svg.appendChild(l);
+    });
+  }
 
-  // Color variants for the three visible faces
-  function hexToRgb(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g,b];}
-  function lighten(hex,amt){const[r,g,b]=hexToRgb(hex);return`rgb(${Math.min(255,r+amt)},${Math.min(255,g+amt)},${Math.min(255,b+amt)})`;}
-  function darken(hex,amt){const[r,g,b]=hexToRgb(hex);return`rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`;}
-  const faceTop   = lighten(dark, 60);
-  const faceLeft  = dark;
-  const faceRight = darken(dark, 40);
+  function makeFace(pts,fill){const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');p.setAttribute('points',pts);p.setAttribute('fill',fill);p.setAttribute('stroke',dark);p.setAttribute('stroke-width','0.5');return p;}
 
-  // Convert grid coords (ix, iy, iz) to SVG (x,y)
-  // Origin at bottom-left of isometric grid
-  const ox = n*cx + 10;
-  const oy = H - 10;
-  function isoX(ix,iy,iz){ return ox + ix*cx - iy*cx; }
-  function isoY(ix,iy,iz){ return oy - iz*CELL - ix*cy - iy*cy; }
-
-  function drawCube(ix,iy,iz,fill){
-    const pts=(x,y)=>`${x},${y}`;
-    // top face
-    const top=[
-      pts(isoX(ix,iy,iz+1),     isoY(ix,iy,iz+1)),
-      pts(isoX(ix+1,iy,iz+1),   isoY(ix+1,iy,iz+1)),
-      pts(isoX(ix+1,iy+1,iz+1), isoY(ix+1,iy+1,iz+1)),
-      pts(isoX(ix,iy+1,iz+1),   isoY(ix,iy+1,iz+1)),
-    ].join(' ');
-    // left face
-    const left=[
-      pts(isoX(ix,iy+1,iz),     isoY(ix,iy+1,iz)),
-      pts(isoX(ix,iy+1,iz+1),   isoY(ix,iy+1,iz+1)),
-      pts(isoX(ix+1,iy+1,iz+1), isoY(ix+1,iy+1,iz+1)),
-      pts(isoX(ix+1,iy+1,iz),   isoY(ix+1,iy+1,iz)),
-    ].join(' ');
-    // right face
-    const right=[
-      pts(isoX(ix+1,iy,iz),     isoY(ix+1,iy,iz)),
-      pts(isoX(ix+1,iy,iz+1),   isoY(ix+1,iy,iz+1)),
-      pts(isoX(ix+1,iy+1,iz+1), isoY(ix+1,iy+1,iz+1)),
-      pts(isoX(ix+1,iy+1,iz),   isoY(ix+1,iy+1,iz)),
-    ].join(' ');
-
+  function drawCube(ix,iy,iz){
+    const pt=(x,y)=>`${x},${y}`;
+    const top=[pt(isoX(ix,iy,iz+1),isoY(ix,iy,iz+1)),pt(isoX(ix+1,iy,iz+1),isoY(ix+1,iy,iz+1)),pt(isoX(ix+1,iy+1,iz+1),isoY(ix+1,iy+1,iz+1)),pt(isoX(ix,iy+1,iz+1),isoY(ix,iy+1,iz+1))].join(' ');
+    const left=[pt(isoX(ix,iy+1,iz),isoY(ix,iy+1,iz)),pt(isoX(ix,iy+1,iz+1),isoY(ix,iy+1,iz+1)),pt(isoX(ix+1,iy+1,iz+1),isoY(ix+1,iy+1,iz+1)),pt(isoX(ix+1,iy+1,iz),isoY(ix+1,iy+1,iz))].join(' ');
+    const right=[pt(isoX(ix+1,iy,iz),isoY(ix+1,iy,iz)),pt(isoX(ix+1,iy,iz+1),isoY(ix+1,iy,iz+1)),pt(isoX(ix+1,iy+1,iz+1),isoY(ix+1,iy+1,iz+1)),pt(isoX(ix+1,iy+1,iz),isoY(ix+1,iy+1,iz))].join(' ');
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.style.opacity='0';
-    [[top,faceTop],[left,faceLeft],[right,faceRight]].forEach(([pts,col])=>{
-      const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-      p.setAttribute('points',pts);
-      p.setAttribute('fill',fill?col:light);
-      p.setAttribute('stroke',dark);
-      p.setAttribute('stroke-width','0.5');
-      g.appendChild(p);
-    });
-    svg.appendChild(g);
-    return g;
+    [top,left,right].forEach((pts,i)=>g.appendChild(makeFace(pts,[faceTop,faceLeft,faceRight][i])));
+    svg.appendChild(g);return g;
   }
 
   if(useGrid){
-    // Draw outer cube with grid lines on visible faces only
-    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    // top face polygon
-    const topPts=[
-      [isoX(0,0,n),isoY(0,0,n)],[isoX(n,0,n),isoY(n,0,n)],
-      [isoX(n,n,n),isoY(n,n,n)],[isoX(0,n,n),isoY(0,n,n)]
-    ].map(([x,y])=>`${x},${y}`).join(' ');
-    const leftPts=[
-      [isoX(0,n,0),isoY(0,n,0)],[isoX(0,n,n),isoY(0,n,n)],
-      [isoX(n,n,n),isoY(n,n,n)],[isoX(n,n,0),isoY(n,n,0)]
-    ].map(([x,y])=>`${x},${y}`).join(' ');
-    const rightPts=[
-      [isoX(n,0,0),isoY(n,0,0)],[isoX(n,0,n),isoY(n,0,n)],
-      [isoX(n,n,n),isoY(n,n,n)],[isoX(n,n,0),isoY(n,n,0)]
-    ].map(([x,y])=>`${x},${y}`).join(' ');
-
-    [[topPts,faceTop],[leftPts,faceLeft],[rightPts,faceRight]].forEach(([pts,col])=>{
-      const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-      p.setAttribute('points',pts); p.setAttribute('fill',col);
-      p.setAttribute('stroke',dark); p.setAttribute('stroke-width','1');
-      svg.appendChild(p);
-    });
-    // grid lines on top face
+    const topPts=[[0,0,n],[n,0,n],[n,n,n],[0,n,n]].map(([x,y,z])=>`${isoX(x,y,z)},${isoY(x,y,z)}`).join(' ');
+    const leftPts=[[0,n,0],[0,n,n],[n,n,n],[n,n,0]].map(([x,y,z])=>`${isoX(x,y,z)},${isoY(x,y,z)}`).join(' ');
+    const rightPts=[[n,0,0],[n,0,n],[n,n,n],[n,n,0]].map(([x,y,z])=>`${isoX(x,y,z)},${isoY(x,y,z)}`).join(' ');
+    [[topPts,faceTop],[leftPts,faceLeft],[rightPts,faceRight]].forEach(([pts,col])=>svg.appendChild(makeFace(pts,col)));
     for(let i=1;i<n;i++){
-      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l.setAttribute('x1',isoX(i,0,n)); l.setAttribute('y1',isoY(i,0,n));
-      l.setAttribute('x2',isoX(i,n,n)); l.setAttribute('y2',isoY(i,n,n));
-      l.setAttribute('stroke',dark); l.setAttribute('stroke-width','0.5'); svg.appendChild(l);
-      const l2=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l2.setAttribute('x1',isoX(0,i,n)); l2.setAttribute('y1',isoY(0,i,n));
-      l2.setAttribute('x2',isoX(n,i,n)); l2.setAttribute('y2',isoY(n,i,n));
-      l2.setAttribute('stroke',dark); l2.setAttribute('stroke-width','0.5'); svg.appendChild(l2);
+      [[isoX(i,0,n),isoY(i,0,n),isoX(i,n,n),isoY(i,n,n)],[isoX(0,i,n),isoY(0,i,n),isoX(n,i,n),isoY(n,i,n)]].forEach(([x1,y1,x2,y2])=>{const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke',dark);l.setAttribute('stroke-width','0.5');svg.appendChild(l);});
+      [[isoX(0,n,i),isoY(0,n,i),isoX(n,n,i),isoY(n,n,i)],[isoX(i,n,0),isoY(i,n,0),isoX(i,n,n),isoY(i,n,n)]].forEach(([x1,y1,x2,y2])=>{const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke',dark);l.setAttribute('stroke-width','0.5');svg.appendChild(l);});
+      [[isoX(n,0,i),isoY(n,0,i),isoX(n,n,i),isoY(n,n,i)],[isoX(n,i,0),isoY(n,i,0),isoX(n,i,n),isoY(n,i,n)]].forEach(([x1,y1,x2,y2])=>{const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke',dark);l.setAttribute('stroke-width','0.5');svg.appendChild(l);});
     }
-    // grid lines on left face
-    for(let i=1;i<n;i++){
-      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l.setAttribute('x1',isoX(0,n,i)); l.setAttribute('y1',isoY(0,n,i));
-      l.setAttribute('x2',isoX(n,n,i)); l.setAttribute('y2',isoY(n,n,i));
-      l.setAttribute('stroke',dark); l.setAttribute('stroke-width','0.5'); svg.appendChild(l);
-      const l2=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l2.setAttribute('x1',isoX(i,n,0)); l2.setAttribute('y1',isoY(i,n,0));
-      l2.setAttribute('x2',isoX(i,n,n)); l2.setAttribute('y2',isoY(i,n,n));
-      l2.setAttribute('stroke',dark); l2.setAttribute('stroke-width','0.5'); svg.appendChild(l2);
-    }
-    // grid lines on right face
-    for(let i=1;i<n;i++){
-      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l.setAttribute('x1',isoX(n,0,i)); l.setAttribute('y1',isoY(n,0,i));
-      l.setAttribute('x2',isoX(n,n,i)); l.setAttribute('y2',isoY(n,n,i));
-      l.setAttribute('stroke',dark); l.setAttribute('stroke-width','0.5'); svg.appendChild(l);
-      const l2=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l2.setAttribute('x1',isoX(n,i,0)); l2.setAttribute('y1',isoY(n,i,0));
-      l2.setAttribute('x2',isoX(n,i,n)); l2.setAttribute('y2',isoY(n,i,n));
-      l2.setAttribute('stroke',dark); l2.setAttribute('stroke-width','0.5'); svg.appendChild(l2);
-    }
-    countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;
-
-    // Redraw wireframe on top so it stays visible
-    redrawWireframe();
-    return;
+    drawWireEdges(visibleEdges);
+    countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;return;
   }
 
-  // Draw outer wireframe first in contrasting colour
-  const wireColor='#00cc00';
-  const wireW='2.5';
-  // All 12 edges for the initial ghost outline (helps orient before fill)
-  const wireEdges=[
-    // bottom face
-    [[0,0,0],[n,0,0]],[[n,0,0],[n,n,0]],[[n,n,0],[0,n,0]],[[0,n,0],[0,0,0]],
-    // top face
-    [[0,0,n],[n,0,n]],[[n,0,n],[n,n,n]],[[n,n,n],[0,n,n]],[[0,n,n],[0,0,n]],
-    // verticals
-    [[0,0,0],[0,0,n]],[[n,0,0],[n,0,n]],[[n,n,0],[n,n,n]],[[0,n,0],[0,n,n]]
-  ];
-  const visibleEdges=[
-    // top face (all 4 edges)
-    [[0,0,n],[n,0,n]],
-    [[n,0,n],[n,n,n]],
-    [[n,n,n],[0,n,n]],
-    [[0,n,n],[0,0,n]],
-    // 3 visible verticals
-    [[0,0,0],[0,0,n]],
-    [[n,0,0],[n,0,n]],
-    [[0,n,0],[0,n,n]]
-  ];
-  wireEdges.forEach(([[x1,y1,z1],[x2,y2,z2]])=>{
-    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-    l.setAttribute('x1',isoX(x1,y1,z1)); l.setAttribute('y1',isoY(x1,y1,z1));
-    l.setAttribute('x2',isoX(x2,y2,z2)); l.setAttribute('y2',isoY(x2,y2,z2));
-    l.setAttribute('stroke',wireColor); l.setAttribute('stroke-width',wireW);
-    l.setAttribute('stroke-linecap','round');
-    svg.appendChild(l);
-  });
+  drawWireEdges(wireEdges);
 
-  function redrawWireframe(){
-    visibleEdges.forEach(([[x1,y1,z1],[x2,y2,z2]])=>{
-      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l.setAttribute('x1',isoX(x1,y1,z1)); l.setAttribute('y1',isoY(x1,y1,z1));
-      l.setAttribute('x2',isoX(x2,y2,z2)); l.setAttribute('y2',isoY(x2,y2,z2));
-      l.setAttribute('stroke',wireColor); l.setAttribute('stroke-width',wireW);
-      l.setAttribute('stroke-linecap','round');
-      svg.appendChild(l);
-    });
-  }
-
-  // Animated: fill layer by layer (z=0 first), back to front within each layer
   const order=[];
-  for(let z=0;z<n;z++)
-    for(let y=0;y<n;y++)
-      for(let x=0;x<n;x++)
-        order.push([x,y,z]);
-
-  // Pre-create all cube groups (invisible)
-  const cubeEls=order.map(([x,y,z])=>drawCube(x,y,z,true));
+  for(let z=0;z<n;z++) for(let y=0;y<n;y++) for(let x=0;x<n;x++) order.push([x,y,z]);
+  const cubeEls=order.map(([x,y,z])=>drawCube(x,y,z));
 
   let i=0;
   const delay=n<=5?80:n<=10?15:4;
   function addNext(){
-    if(i>=order.length){
-      countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;
-      redrawWireframe();
-      return;
-    }
-    const el=cubeEls[i];
-    svg.appendChild(el); // re-append to ensure correct z-order
-    el.style.opacity='1';
-    i++;
+    if(i>=order.length){countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;drawWireEdges(visibleEdges);return;}
+    const el=cubeEls[i];svg.appendChild(el);el.style.opacity='1';i++;
     animHandle=setTimeout(addNext,delay);
   }
   addNext();
-}
-
-function drawZoom(area,val,result,fromU,toU,mult){
-  const [dark,light]=qColor();
-  const ratio=mult>=1?mult:1/mult;
-  const bigger=mult>=1?fromU:toU;
-  const smaller=mult>=1?toU:fromU;
-  const count=Math.round(ratio);
-  const qKey=qtSel.value;
-
-  area.innerHTML=`
-<div style="padding:16px 20px 8px">
-  <p style="font-size:19px;color:var(--color-text-secondary);margin-bottom:12px;text-align:center">
-    1 <strong style="color:${dark}">${bigger}</strong> = <strong style="color:${dark}">${count.toLocaleString('en-GB')}</strong> <strong style="color:${dark}">${smaller}</strong>
-  </p>
-  <div id="zoomBox" style="position:relative;margin:0 auto;"></div>
-  <p id="zoomCount" style="font-size:18px;text-align:center;color:var(--color-text-secondary);margin-top:10px"></p>
-</div>`;
-
-  const box=document.getElementById('zoomBox');
-  const countEl=document.getElementById('zoomCount');
-
-  if(count<1||count>10000){
-    box.innerHTML=`<p style="font-size:19px;padding:1rem;text-align:center;color:var(--color-text-secondary)">Scale ratio is ${count.toLocaleString('en-GB')} — too large to subdivide. Switch to bar view for a proportional comparison.</p>`;
-    return;
-  }
-
-  if(LINEAR_UNITS.includes(qKey)){
-    drawZoomLinear(box,countEl,count,bigger,smaller,dark,light);
-  } else if(AREA_UNITS.includes(qKey)){
-    drawZoomArea(box,countEl,count,bigger,smaller,dark,light);
-  } else if(CUBIC_UNITS.includes(qKey)){
-    drawZoomCubic(box,countEl,count,bigger,smaller,dark,light);
-  } else {
-    drawZoomLinear(box,countEl,count,bigger,smaller,dark,light);
-  }
-}
-
-function drawZoomLinear(box,countEl,count,bigger,smaller,dark,light){
-  const BAR_H=60;
-  const MAX_W=600;
-  const W=MAX_W;
-  const cellW=W/count;
-
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('width',W); svg.setAttribute('height',BAR_H);
-  svg.style.cssText=`display:block;border:3px solid ${dark};border-radius:4px;background:${light}`;
-  box.style.width=W+'px';
-  box.appendChild(svg);
-
-  let drawn=0;
-  function addCell(){
-    if(drawn>=count){
-      // grid lines on top
-      for(let c=1;c<count;c++){
-        const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-        l.setAttribute('x1',c*cellW); l.setAttribute('y1',0);
-        l.setAttribute('x2',c*cellW); l.setAttribute('y2',BAR_H);
-        l.setAttribute('stroke',dark); l.setAttribute('stroke-width','1');
-        svg.appendChild(l);
-      }
-      countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;
-      return;
-    }
-    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x',drawn*cellW+1); rect.setAttribute('y',1);
-    rect.setAttribute('width',Math.max(1,cellW-1)); rect.setAttribute('height',BAR_H-2);
-    rect.setAttribute('fill',dark); rect.setAttribute('opacity','0');
-    svg.appendChild(rect);
-    drawn++;
-    let op=0;
-    function fadeIn(){op=Math.min(1,op+0.2); rect.setAttribute('opacity',op); if(op<1) requestAnimationFrame(fadeIn);}
-    requestAnimationFrame(fadeIn);
-    const delay=count<=10?30:count<=100?6:1;
-    animHandle=setTimeout(addCell,delay);
-  }
-  addCell();
-}
-
-function drawZoomArea(box,countEl,count,bigger,smaller,dark,light){
-  const cols=count<=10?count:count<=100?10:count<=1000?25:100;
-  const rows=Math.ceil(count/cols);
-  const CELL=count<=10?56:count<=100?32:count<=1000?14:5;
-  const W=cols*CELL, H=rows*CELL;
-
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('width',W); svg.setAttribute('height',H);
-  svg.style.cssText=`display:block;border:3px solid ${dark};border-radius:4px;background:${light}`;
-  box.style.width=W+'px';
-  box.appendChild(svg);
-
-  let drawn=0;
-  function addCell(){
-    if(drawn>=count){
-      for(let c=1;c<cols;c++){
-        const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-        l.setAttribute('x1',c*CELL); l.setAttribute('y1',0);
-        l.setAttribute('x2',c*CELL); l.setAttribute('y2',H);
-        l.setAttribute('stroke',dark); l.setAttribute('stroke-width','1');
-        svg.appendChild(l);
-      }
-      for(let r=1;r<rows;r++){
-        const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-        l.setAttribute('x1',0); l.setAttribute('y1',r*CELL);
-        l.setAttribute('x2',W); l.setAttribute('y2',r*CELL);
-        l.setAttribute('stroke',dark); l.setAttribute('stroke-width','1');
-        svg.appendChild(l);
-      }
-      countEl.textContent=`${count.toLocaleString('en-GB')} ${smaller} fit inside 1 ${bigger}`;
-      return;
-    }
-    const col=drawn%cols, row=Math.floor(drawn/cols);
-    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x',col*CELL+1); rect.setAttribute('y',row*CELL+1);
-    rect.setAttribute('width',CELL-1); rect.setAttribute('height',CELL-1);
-    rect.setAttribute('fill',dark); rect.setAttribute('opacity','0');
-    svg.appendChild(rect);
-    drawn++;
-    let op=0;
-    function fadeIn(){op=Math.min(1,op+0.15); rect.setAttribute('opacity',op); if(op<1) requestAnimationFrame(fadeIn);}
-    requestAnimationFrame(fadeIn);
-    const delay=count<=10?30:count<=100?6:1;
-    animHandle=setTimeout(addCell,delay);
-  }
-  addCell();
 }
 
 qtSel.addEventListener('change',()=>{populateUnits();update();});
 fromSel.addEventListener('change',update);
 toSel.addEventListener('change',update);
 valIn.addEventListener('input',update);
-
 populateUnits();
 update();
 </script>
