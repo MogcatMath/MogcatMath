@@ -67,11 +67,6 @@
     padding: 10px 16px;
     position: relative;
   }
-  .expression-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
   .num-input {
     width: 90px;
     padding: 8px 10px;
@@ -85,20 +80,12 @@
     transition: border-color 0.2s;
   }
   .num-input:focus { border-color: #fff; }
-  .op-symbol {
-    font-size: 1.8rem;
-    color: #ddd;
-    font-weight: bold;
-    user-select: none;
-  }
   #result {
     font-size: 1.3rem;
     font-weight: 600;
-    color: #f0f0f0;
-    min-height: 1.8rem;
+    color: #ffffff;
     letter-spacing: 0.05em;
-    width: 160px;
-    text-align: left;
+    width: 120px;
   }
   #result.error { color: #f08080; }
   .axis-label {
@@ -123,23 +110,26 @@
 </div>
 <div id="bottom-area">
   <div id="zoom-area">
-    <div id="zoom-label">Zoom: x ∈ [0.8, 1.2]</div>
+    <div id="zoom-label">Zoom: x ∈ [0.9, 1.1]</div>
     <canvas id="zoom"></canvas>
   </div>
   <div id="input-area">
-    <div class="expression-row">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-        <input class="num-input" id="dividend" type="number" value="12" placeholder="dividend">
-        <span class="axis-label">dividend (y)</span>
-      </div>
-      <span class="op-symbol">÷</span>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-        <input class="num-input" id="divisor" type="number" value="4" placeholder="divisor">
-        <span class="axis-label">divisor (x)</span>
-      </div>
-      <span class="op-symbol">=</span>
-      <div id="result"></div>
-    </div>
+    <table style="border-collapse:collapse">
+      <tr>
+        <td style="text-align:center;padding:0 10px"><input class="num-input" id="dividend" type="number" value="12" placeholder="dividend"></td>
+        <td style="text-align:center;padding:0 4px;font-size:1.3rem;font-weight:bold;color:#ddd">÷</td>
+        <td style="text-align:center;padding:0 10px"><input class="num-input" id="divisor" type="number" value="4" placeholder="divisor"></td>
+        <td style="text-align:center;padding:0 4px;font-size:1.3rem;font-weight:bold;color:#ddd">=</td>
+        <td style="padding:0 4px;font-size:1.3rem;font-weight:600;color:#fff;width:120px" id="result"></td>
+      </tr>
+      <tr>
+        <td style="text-align:center;padding-top:3px"><span class="axis-label">dividend (y)</span></td>
+        <td></td>
+        <td style="text-align:center;padding-top:3px"><span class="axis-label">divisor (x)</span></td>
+        <td></td>
+        <td></td>
+      </tr>
+    </table>
     <div id="quotient-label"></div>
   </div>
 </div>
@@ -393,7 +383,7 @@ function draw() {
   const quotient = valid && divisor !== 0 ? dividend / divisor : NaN;
   const yCenter = isNaN(quotient) ? 0 : quotient;
   drawGraph(zctx, ZW, ZH, dividend, divisor,
-    { xMin: 0.8, xMax: 1.2, yMin: yCenter - 0.1, yMax: yCenter + 0.1 }, true);
+    { xMin: 0.9, xMax: 1.1, yMin: yCenter - 0.1, yMax: yCenter + 0.1 }, true);
 
   if (!valid) {
     resultEl.textContent = '';
@@ -404,7 +394,7 @@ function draw() {
     quotientLabelEl.textContent = '';
   } else {
     const q = dividend / divisor;
-    resultEl.textContent = `${fmt(dividend)} ÷ ${fmt(divisor)} = ${fmt(q)}`;
+    resultEl.textContent = parseFloat(q.toPrecision(3)).toString();
     resultEl.className = '';
     quotientLabelEl.textContent = `slope = quotient = ${fmt(q)}  ·  at x=1: y = ${fmt(q)}`;
   }
