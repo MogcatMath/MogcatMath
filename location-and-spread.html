@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Location and Spread — From Data to the Normal Curve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F1E4;
+    --panel:#FFFFFE;
+    --panel-alt:#F3EEDF;
+    --panel-edge:#D9D2BC;
+    --ink:#282A2E;
+    --muted:#6C6E72;
+    --muted-dim:#96988F;
+    --grid:#C7C4B4;
+    --neutral:#3E56C4;
+    --neutral-dim:rgba(62,86,196,0.12);
+    --amber:#AD6A17;
+    --amber-soft:rgba(181,105,26,0.14);
+    --amber-line:rgba(181,105,26,0.5);
+    --cyan:#0E7F73;
+    --cyan-soft:rgba(18,143,130,0.14);
+    --cyan-line:rgba(18,143,130,0.5);
+    --rose:#A83A54;
+    --margin-red:rgba(178,58,85,0.32);
+    --serif:'Fraunces', serif;
+    --sans:'IBM Plex Sans', sans-serif;
+    --mono:'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background-color:var(--bg);
+    background-image:
+      linear-gradient(rgba(40,42,46,0.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(40,42,46,0.09) 1px, transparent 1px);
+    background-size: 22px 22px, 22px 22px;
+    color:var(--ink);
+    font-family:var(--sans);
+    overflow:hidden;
+  }
+  #app{
+    width:100vw; height:100vh;
+    display:flex; flex-direction:column;
+    padding:clamp(10px,1.6vh,20px) clamp(16px,2.4vw,40px);
+  }
+  ::selection{ background:var(--amber-soft); }
+
+  /* ---------- header ---------- */
+  header.app-head{
+    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+    flex:0 0 auto; margin-bottom:clamp(8px,1.4vh,16px);
+  }
+  .title-block h1{
+    font-family:var(--serif); font-weight:600; font-size:clamp(22.5px,2.625vw,35px);
+    margin:0; letter-spacing:0.2px; white-space:nowrap;
+  }
+  .title-block .eyebrow{
+    font-family:var(--mono); font-size:13.75px; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--muted-dim); margin:0 0 2px 0;
+  }
+  .stepper{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+  .step-btn{
+    display:flex; align-items:center; gap:8px; background:none; border:none; cursor:pointer;
+    padding:6px 10px; border-radius:10px; color:var(--muted); font-family:var(--sans);
+    transition:background .2s ease, color .2s ease;
+  }
+  .step-btn:hover{ background:var(--panel-alt); }
+  .step-btn .dot{
+    width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:13.75px; border:1.5px solid var(--panel-edge); color:var(--muted-dim);
+    flex:0 0 auto; transition:all .25s ease;
+  }
+  .step-btn.active{ color:var(--ink); }
+  .step-btn.active .dot{ background:var(--neutral); border-color:var(--neutral); color:#FFFFFE; }
+  .step-btn.done .dot{ border-color:var(--neutral); color:var(--neutral); }
+  .step-btn .label{ font-size:15.6px; white-space:nowrap; }
+  .step-sep{ width:20px; height:1px; background:var(--panel-edge); }
+
+  /* ---------- stage panel ---------- */
+  main.stage{
+    flex:1 1 auto; min-height:0;
+    background:linear-gradient(180deg, var(--panel), var(--panel-alt));
+    border:1px solid var(--panel-edge);
+    border-radius:14px;
+    box-shadow: 0 3px 18px rgba(80,68,40,0.10), 0 1px 0 rgba(255,255,255,0.7) inset;
+    display:flex; flex-direction:column;
+    padding:clamp(14px,2vh,24px) clamp(18px,2.4vw,34px);
+    position:relative; overflow:hidden;
+  }
+  main.stage.fade-target{ opacity:0; transition:opacity .35s ease; }
+  main.stage.fade-target.in{ opacity:1; }
+
+  .stage-copy{ flex:0 0 auto; max-width:78ch; }
+  .stage-copy h2{
+    font-family:var(--serif); font-weight:600; font-size:clamp(20px,2.125vw,26.25px);
+    margin:0 0 4px 0;
+  }
+  .stage-copy p{
+    margin:0; color:var(--muted); font-size:clamp(15.6px,1.44vw,18.1px); line-height:1.5;
+  }
+  .stage-copy p .hl-amber{ color:var(--amber); font-weight:600; }
+  .stage-copy p .hl-cyan{ color:var(--cyan); font-weight:600; }
+
+  .stage-body{
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+    align-items:stretch; justify-content:center; gap:10px; margin-top:6px;
+  }
+
+  .viz-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; }
+  .viz-wrap svg{ width:100%; height:100%; max-height:100%; display:block; }
+
+  .controls-row{
+    flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    gap:10px; flex-wrap:wrap; padding-top:4px;
+  }
+
+  button.action{
+    font-family:var(--sans); font-weight:600; font-size:16.25px; letter-spacing:0.2px;
+    padding:10px 18px; border-radius:12px; border:1.5px solid var(--neutral);
+    background:rgba(62,86,196,0.09); color:var(--ink); cursor:pointer;
+    transition:transform .15s ease, background .2s ease, box-shadow .2s ease;
+    min-height:40px;
+  }
+  button.action:hover{ background:rgba(62,86,196,0.18); }
+  button.action:active{ transform:scale(0.97); }
+  button.action.amber{ border-color:var(--amber); background:var(--amber-soft); }
+  button.action.amber:hover{ background:rgba(181,105,26,0.24); }
+  button.action.cyan{ border-color:var(--cyan); background:var(--cyan-soft); }
+  button.action.cyan:hover{ background:rgba(18,143,130,0.24); }
+  button.action:disabled{ opacity:0.35; cursor:default; transform:none; }
+
+  .chip-group{ display:flex; gap:6px; background:var(--panel); border:1px solid var(--panel-edge); border-radius:12px; padding:4px; }
+  .chip{
+    font-family:var(--mono); font-size:15.6px; padding:8px 14px; border-radius:9px; cursor:pointer;
+    color:var(--muted); border:none; background:none; transition:all .2s ease; min-height:34px;
+  }
+  .chip.selected{ background:var(--neutral); color:#FFFFFE; font-weight:600; }
+  .chip.shape-chip.selected{ background:var(--amber); color:#FFFFFE; }
+
+  .tab-group{ display:flex; gap:8px; }
+  .tab-btn{
+    font-family:var(--sans); font-weight:600; font-size:16.9px; padding:11px 20px; border-radius:12px;
+    cursor:pointer; border:1.5px solid var(--panel-edge); background:var(--panel); color:var(--muted);
+    transition:all .2s ease;
+  }
+  .tab-btn.amber-tab.selected{ border-color:var(--amber); background:var(--amber-soft); color:var(--amber); }
+  .tab-btn.cyan-tab.selected{ border-color:var(--cyan); background:var(--cyan-soft); color:var(--cyan); }
+
+  .readout-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .readout{
+    font-family:var(--mono); font-size:15.6px; background:var(--panel); border:1px solid var(--panel-edge);
+    border-radius:10px; padding:7px 12px; color:var(--muted);
+  }
+  .readout b{ color:var(--ink); font-weight:600; }
+  .readout.amber{ border-color:var(--amber-line); color:var(--amber); }
+  .readout.amber b{ color:var(--amber); }
+  .readout.cyan{ border-color:var(--cyan-line); color:var(--cyan); }
+  .readout.cyan b{ color:var(--cyan); }
+  .readout.neutral{ border-color:var(--neutral); color:var(--neutral); }
+  .readout.neutral b{ color:var(--neutral); }
+
+  table.calc-table{
+    border-collapse:collapse; font-family:var(--mono); font-size:15px; margin:0 auto;
+  }
+  table.calc-table th, table.calc-table td{
+    padding:5px 12px; text-align:right; border-bottom:1px solid var(--panel-edge);
+  }
+  table.calc-table th{ color:var(--muted-dim); font-weight:600; font-size:13.75px; text-transform:uppercase; letter-spacing:1px; }
+  table.calc-table td{ color:var(--ink); }
+  table.calc-table tr.sum-row td{ border-top:1.5px solid var(--cyan-line); border-bottom:none; font-weight:600; color:var(--cyan); padding-top:8px; }
+
+  /* ---------- footer ---------- */
+  footer.app-foot{
+    flex:0 0 auto; display:flex; justify-content:space-between; align-items:center;
+    padding-top:clamp(8px,1.4vh,14px);
+  }
+  .nav-btn{
+    font-family:var(--sans); font-weight:600; font-size:16.25px; padding:10px 18px; border-radius:12px;
+    border:1.5px solid var(--panel-edge); background:var(--panel); color:var(--ink); cursor:pointer;
+    min-height:40px; transition:all .2s ease;
+  }
+  .nav-btn:hover{ border-color:var(--neutral); }
+  .nav-btn:disabled{ opacity:0.3; cursor:default; }
+  .foot-caption{ font-family:var(--mono); font-size:13.75px; color:var(--muted-dim); letter-spacing:0.5px; }
+
+  /* svg text helpers */
+  .axis-label{ font-family:var(--mono); font-size:13.75px; fill:#000000; }
+  .axis-line{ stroke:#000000; stroke-width:1.5; }
+  .tick-line{ stroke:#000000; stroke-width:1; }
+  .caption-svg{ font-family:var(--sans); font-size:15px; fill:var(--muted); }
+  .value-label{ font-family:var(--mono); font-size:13.75px; fill:var(--ink); }
+  .ball{ transition: cx .85s cubic-bezier(.4,0,.2,1), cy .85s cubic-bezier(.4,0,.2,1); }
+  .freq-axis{ opacity:0; transition:opacity .5s ease; }
+  .freq-axis.in{ opacity:1; }
+  .bars-group, .balls-group{ transition: opacity .6s ease; }
+  .s3-overlay-fade{ transition: opacity .2s ease; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+// Our fixed "class" of 12 Year 12 students' heights (cm) — distinct values, no ties.
+const CLASS_HEIGHTS = [171,165,179,168,158,174,172,183,162,176,167,170];
+
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function gaussianPair(rand){
+  const u1 = Math.max(rand(), 1e-9), u2 = rand();
+  const R = Math.sqrt(-2*Math.log(u1));
+  return [R*Math.cos(2*Math.PI*u2), R*Math.sin(2*Math.PI*u2)];
+}
+function round1(v){ return Math.round(v*10)/10; }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+// growth pool: starts with our 12 real students, then simulated "rest of the year group"
+const POOL = (function(){
+  const rand = mulberry32(42);
+  const pool = CLASS_HEIGHTS.slice();
+  while(pool.length < 2000){
+    const [z1,z2] = gaussianPair(rand);
+    pool.push(round1(clamp(170 + 7*z1, 144, 198)));
+    if(pool.length < 2000) pool.push(round1(clamp(170 + 7*z2, 144, 198)));
+  }
+  return pool;
+})();
+
+const DOMAIN_MIN = 144, DOMAIN_MAX = 198;
+const GROW_STEPS = [12, 50, 200, 2000];
+const BIN_WIDTHS = [10, 4, 2, 1];
+
+/* ============================================================
+   STATS HELPERS
+   ============================================================ */
+function mean(arr){ return arr.reduce((a,b)=>a+b,0) / arr.length; }
+function sortAsc(arr){ return arr.slice().sort((a,b)=>a-b); }
+function variancePop(arr){
+  const m = mean(arr);
+  return arr.reduce((s,x)=>s+(x-m)*(x-m),0) / arr.length;
+}
+function stdDevPop(arr){ return Math.sqrt(variancePop(arr)); }
+function med(arr){
+  const s = sortAsc(arr), n = s.length;
+  return n%2===0 ? (s[n/2-1]+s[n/2])/2 : s[(n-1)/2];
+}
+function quartiles(arr){
+  const s = sortAsc(arr), n = s.length;
+  const median = med(s);
+  const lower = n%2===0 ? s.slice(0, n/2) : s.slice(0, (n-1)/2);
+  const upper = n%2===0 ? s.slice(n/2) : s.slice((n+1)/2);
+  return { median, q1: med(lower), q3: med(upper) };
+}
+function normalPdf(x, m, sd){
+  return (1/(sd*Math.sqrt(2*Math.PI))) * Math.exp(-0.5*Math.pow((x-m)/sd,2));
+}
+function bin(data, domainMin, domainMax, binWidth){
+  const bins = [];
+  for(let x0 = domainMin; x0 < domainMax - 1e-9; x0 += binWidth){
+    const x1 = Math.min(x0 + binWidth, domainMax);
+    bins.push({x0, x1, count:0});
+  }
+  data.forEach(v=>{
+    let idx = Math.floor((v - domainMin) / binWidth);
+    idx = clamp(idx, 0, bins.length-1);
+    bins[idx].count++;
+  });
+  return bins;
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  stage: 1,
+  s1Phase: 'dots', // 'dots' | 'animating' | 'grouped' | 'animating-back' | 'animating-bars' | 'bars' | 'animating-bars-back'
+  growIdx: 0,
+  showCurve: false,
+  s2Phase: 'histogram', // 'histogram' | 'fadingToCurve' | 'curveAlone' | 'fadingToHistogram'
+  curveShape: 'real',   // 'real' | 'normal' | 'left' | 'right' | 'bimodal'
+  s2Morphing: false,
+  showIQR: false,
+  showSD: false,
+  s3Phase: 'curve', // 'curve' | 'shapes'
+  s3Shape: 'normal', // 'normal' | 'left' | 'right' | 'bimodal'
+  s3Morphing: false
+};
+
+/* ============================================================
+   SVG BUILDING BLOCKS
+   ============================================================ */
+function svgAxis(domainMin, domainMax, width, margin, y, tickStep){
+  let s = `<line class="axis-line" x1="${margin}" y1="${y}" x2="${width-margin}" y2="${y}"/>`;
+  for(let t = Math.ceil(domainMin/tickStep)*tickStep; t <= domainMax+1e-6; t += tickStep){
+    const x = margin + (t-domainMin)/(domainMax-domainMin)*(width-2*margin);
+    s += `<line class="tick-line" x1="${x}" y1="${y}" x2="${x}" y2="${y+6}"/>`;
+    s += `<text class="axis-label" x="${x}" y="${y+20}" text-anchor="middle">${Math.round(t)}</text>`;
+  }
+  s += `<text class="axis-label" x="${width-margin}" y="${y+38}" text-anchor="end" style="letter-spacing:1.5px;">HEIGHT (CM)</text>`;
+  return s;
+}
+
+function xScaleFn(domainMin, domainMax, width, margin){
+  return v => margin + (v-domainMin)/(domainMax-domainMin)*(width-2*margin);
+}
+
+function renderDotPlot(data, opts){
+  const { width=900, height=260, color='var(--neutral)', highlightVals=[], highlightColor='var(--amber)',
+          orderLabels=false, meanLine=null, deviations=false } = opts;
+  const margin = 34, baseY = height - 46, r = 8, dy = 19;
+  const x = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, width, margin);
+  const sorted = sortAsc(data);
+  let s = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  s += svgAxis(DOMAIN_MIN, DOMAIN_MAX, width, margin, baseY, 10);
+
+  if(meanLine !== null){
+    const mx = x(meanLine);
+    s += `<line x1="${mx}" y1="${baseY+2}" x2="${mx}" y2="${baseY - dy*4}" stroke="var(--cyan)" stroke-width="2" stroke-dasharray="3,4"/>`;
+    s += `<text class="value-label" x="${mx}" y="${baseY - dy*4 - 8}" text-anchor="middle" fill="var(--cyan)" font-weight="600">mean = ${meanLine.toFixed(2)}</text>`;
+  }
+
+  data.forEach((v)=>{
+    const cx = x(v);
+    const stackIdx = sorted.indexOf(v); // distinct values only in our dataset
+    const cy = baseY - r - 2;
+    const isHi = highlightVals.includes(v);
+    const fill = isHi ? highlightColor : color;
+    if(deviations && meanLine !== null){
+      const mx = x(meanLine);
+      const above = v >= meanLine;
+      const devColor = above ? 'var(--rose)' : 'var(--cyan)';
+      s += `<line x1="${mx}" y1="${cy}" x2="${cx}" y2="${cy}" stroke="${devColor}" stroke-width="2" opacity="0.55"/>`;
+    }
+    s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="#0B0F20" stroke-width="1"/>`;
+    if(orderLabels){
+      const pos = sorted.indexOf(v) + 1;
+      s += `<text class="value-label" x="${cx}" y="${cy - r - 8}" text-anchor="middle" fill="var(--muted-dim)" font-size="11.9">${pos}${ordinalSuffix(pos)}</text>`;
+    }
+  });
+  s += `</svg>`;
+  return s;
+}
+
+function ordinalSuffix(n){
+  const s=["th","st","nd","rd"], v=n%100;
+  return s[(v-20)%10]||s[v]||s[0];
+}
+
+function renderHistogram(data, opts){
+  const { width=900, height=300, binWidth=4, color='var(--neutral)', curve=false, binOrigin=DOMAIN_MIN } = opts;
+  const margin = 34, baseY = height - 46;
+  const bins = bin(data, binOrigin, DOMAIN_MAX, binWidth);
+  const maxCount = Math.max(...bins.map(b=>b.count), 1);
+  const plotH = baseY - 26;
+  const x = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, width, margin);
+  let s = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  s += svgAxis(DOMAIN_MIN, DOMAIN_MAX, width, margin, baseY, 10);
+  bins.forEach(b=>{
+    if(b.count===0) return;
+    const bx0 = x(b.x0), bx1 = x(b.x1);
+    const h = (b.count/maxCount) * plotH;
+    s += `<rect x="${bx0+1}" y="${baseY-h}" width="${Math.max(bx1-bx0-2,1)}" height="${h}" fill="${color}" opacity="0.85" rx="2"/>`;
+  });
+  if(curve){
+    const m = mean(data), sd = stdDevPop(data);
+    const totalArea = data.length * binWidth;
+    const pts = [];
+    for(let px=0; px<=width; px+=4){
+      const xv = DOMAIN_MIN + (px-margin)/(width-2*margin)*(DOMAIN_MAX-DOMAIN_MIN);
+      if(xv < DOMAIN_MIN || xv > DOMAIN_MAX) continue;
+      const density = normalPdf(xv, m, sd) * totalArea;
+      const hy = (density/maxCount) * plotH;
+      pts.push(`${px},${baseY-hy}`);
+    }
+    s += `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+  }
+  s += `</svg>`;
+  return s;
+}
+
+function renderBoxPlot(data, q, width=900, height=140){
+  const margin = 34, midY = 62, boxH = 46;
+  const x = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, width, margin);
+  const sorted = sortAsc(data);
+  const min = sorted[0], max = sorted[sorted.length-1];
+  const baseY = height - 46;
+  let s = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+  s += svgAxis(DOMAIN_MIN, DOMAIN_MAX, width, margin, baseY, 10);
+  const xMin=x(min), xQ1=x(q.q1), xMed=x(q.median), xQ3=x(q.q3), xMax=x(max);
+  const y0 = midY - boxH/2, y1 = midY + boxH/2;
+  s += `<line x1="${xMin}" y1="${midY}" x2="${xQ1}" y2="${midY}" stroke="var(--amber)" stroke-width="2"/>`;
+  s += `<line x1="${xQ3}" y1="${midY}" x2="${xMax}" y2="${midY}" stroke="var(--amber)" stroke-width="2"/>`;
+  s += `<line x1="${xMin}" y1="${y0}" x2="${xMin}" y2="${y1}" stroke="var(--amber)" stroke-width="2"/>`;
+  s += `<line x1="${xMax}" y1="${y0}" x2="${xMax}" y2="${y1}" stroke="var(--amber)" stroke-width="2"/>`;
+  s += `<rect x="${xQ1}" y="${y0}" width="${xQ3-xQ1}" height="${boxH}" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="2"/>`;
+  s += `<line x1="${xMed}" y1="${y0}" x2="${xMed}" y2="${y1}" stroke="var(--amber)" stroke-width="3"/>`;
+  [[min,'min'],[q.q1,'Q1'],[q.median,'median'],[q.q3,'Q3'],[max,'max']].forEach(([v,lab])=>{
+    s += `<text class="value-label" x="${x(v)}" y="${y0-8}" text-anchor="middle" fill="var(--amber)">${v.toFixed(1)}</text>`;
+  });
+  s += `</svg>`;
+  return s;
+}
+
+/* ---- Stage 1: dot-plot <-> stacked-by-tens animation helpers ---- */
+const S1_WIDTH = 900, S1_HEIGHT = 340, S1_MARGIN = 64, S1_R = 8, S1_DY = 20;
+const S1_BASE_Y = S1_HEIGHT - 46;
+const S1_BIN_START = 140, S1_BIN_WIDTH = 10, S1_BIN_COUNT = 6;
+
+function stage1XScale(){ return xScaleFn(DOMAIN_MIN, DOMAIN_MAX, S1_WIDTH, S1_MARGIN); }
+
+function stage1Bins(){
+  const bins = [];
+  for(let i=0;i<S1_BIN_COUNT;i++){
+    bins.push({ x0: S1_BIN_START + i*S1_BIN_WIDTH, x1: S1_BIN_START + (i+1)*S1_BIN_WIDTH, values: [] });
+  }
+  sortAsc(CLASS_HEIGHTS).forEach(v=>{
+    let idx = Math.floor((v - S1_BIN_START) / S1_BIN_WIDTH);
+    idx = clamp(idx, 0, S1_BIN_COUNT - 1);
+    bins[idx].values.push(v);
+  });
+  return bins;
+}
+
+// target cx/cy for each value once stacked into tens
+function stage1StackedPositions(){
+  const x = stage1XScale();
+  const bins = stage1Bins();
+  const positions = {};
+  bins.forEach(b=>{
+    const cx = x((b.x0 + b.x1) / 2);
+    b.values.forEach((v, i)=>{
+      positions[v] = { cx, cy: S1_BASE_Y - S1_R - 2 - i*S1_DY };
+    });
+  });
+  return positions;
+}
+
+// raw dot-plot cx/cy for each value (single row, positioned by value)
+function stage1RawPositions(){
+  const x = stage1XScale();
+  const positions = {};
+  CLASS_HEIGHTS.forEach(v=>{
+    positions[v] = { cx: x(v), cy: S1_BASE_Y - S1_R - 2 };
+  });
+  return positions;
+}
+
+function stage1MaxCount(){
+  return Math.max(...stage1Bins().map(b=>b.values.length), 1);
+}
+
+function svgFreqAxisVertical(maxCount){
+  const topY = S1_BASE_Y - maxCount*S1_DY - 14;
+  let s = `<g class="freq-axis" id="s1-freq-axis">`;
+  s += `<line class="axis-line" x1="${S1_MARGIN}" y1="${S1_BASE_Y}" x2="${S1_MARGIN}" y2="${topY}"/>`;
+  for(let c=0; c<=maxCount; c++){
+    const y = S1_BASE_Y - c*S1_DY;
+    s += `<line class="tick-line" x1="${S1_MARGIN-6}" y1="${y}" x2="${S1_MARGIN}" y2="${y}"/>`;
+    s += `<text class="axis-label" x="${S1_MARGIN-12}" y="${y+4}" text-anchor="end">${c}</text>`;
+  }
+  s += `<text class="axis-label" transform="rotate(-90)" x="${-(S1_BASE_Y+topY)/2}" y="${16}" text-anchor="middle" style="letter-spacing:1.5px;">FREQUENCY</text>`;
+  s += `</g>`;
+  return s;
+}
+
+// the histogram bars for the same ten-wide groups the balls were stacked into —
+// heights use the same per-unit spacing (S1_DY) as the frequency axis, so bars
+// top out exactly where the ball stacks did, and match what Stage 2 starts with.
+function renderStage1BarsMarkup(){
+  const bins = stage1Bins();
+  const x = stage1XScale();
+  let s = '';
+  bins.forEach(b=>{
+    const c = b.values.length;
+    if(c===0) return;
+    const bx0 = x(b.x0), bx1 = x(b.x1);
+    const h = c * S1_DY;
+    s += `<rect x="${bx0+2}" y="${S1_BASE_Y-h}" width="${Math.max(bx1-bx0-4,1)}" height="${h}" fill="var(--neutral)" opacity="0.85" rx="3"/>`;
+  });
+  return s;
+}
+
+// renders the stage-1 svg shell with balls at a given position map; freq axis and
+// bars are included (at a given opacity) only if requested
+function renderStage1Svg(positions, opts){
+  const { showFreqAxis=false, freqAxisVisible=false, showBars=false, barsOpacity=1, ballsOpacity=1 } = opts || {};
+  const sorted = sortAsc(CLASS_HEIGHTS);
+  let s = `<svg viewBox="0 0 ${S1_WIDTH} ${S1_HEIGHT}" xmlns="http://www.w3.org/2000/svg" id="s1-svg">`;
+  s += svgAxis(DOMAIN_MIN, DOMAIN_MAX, S1_WIDTH, S1_MARGIN, S1_BASE_Y, 10);
+  if(showFreqAxis){
+    const axis = svgFreqAxisVertical(stage1MaxCount());
+    s += freqAxisVisible ? axis.replace('class="freq-axis"', 'class="freq-axis in"') : axis;
+  }
+  if(showBars){
+    s += `<g class="bars-group" id="s1-bars" style="opacity:${barsOpacity}">${renderStage1BarsMarkup()}</g>`;
+  }
+  s += `<g class="balls-group" id="s1-balls" style="opacity:${ballsOpacity}">`;
+  sorted.forEach((v, i)=>{
+    const p = positions[v];
+    s += `<circle class="ball" data-value="${v}" cx="${p.cx}" cy="${p.cy}" r="${S1_R}" fill="var(--neutral)" stroke="#0B0F20" stroke-width="1" style="transition-delay:${i*35}ms"/>`;
+  });
+  s += `</g>`;
+  s += `</svg>`;
+  return s;
+}
+
+// drives the cx/cy + axis transitions by mutating the live DOM (so CSS transitions actually animate)
+function animateStage1(forward){
+  const svg = document.getElementById('s1-svg');
+  if(!svg) return;
+  const targets = forward ? stage1StackedPositions() : stage1RawPositions();
+
+  if(!forward){
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        const axis = document.getElementById('s1-freq-axis');
+        if(axis) axis.classList.remove('in');
+      });
+    });
+  }
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      svg.querySelectorAll('.ball').forEach(el=>{
+        const v = parseFloat(el.dataset.value);
+        const p = targets[v];
+        el.setAttribute('cx', p.cx);
+        el.setAttribute('cy', p.cy);
+      });
+    });
+  });
+
+  const ballDelay = CLASS_HEIGHTS.length * 35;
+  if(forward){
+    setTimeout(()=>{
+      const svgNow = document.getElementById('s1-svg');
+      if(svgNow && !svgNow.querySelector('#s1-freq-axis')){
+        svgNow.insertAdjacentHTML('beforeend', svgFreqAxisVertical(stage1MaxCount()));
+        requestAnimationFrame(()=>{
+          requestAnimationFrame(()=>{
+            const axis = document.getElementById('s1-freq-axis');
+            if(axis) axis.classList.add('in');
+          });
+        });
+      }
+      setTimeout(()=>{ state.s1Phase = 'grouped'; render(); }, 550);
+    }, 850 + ballDelay);
+  } else {
+    setTimeout(()=>{ state.s1Phase = 'dots'; render(); }, 350 + 850 + ballDelay);
+  }
+}
+
+// drives the balls <-> bars cross-fade (the second button, after stacking)
+function animateStage1Bars(forward){
+  const svg = document.getElementById('s1-svg');
+  if(!svg) return;
+
+  if(forward && !document.getElementById('s1-bars')){
+    const ballsGroup = document.getElementById('s1-balls');
+    ballsGroup.insertAdjacentHTML('beforebegin', `<g class="bars-group" id="s1-bars" style="opacity:0">${renderStage1BarsMarkup()}</g>`);
+  }
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      const bars = document.getElementById('s1-bars');
+      const balls = document.getElementById('s1-balls');
+      if(bars) bars.style.opacity = forward ? '1' : '0';
+      if(balls) balls.style.opacity = forward ? '0' : '1';
+    });
+  });
+
+  setTimeout(()=>{
+    state.s1Phase = forward ? 'bars' : 'grouped';
+    render();
+  }, 650);
+}
+
+/* ============================================================
+   STAGE RENDERERS
+   ============================================================ */
+function renderStage1(){
+  const phase = state.s1Phase;
+  const captions = {
+    dots: `Here are the heights of <b>12 students</b> in a Year 12 class, plotted as a dot for each person.`,
+    animating: `Grouping the students into ranges of ten centimetres…`,
+    'animating-back': `Back to individual students…`,
+    grouped: `Stacked into ranges of ten, a <b>frequency axis</b> now shows how many students fall in each range. With only 12 students the shape is still jagged — one or two people in either direction changes the picture a lot.`,
+    'animating-bars': `Turning the stacks into a histogram…`,
+    bars: `This is the histogram Stage 2 starts from — we'll keep growing the dataset from here.`,
+    'animating-bars-back': `Back to the stacked students…`
+  };
+
+  const rawPhases = ['dots', 'animating'];
+  const barPhases = ['bars', 'animating-bars-back'];
+  const positions = rawPhases.includes(phase) ? stage1RawPositions() : stage1StackedPositions();
+
+  let opts;
+  if(rawPhases.includes(phase)){
+    opts = { showFreqAxis:false, freqAxisVisible:false, showBars:false, ballsOpacity:1 };
+  } else if(barPhases.includes(phase)){
+    opts = { showFreqAxis:true, freqAxisVisible:true, showBars:true, barsOpacity:1, ballsOpacity:0 };
+  } else {
+    opts = { showFreqAxis:true, freqAxisVisible:true, showBars:false, ballsOpacity:1 };
+  }
+
+  const BUTTONS = {
+    dots: `<button class="action" data-act="s1-animate">Stack into ranges of ten →</button>`,
+    animating: `<button class="action" disabled>Stack into ranges of ten →</button>`,
+    grouped: `
+      <button class="action" data-act="s1-ungroup">← Back to individual students</button>
+      <button class="action amber" data-act="s1-bars-forward">Show as a histogram →</button>
+    `,
+    'animating-back': `<button class="action" disabled>← Back to individual students</button>`,
+    'animating-bars': `
+      <button class="action" disabled>← Back to individual students</button>
+      <button class="action amber" disabled>Show as a histogram →</button>
+    `,
+    bars: `<button class="action" data-act="s1-bars-back">← Back to stacked balls</button>`,
+    'animating-bars-back': `<button class="action" disabled>← Back to stacked balls</button>`
+  };
+
+  return `
+    <div class="stage-copy">
+      <h2>A small dataset</h2>
+      <p>${captions[phase]}</p>
+    </div>
+    <div class="stage-body">
+      <div class="viz-wrap">
+        ${renderStage1Svg(positions, opts)}
+      </div>
+      <div class="controls-row">
+        ${BUTTONS[phase]}
+      </div>
+    </div>
+  `;
+}
+
+/* ---- Stage 2 (n=2000 only): fade histogram to curve-alone, then morph between shapes ---- */
+const S2F_WIDTH = 900, S2F_HEIGHT = 300, S2F_MARGIN = 34;
+const S2F_BASE_Y = S2F_HEIGHT - 46, S2F_PLOT_H = S2F_BASE_Y - 26;
+const CURVE_SAMPLE_N = 130;
+
+function curveSampleXs(){
+  const xs = [];
+  for(let i=0;i<=CURVE_SAMPLE_N;i++){
+    xs.push(S2F_MARGIN + i*(S2F_WIDTH - 2*S2F_MARGIN)/CURVE_SAMPLE_N);
+  }
+  return xs;
+}
+
+function twoPieceGaussian(t, peak, sigmaLeft, sigmaRight){
+  const sigma = t < peak ? sigmaLeft : sigmaRight;
+  return Math.exp(-0.5 * Math.pow((t-peak)/sigma, 2));
+}
+
+const CURVE_SHAPES = {
+  normal: t => Math.exp(-0.5 * Math.pow((t-0.5)/0.15, 2)),
+  left:   t => twoPieceGaussian(t, 0.62, 0.22, 0.09),   // long tail to the left
+  right:  t => twoPieceGaussian(t, 0.38, 0.09, 0.22),   // long tail to the right
+  bimodal:t => 0.85*Math.exp(-0.5*Math.pow((t-0.28)/0.085,2)) + Math.exp(-0.5*Math.pow((t-0.72)/0.085,2))
+};
+const SHAPE_LABELS = { normal:'Normal', left:'Left skew', right:'Right skew', bimodal:'Bimodal' };
+
+// numerically integrates a shape function over the domain to get its mean/sd/median/quartiles
+// (these are purely mathematical properties of the illustrative curve, not tied to real data)
+function computeShapeStats(shapeKey){
+  const N = 400;
+  const xMin = DOMAIN_MIN, xMax = DOMAIN_MAX, dx = (xMax-xMin)/N;
+  const xs = [], ys = [];
+  for(let i=0;i<=N;i++){
+    xs.push(xMin + i*dx);
+    ys.push(CURVE_SHAPES[shapeKey](i/N));
+  }
+  function trapz(vals){
+    let s=0;
+    for(let i=0;i<N;i++) s += (vals[i]+vals[i+1])/2*dx;
+    return s;
+  }
+  const total = trapz(ys);
+  const meanV = trapz(ys.map((y,i)=>y*xs[i])) / total;
+  const variance = trapz(ys.map((y,i)=>y*(xs[i]-meanV)*(xs[i]-meanV))) / total;
+  const cdf = [0];
+  let acc = 0;
+  for(let i=0;i<N;i++){ acc += (ys[i]+ys[i+1])/2*dx; cdf.push(acc); }
+  const cdfNorm = cdf.map(c=>c/total);
+  function quantile(p){
+    for(let i=0;i<cdfNorm.length-1;i++){
+      if(cdfNorm[i] <= p && cdfNorm[i+1] >= p){
+        const frac = (p-cdfNorm[i]) / ((cdfNorm[i+1]-cdfNorm[i]) || 1);
+        return xs[i] + frac*dx;
+      }
+    }
+    return xs[xs.length-1];
+  }
+  return { mean: meanV, sd: Math.sqrt(variance), median: quantile(0.5), q1: quantile(0.25), q3: quantile(0.75) };
+}
+const IDEAL_SHAPE_STATS = {};
+Object.keys(CURVE_SHAPES).forEach(k=>{ IDEAL_SHAPE_STATS[k] = computeShapeStats(k); });
+
+function idealShapeRawMax(shapeKey){
+  let max = 0;
+  for(let i=0;i<=CURVE_SAMPLE_N;i++){
+    const v = CURVE_SHAPES[shapeKey](i/CURVE_SAMPLE_N);
+    if(v > max) max = v;
+  }
+  return max;
+}
+function idealCurveHeightAt(shapeKey, xv, maxV){
+  const t = (xv-DOMAIN_MIN) / (DOMAIN_MAX-DOMAIN_MIN);
+  const raw = CURVE_SHAPES[shapeKey](t);
+  return (raw/maxV) * S2F_PLOT_H;
+}
+
+// idealised, illustrative curve — not tied to the real dataset
+function idealCurvePoints(shapeKey){
+  const xs = curveSampleXs();
+  const raw = xs.map((px,i)=> CURVE_SHAPES[shapeKey](i/CURVE_SAMPLE_N));
+  const maxV = Math.max(...raw);
+  return xs.map((px,i)=>({ x:px, y: S2F_BASE_Y - (raw[i]/maxV)*S2F_PLOT_H }));
+}
+
+// the actual bell curve fitted to the n=2000 simulated dataset (same curve as the overlay)
+function realCurvePoints(data, binWidth, maxCount){
+  const m = mean(data), sd = stdDevPop(data);
+  const totalArea = data.length * binWidth;
+  const xs = curveSampleXs();
+  return xs.map(px=>{
+    const xv = DOMAIN_MIN + (px-S2F_MARGIN)/(S2F_WIDTH-2*S2F_MARGIN)*(DOMAIN_MAX-DOMAIN_MIN);
+    const density = normalPdf(xv, m, sd) * totalArea;
+    const hy = (density/maxCount) * S2F_PLOT_H;
+    return { x:px, y: S2F_BASE_Y - hy };
+  });
+}
+
+function parsePolylinePoints(str){
+  return str.trim().split(/\s+/).map(pair=>{
+    const [x,y] = pair.split(',').map(Number);
+    return {x,y};
+  });
+}
+
+// dedicated renderer used only at n=2000, so the histogram-fade + curve-shape features have stable ids to animate
+function renderStage2FinalSvg(){
+  const data = POOL.slice(0, 2000);
+  const binWidth = BIN_WIDTHS[3];
+  const bins = bin(data, DOMAIN_MIN, DOMAIN_MAX, binWidth);
+  const maxCount = Math.max(...bins.map(b=>b.count), 1);
+  const x = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN);
+
+  const phase = state.s2Phase;
+  const includeBars = phase === 'histogram' || phase === 'fadingToCurve' || phase === 'fadingToHistogram';
+  const barsOpacity = phase === 'fadingToHistogram' ? 0 : 1; // fadingToCurve starts at 1, JS fades it to 0
+
+  let s = `<svg viewBox="0 0 ${S2F_WIDTH} ${S2F_HEIGHT}" xmlns="http://www.w3.org/2000/svg" id="s2-svg">`;
+  s += svgAxis(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN, S2F_BASE_Y, 10);
+
+  if(includeBars){
+    let barsMarkup = '';
+    bins.forEach(b=>{
+      if(b.count===0) return;
+      const bx0 = x(b.x0), bx1 = x(b.x1);
+      const h = (b.count/maxCount) * S2F_PLOT_H;
+      barsMarkup += `<rect x="${bx0+1}" y="${S2F_BASE_Y-h}" width="${Math.max(bx1-bx0-2,1)}" height="${h}" fill="var(--neutral)" opacity="0.85" rx="2"/>`;
+    });
+    s += `<g class="bars-group" id="s2-bars" style="opacity:${barsOpacity}">${barsMarkup}</g>`;
+  }
+
+  if(state.showCurve){
+    const pts = state.curveShape === 'real' ? realCurvePoints(data, binWidth, maxCount) : idealCurvePoints(state.curveShape);
+    const pointsAttr = pts.map(p=>`${p.x},${p.y}`).join(' ');
+    s += `<polyline id="s2-curve-line" points="${pointsAttr}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+  }
+
+  s += `</svg>`;
+  return s;
+}
+
+// cross-fades the bars in/out around the (already-drawn) curve
+function animateStage2CurveFade(forward){
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      const bars = document.getElementById('s2-bars');
+      if(bars) bars.style.opacity = forward ? '0' : '1';
+    });
+  });
+  setTimeout(()=>{
+    state.s2Phase = forward ? 'curveAlone' : 'histogram';
+    render();
+  }, 650);
+}
+
+// morphs the curve line from its current on-screen shape to a new idealised shape
+function animateCurveMorph(fromPts, toPts, shapeKey){
+  const line = document.getElementById('s2-curve-line');
+  if(!line){ state.s2Morphing = false; state.curveShape = shapeKey; render(); return; }
+  const duration = 900;
+  const start = performance.now();
+  function frame(now){
+    const t = Math.min(1, (now-start)/duration);
+    const eased = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+    const pts = fromPts.map((p,i)=> `${p.x},${p.y + (toPts[i].y - p.y)*eased}`);
+    line.setAttribute('points', pts.join(' '));
+    if(t < 1){
+      requestAnimationFrame(frame);
+    } else {
+      state.s2Morphing = false;
+      render();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function normalizeS2Phase(){
+  if(state.s2Phase === 'fadingToCurve') state.s2Phase = 'histogram';
+  if(state.s2Phase === 'fadingToHistogram') state.s2Phase = 'curveAlone';
+  state.s2Morphing = false;
+  state.s3Morphing = false;
+}
+
+function renderStage2(){
+  const n = GROW_STEPS[state.growIdx];
+  const binWidth = BIN_WIDTHS[state.growIdx];
+  const data = POOL.slice(0, n);
+  const binOrigin = state.growIdx === 0 ? S1_BIN_START : DOMAIN_MIN;
+  const captions = [
+    `Same <b>12 students</b>, same groups of ten as before — this is exactly where we left off. There aren't enough people yet to see an overall shape.`,
+    `At <b>n = 50</b>, a rough hump is starting to appear — more values cluster in the middle than at the edges.`,
+    `At <b>n = 200</b>, the outline is becoming smoother and more symmetric around the centre.`,
+    `At <b>n = 2000</b>, the histogram approaches a smooth, symmetric bell shape — the <b>Normal distribution</b>.`
+  ];
+
+  if(n === 2000 && state.s2Phase !== 'histogram'){
+    const s2Captions = {
+      fadingToCurve: `Fading out the histogram, leaving just the curve…`,
+      curveAlone: `This is the idealised shape of a Normal distribution. Not every dataset looks like this — try the shapes below to see how skewed or bimodal data compares.`,
+      fadingToHistogram: `Bringing the histogram back…`
+    };
+    const transient = state.s2Phase === 'fadingToCurve' || state.s2Phase === 'fadingToHistogram';
+    const shapeButtons = Object.keys(CURVE_SHAPES).map(key=>
+      `<button class="chip shape-chip ${(state.curveShape===key || (state.curveShape==='real' && key==='normal'))?'selected':''}" data-act="curve-shape" data-shape="${key}" ${transient||state.s2Morphing?'disabled':''}>${SHAPE_LABELS[key]}</button>`
+    ).join('');
+    return `
+      <div class="stage-copy">
+        <h2>Growing the dataset</h2>
+        <p>${s2Captions[state.s2Phase]}</p>
+      </div>
+      <div class="stage-body">
+        <div class="viz-wrap">
+          ${renderStage2FinalSvg()}
+        </div>
+        <div class="controls-row">
+          <div class="chip-group">${shapeButtons}</div>
+          <button class="action" data-act="s2-curve-back" ${transient?'disabled':''}>← Back to the histogram</button>
+        </div>
+      </div>
+    `;
+  }
+
+  const showFadeButton = n === 2000 && state.showCurve;
+  return `
+    <div class="stage-copy">
+      <h2>Growing the dataset</h2>
+      <p>${captions[state.growIdx]}${showFadeButton ? ' Once you can see the curve, try fading the histogram away to look at it on its own.' : ''}</p>
+    </div>
+    <div class="stage-body">
+      <div class="viz-wrap">
+        ${n === 2000 ? renderStage2FinalSvg() : renderHistogram(data, {binWidth, binOrigin, color:'var(--neutral)', curve:false})}
+      </div>
+      <div class="controls-row">
+        <div class="chip-group">
+          ${GROW_STEPS.map((s,i)=>`<button class="chip ${i===state.growIdx?'selected':''}" data-act="grow" data-idx="${i}">n = ${s}</button>`).join('')}
+        </div>
+        <button class="action amber" data-act="toggle-curve" ${n!==2000?'disabled':''}>
+          ${state.showCurve ? 'Hide smooth curve' : 'Show smooth curve'}
+        </button>
+        ${showFadeButton ? `<button class="action" data-act="s2-curve-alone">Fade to curve only →</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   STAGE 3, screen 1: the Stage-2 normal curve, with toggleable
+   shaded regions for the IQR and for mean ± 1 SD
+   ============================================================ */
+function stage3Data(){
+  return POOL.slice(0, 2000);
+}
+function stage3Stats(){
+  const data = stage3Data();
+  const m = mean(data), sd = stdDevPop(data);
+  const q = quartiles(data);
+  return { data, m, sd, q };
+}
+function stage3MaxCount(){
+  const bins = bin(stage3Data(), DOMAIN_MIN, DOMAIN_MAX, BIN_WIDTHS[3]);
+  return Math.max(...bins.map(b=>b.count), 1);
+}
+function stage3CurveHeightAt(xv, m, sd, maxCount, data){
+  const totalArea = data.length * BIN_WIDTHS[3];
+  const density = normalPdf(xv, m, sd) * totalArea;
+  return (density/maxCount) * S2F_PLOT_H;
+}
+
+// generic shading/marker drawers — take a heightAt(xv) function so they work for
+// both the real data-fitted curve and the idealised shape curves
+function areaPathGeneric(heightAt, xLo, xHi){
+  const xScale = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN);
+  const steps = 40;
+  let d = `M ${xScale(xLo).toFixed(1)} ${S2F_BASE_Y} `;
+  for(let i=0;i<=steps;i++){
+    const xv = xLo + (xHi-xLo)*i/steps;
+    const h = heightAt(xv);
+    d += `L ${xScale(xv).toFixed(1)} ${(S2F_BASE_Y-h).toFixed(1)} `;
+  }
+  d += `L ${xScale(xHi).toFixed(1)} ${S2F_BASE_Y} Z`;
+  return d;
+}
+function markerLineGeneric(heightAt, xv, color, dashed){
+  const xScale = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN);
+  const px = xScale(xv);
+  const h = heightAt(xv);
+  const dash = dashed ? ' stroke-dasharray="3,4"' : '';
+  return `<line x1="${px}" y1="${S2F_BASE_Y}" x2="${px}" y2="${(S2F_BASE_Y-h).toFixed(1)}" stroke="${color}" stroke-width="2.5"${dash}/>`;
+}
+function stage3OverlayShading(heightAt, stats){
+  let s = '';
+  if(state.showSD) s += `<path d="${areaPathGeneric(heightAt, stats.mean-stats.sd, stats.mean+stats.sd)}" fill="var(--cyan)" opacity="0.22"/>`;
+  if(state.showIQR) s += `<path d="${areaPathGeneric(heightAt, stats.q1, stats.q3)}" fill="var(--amber)" opacity="0.32"/>`;
+  return s;
+}
+function stage3OverlayMarkers(heightAt, stats){
+  let s = '';
+  const xScale = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN);
+  const showMean = state.showSD, showMedian = state.showIQR;
+
+  let meanLabelY = null, medianLabelY = null;
+  if(showMean) meanLabelY = clamp(S2F_BASE_Y - heightAt(stats.mean) - 10, 12, S2F_BASE_Y);
+  if(showMedian) medianLabelY = clamp(S2F_BASE_Y - heightAt(stats.median) - 10, 12, S2F_BASE_Y);
+
+  if(showMean && showMedian){
+    const pxMean = xScale(stats.mean), pxMedian = xScale(stats.median);
+    if(Math.abs(pxMean - pxMedian) < 55){
+      // labels would overlap horizontally — stack them vertically instead
+      if(meanLabelY <= medianLabelY){
+        medianLabelY = meanLabelY - 18;
+      } else {
+        meanLabelY = medianLabelY - 18;
+      }
+      meanLabelY = clamp(meanLabelY, 12, S2F_BASE_Y);
+      medianLabelY = clamp(medianLabelY, 12, S2F_BASE_Y);
+    }
+  }
+
+  if(showMean){
+    s += markerLineGeneric(heightAt, stats.mean, 'var(--cyan)', true);
+    s += `<text class="value-label" x="${xScale(stats.mean).toFixed(1)}" y="${meanLabelY.toFixed(1)}" text-anchor="middle" fill="var(--cyan)" font-weight="600">Mean</text>`;
+  }
+  if(showMedian){
+    s += markerLineGeneric(heightAt, stats.median, 'var(--rose)', false);
+    s += `<text class="value-label" x="${xScale(stats.median).toFixed(1)}" y="${medianLabelY.toFixed(1)}" text-anchor="middle" fill="var(--rose)" font-weight="600">Median</text>`;
+  }
+  return s;
+}
+function stage3Readouts(stats){
+  let readouts = '';
+  if(state.showIQR){
+    readouts += `<div class="readout amber">median ≈ <b>${stats.median.toFixed(1)} cm</b></div>`;
+    readouts += `<div class="readout amber">Q1 ≈ <b>${stats.q1.toFixed(1)}</b></div>`;
+    readouts += `<div class="readout amber">Q3 ≈ <b>${stats.q3.toFixed(1)}</b></div>`;
+    readouts += `<div class="readout amber">IQR ≈ <b>${(stats.q3-stats.q1).toFixed(1)} cm</b></div>`;
+  }
+  if(state.showSD){
+    readouts += `<div class="readout cyan">mean ≈ <b>${stats.mean.toFixed(1)} cm</b></div>`;
+    readouts += `<div class="readout cyan">SD ≈ <b>${stats.sd.toFixed(2)} cm</b></div>`;
+    readouts += `<div class="readout cyan">mean ± 1 SD ≈ <b>${(stats.mean-stats.sd).toFixed(1)} to ${(stats.mean+stats.sd).toFixed(1)}</b></div>`;
+  }
+  return readouts ? `<div class="readout-row">${readouts}</div>` : '';
+}
+
+// returns {mean, sd, median, q1, q3} for the real fitted curve or for an idealised shape
+function getStatsForShape(shapeKey){
+  if(shapeKey === 'real'){
+    const { m, sd, q } = stage3Stats();
+    return { mean:m, sd, median:q.median, q1:q.q1, q3:q.q3 };
+  }
+  return IDEAL_SHAPE_STATS[shapeKey];
+}
+
+function renderStage3Curve(){
+  const { data, m, sd, q } = stage3Stats();
+  const maxCount = stage3MaxCount();
+  const stats = { mean:m, sd, median:q.median, q1:q.q1, q3:q.q3 };
+  const heightAt = xv => stage3CurveHeightAt(xv, m, sd, maxCount, data);
+  const pts = realCurvePoints(data, BIN_WIDTHS[3], maxCount);
+  const pointsAttr = pts.map(p=>`${p.x},${p.y}`).join(' ');
+
+  let svg = `<svg viewBox="0 0 ${S2F_WIDTH} ${S2F_HEIGHT}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += svgAxis(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN, S2F_BASE_Y, 10);
+  svg += stage3OverlayShading(heightAt, stats);
+  svg += `<polyline points="${pointsAttr}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+  svg += stage3OverlayMarkers(heightAt, stats);
+  svg += `</svg>`;
+
+  return `
+    <div class="stage-copy">
+      <h2>Location and spread on the curve</h2>
+      <p>This is the same Normal curve we ended Stage 2 with. Use the buttons below to see how each pair of measures describes it — you can turn both on together.</p>
+    </div>
+    <div class="stage-body">
+      <div class="viz-wrap">${svg}</div>
+      ${stage3Readouts(stats)}
+      <div class="controls-row">
+        <button class="action amber" data-act="toggle-iqr">${state.showIQR ? 'Hide' : 'Show'} Median &amp; IQR</button>
+        <button class="action cyan" data-act="toggle-sd">${state.showSD ? 'Hide' : 'Show'} Mean &amp; Standard Deviation</button>
+      </div>
+      <div class="controls-row">
+        <button class="action" data-act="s3-goto-shapes">Try other distributions →</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   STAGE 3, screen 2: adjust the curve's shape — mean/SD and
+   median/IQR stay plotted (and recompute) for whichever shape is shown
+   ============================================================ */
+function renderStage3Shapes(){
+  const shapeKey = state.s3Shape;
+  const stats = getStatsForShape(shapeKey);
+  const maxV = idealShapeRawMax(shapeKey);
+  const heightAt = xv => idealCurveHeightAt(shapeKey, xv, maxV);
+  const pts = idealCurvePoints(shapeKey);
+  const pointsAttr = pts.map(p=>`${p.x},${p.y}`).join(' ');
+
+  let svg = `<svg viewBox="0 0 ${S2F_WIDTH} ${S2F_HEIGHT}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += svgAxis(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN, S2F_BASE_Y, 10);
+  svg += `<g class="s3-overlay-fade">${stage3OverlayShading(heightAt, stats)}</g>`;
+  svg += `<polyline id="s3-curve-line" points="${pointsAttr}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+  svg += `<g class="s3-overlay-fade">${stage3OverlayMarkers(heightAt, stats)}</g>`;
+  svg += `</svg>`;
+
+  const shapeButtons = Object.keys(CURVE_SHAPES).map(key=>
+    `<button class="chip shape-chip s3-shape-chip ${shapeKey===key?'selected':''}" data-act="s3-shape" data-shape="${key}" ${state.s3Morphing?'disabled':''}>${SHAPE_LABELS[key]}</button>`
+  ).join('');
+
+  return `
+    <div class="stage-copy">
+      <h2>Adjusting the shape</h2>
+      <p>Not every distribution is symmetric. Try the shapes below — the mean, SD, median and IQR update to match whichever shape is showing.</p>
+    </div>
+    <div class="stage-body">
+      <div class="viz-wrap">${svg}</div>
+      ${stage3Readouts(stats)}
+      <div class="controls-row">
+        <div class="chip-group">${shapeButtons}</div>
+      </div>
+      <div class="controls-row">
+        <button class="action amber" data-act="toggle-iqr">${state.showIQR ? 'Hide' : 'Show'} Median &amp; IQR</button>
+        <button class="action cyan" data-act="toggle-sd">${state.showSD ? 'Hide' : 'Show'} Mean &amp; Standard Deviation</button>
+      </div>
+      <div class="controls-row">
+        <button class="action" data-act="s3-back-to-curve" ${state.s3Morphing?'disabled':''}>← Back to the Normal curve</button>
+      </div>
+    </div>
+  `;
+}
+
+// morphs the Stage-3 shape-screen curve line, hiding the shading/markers for the duration
+function animateStage3Morph(fromPts, toPts){
+  const line = document.getElementById('s3-curve-line');
+  if(!line){ state.s3Morphing = false; render(); return; }
+  const duration = 900;
+  const start = performance.now();
+  function frame(now){
+    const t = Math.min(1, (now-start)/duration);
+    const eased = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+    const pts = fromPts.map((p,i)=> `${p.x},${p.y + (toPts[i].y - p.y)*eased}`);
+    line.setAttribute('points', pts.join(' '));
+    if(t < 1){
+      requestAnimationFrame(frame);
+    } else {
+      state.s3Morphing = false;
+      render();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function renderStage3(){
+  return state.s3Phase === 'shapes' ? renderStage3Shapes() : renderStage3Curve();
+}
+
+/* ============================================================
+   STAGE 4: trace back from the curve to the sample —
+   the original 12 students plotted against the population curve,
+   sample mean vs population mean
+   ============================================================ */
+function renderStage4(){
+  const { data, m, sd } = stage3Stats();
+  const maxCount = stage3MaxCount();
+  const heightAt = xv => stage3CurveHeightAt(xv, m, sd, maxCount, data);
+  const xScale = xScaleFn(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN);
+  const pts = realCurvePoints(data, BIN_WIDTHS[3], maxCount);
+  const pointsAttr = pts.map(p=>`${p.x},${p.y}`).join(' ');
+
+  const sampleMean = mean(CLASS_HEIGHTS);
+  const popMean = m;
+  const dotR = 7, dotY = S2F_BASE_Y - dotR - 2;
+
+  let svg = `<svg viewBox="0 0 ${S2F_WIDTH} ${S2F_HEIGHT}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += svgAxis(DOMAIN_MIN, DOMAIN_MAX, S2F_WIDTH, S2F_MARGIN, S2F_BASE_Y, 10);
+  svg += `<polyline points="${pointsAttr}" fill="none" stroke="var(--amber)" stroke-width="2.5"/>`;
+
+  // the original 12-student sample, plotted along the axis
+  CLASS_HEIGHTS.forEach(v=>{
+    svg += `<circle cx="${xScale(v).toFixed(1)}" cy="${dotY}" r="${dotR}" fill="var(--neutral)" stroke="#0B0F20" stroke-width="1"/>`;
+  });
+
+  // sample mean / population mean markers, staggering the labels if they'd collide
+  const pxSample = xScale(sampleMean), pxPop = xScale(popMean);
+  let sampleLabelY = clamp(S2F_BASE_Y - heightAt(sampleMean) - 10, 12, S2F_BASE_Y);
+  let popLabelY = clamp(S2F_BASE_Y - heightAt(popMean) - 10, 12, S2F_BASE_Y);
+  if(Math.abs(pxSample - pxPop) < 110){
+    if(sampleLabelY <= popLabelY){
+      popLabelY = sampleLabelY - 18;
+    } else {
+      sampleLabelY = popLabelY - 18;
+    }
+    sampleLabelY = clamp(sampleLabelY, 12, S2F_BASE_Y);
+    popLabelY = clamp(popLabelY, 12, S2F_BASE_Y);
+  }
+
+  svg += markerLineGeneric(heightAt, sampleMean, 'var(--neutral)', true);
+  svg += `<text class="value-label" x="${pxSample.toFixed(1)}" y="${sampleLabelY.toFixed(1)}" text-anchor="middle" fill="var(--neutral)" font-weight="600">Sample mean</text>`;
+  svg += markerLineGeneric(heightAt, popMean, 'var(--amber)', false);
+  svg += `<text class="value-label" x="${pxPop.toFixed(1)}" y="${popLabelY.toFixed(1)}" text-anchor="middle" fill="var(--amber)" font-weight="600">Population mean</text>`;
+  svg += `</svg>`;
+
+  const diff = Math.abs(sampleMean - popMean);
+
+  return `
+    <div class="stage-copy">
+      <h2>From the curve back to the sample</h2>
+      <p>The curve is the <b>population</b> — everyone the data could describe. The dots along the bottom are our original <span class="hl-cyan">sample of 12 students</span> from Stage 1. Their mean gives us an <b>estimate</b> of the population mean — but a sample of just 12 people rarely lands exactly on it.</p>
+    </div>
+    <div class="stage-body">
+      <div class="viz-wrap">${svg}</div>
+      <div class="readout-row">
+        <div class="readout neutral">sample mean ≈ <b>${sampleMean.toFixed(2)} cm</b></div>
+        <div class="readout amber">population mean ≈ <b>${popMean.toFixed(2)} cm</b></div>
+        <div class="readout">difference ≈ <b>${diff.toFixed(2)} cm</b></div>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+const STAGE_LABELS = ['Small dataset', 'Growing the data', 'Two ways to measure spread', 'Sample vs population'];
+const STAGE_COUNT = STAGE_LABELS.length;
+
+function renderHeader(){
+  let steps = '';
+  for(let i=1;i<=STAGE_COUNT;i++){
+    steps += `<button class="step-btn ${state.stage===i?'active':''} ${state.stage>i?'done':''}" data-act="goto-stage" data-stage="${i}">
+      <span class="dot">${i}</span><span class="label">${STAGE_LABELS[i-1]}</span>
+    </button>`;
+    if(i<STAGE_COUNT) steps += `<span class="step-sep"></span>`;
+  }
+  return `
+    <header class="app-head">
+      <div class="title-block">
+        <h1>Location and Spread</h1>
+      </div>
+      <div class="stepper">${steps}</div>
+    </header>
+  `;
+}
+
+function renderFooter(){
+  return `
+    <footer class="app-foot">
+      <button class="nav-btn" data-act="prev" ${state.stage===1?'disabled':''}>← Previous</button>
+      <span class="foot-caption">STAGE ${state.stage} OF ${STAGE_COUNT}</span>
+      <button class="nav-btn" data-act="next" ${state.stage===STAGE_COUNT?'disabled':''}>Next →</button>
+    </footer>
+  `;
+}
+
+function renderStageBody(){
+  if(state.stage===1) return renderStage1();
+  if(state.stage===2) return renderStage2();
+  if(state.stage===3) return renderStage3();
+  return renderStage4();
+}
+
+const app = document.getElementById('app');
+
+function render(){
+  app.innerHTML = `
+    ${renderHeader()}
+    <main class="stage fade-target">${renderStageBody()}</main>
+    ${renderFooter()}
+  `;
+  attachHandlers();
+  requestAnimationFrame(()=>{
+    const m = app.querySelector('main.stage');
+    requestAnimationFrame(()=> m.classList.add('in'));
+  });
+}
+
+function attachHandlers(){
+  app.querySelectorAll('[data-act]').forEach(el=>{
+    el.addEventListener('click', onAction);
+  });
+}
+
+function onAction(e){
+  const el = e.currentTarget;
+  const act = el.dataset.act;
+  switch(act){
+    case 'goto-stage': normalizeS2Phase(); state.stage = parseInt(el.dataset.stage); break;
+    case 'prev': normalizeS2Phase(); state.stage = Math.max(1, state.stage-1); break;
+    case 'next': normalizeS2Phase(); state.stage = Math.min(STAGE_COUNT, state.stage+1); break;
+    case 's1-animate':
+      if(state.s1Phase !== 'dots') break;
+      state.s1Phase = 'animating';
+      render();
+      animateStage1(true);
+      return;
+    case 's1-ungroup':
+      if(state.s1Phase !== 'grouped') break;
+      state.s1Phase = 'animating-back';
+      render();
+      animateStage1(false);
+      return;
+    case 's1-bars-forward':
+      if(state.s1Phase !== 'grouped') break;
+      state.s1Phase = 'animating-bars';
+      render();
+      animateStage1Bars(true);
+      return;
+    case 's1-bars-back':
+      if(state.s1Phase !== 'bars') break;
+      state.s1Phase = 'animating-bars-back';
+      render();
+      animateStage1Bars(false);
+      return;
+    case 'grow':
+      state.growIdx = parseInt(el.dataset.idx);
+      if(GROW_STEPS[state.growIdx] !== 2000){
+        state.showCurve = false;
+        state.s2Phase = 'histogram';
+        state.curveShape = 'real';
+      }
+      break;
+    case 'toggle-curve': state.showCurve = !state.showCurve; break;
+    case 's2-curve-alone':
+      if(state.s2Phase !== 'histogram' || !state.showCurve || GROW_STEPS[state.growIdx] !== 2000) break;
+      state.s2Phase = 'fadingToCurve';
+      render();
+      animateStage2CurveFade(true);
+      return;
+    case 's2-curve-back':
+      if(state.s2Phase !== 'curveAlone') break;
+      state.curveShape = 'real';
+      state.s2Phase = 'fadingToHistogram';
+      render();
+      animateStage2CurveFade(false);
+      return;
+    case 'curve-shape': {
+      if(state.s2Phase !== 'curveAlone' || state.s2Morphing) break;
+      const newShape = el.dataset.shape;
+      if(newShape === state.curveShape) break;
+      const line = document.getElementById('s2-curve-line');
+      if(!line) break;
+      const fromPts = parsePolylinePoints(line.getAttribute('points'));
+      const toPts = idealCurvePoints(newShape);
+      state.curveShape = newShape;
+      state.s2Morphing = true;
+      document.querySelectorAll('.shape-chip').forEach(b=>{
+        b.classList.toggle('selected', b.dataset.shape === newShape);
+        b.disabled = true;
+      });
+      animateCurveMorph(fromPts, toPts, newShape);
+      return;
+    }
+    case 'toggle-iqr': state.showIQR = !state.showIQR; break;
+    case 'toggle-sd': state.showSD = !state.showSD; break;
+    case 's3-goto-shapes':
+      if(state.s3Phase !== 'curve') break;
+      state.s3Phase = 'shapes';
+      state.s3Shape = 'normal';
+      break;
+    case 's3-back-to-curve':
+      if(state.s3Phase !== 'shapes' || state.s3Morphing) break;
+      state.s3Phase = 'curve';
+      break;
+    case 's3-shape': {
+      if(state.s3Phase !== 'shapes' || state.s3Morphing) break;
+      const newShape = el.dataset.shape;
+      if(newShape === state.s3Shape) break;
+      const line = document.getElementById('s3-curve-line');
+      if(!line) break;
+      const fromPts = parsePolylinePoints(line.getAttribute('points'));
+      const toPts = idealCurvePoints(newShape);
+      state.s3Shape = newShape;
+      state.s3Morphing = true;
+      document.querySelectorAll('.s3-overlay-fade').forEach(g=>{ g.style.opacity = '0'; });
+      document.querySelectorAll('.s3-shape-chip').forEach(b=>{
+        b.classList.toggle('selected', b.dataset.shape === newShape);
+        b.disabled = true;
+      });
+      animateStage3Morph(fromPts, toPts);
+      return;
+    }
+  }
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
