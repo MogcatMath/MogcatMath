@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Outlier Detective — the 1.5×IQR rule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F5F6F8;
+    --panel: #FFFFFF;
+    --ink: #1B2430;
+    --ink-soft: #5B6474;
+    --grid: #E3E7ED;
+    --line: #C9D0DB;
+    --blue: #2A5DB0;
+    --blue-soft: #DCE6F7;
+    --red: #C63A26;
+    --red-soft: #FBE6E1;
+    --amber: #9AA7B8;
+    --radius: 10px;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    min-height: 560px;
+    padding: 16px 22px 66px;
+    gap: 10px;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 8px;
+    flex: 0 0 auto;
+  }
+  .title-block{ display:flex; flex-direction:column; gap:2px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 600;
+  }
+  h1{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(20px, 2.2vw, 26px);
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .rule-readout{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    color: var(--ink-soft);
+    text-align:right;
+    line-height:1.5;
+  }
+  .rule-readout b{ color: var(--ink); font-weight:600; }
+  .rule-readout .lo{ color: var(--red); font-weight:600; }
+  .rule-readout .hi{ color: var(--red); font-weight:600; }
+
+  /* ---------- Body layout ---------- */
+  .body{
+    flex:1;
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .main-col{
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    flex: 0 0 auto;
+  }
+
+  /* ---------- Dataset tabs ---------- */
+  .tabs{
+    display:flex;
+    gap:6px;
+    flex-wrap: wrap;
+  }
+  .tab{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: var(--panel);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all .15s ease;
+    white-space: nowrap;
+  }
+  .tab:hover{ border-color: var(--blue); color: var(--blue); }
+  .tab.active{
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+  .tab.custom-tab.active{ background: var(--red); border-color: var(--red); }
+
+  /* ---------- Plot panel ---------- */
+  .plot-panel{
+    background: var(--panel);
+    border-radius: var(--radius);
+    border: 1px solid var(--grid);
+    height: 40vh;
+    min-height: 220px;
+    max-height: 320px;
+    display:flex;
+    flex-direction: column;
+    padding: 12px 18px 4px;
+    position: relative;
+    overflow:hidden;
+    flex: 0 0 auto;
+  }
+  .plot-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom: 4px;
+  }
+  .dataset-name{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size: 17px;
+  }
+  .dataset-unit{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .fence-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    cursor:pointer;
+    user-select:none;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    color: var(--ink-soft);
+    background: var(--panel);
+    transition: all .15s ease;
+  }
+  .fence-toggle:hover{ border-color: var(--red); }
+  .fence-toggle.on{
+    background: var(--red-soft);
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .fence-toggle .dot{
+    width:8px; height:8px; border-radius:50%;
+    background: var(--line);
+  }
+  .fence-toggle.on .dot{ background: var(--red); }
+
+  svg{ width:100%; height:100%; display:block; }
+
+  .grid-line{ stroke: var(--grid); stroke-width:1; }
+  .axis-line{ stroke: var(--ink); stroke-width: 1.5; }
+  .tick-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    fill: var(--ink-soft);
+  }
+  .fence-zone{ fill: var(--red); opacity: 0; transition: opacity .35s ease; }
+  .fence-zone.show{ opacity: 0.07; }
+  .fence-line{
+    stroke: var(--red);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+    opacity: 0;
+    transition: opacity .35s ease;
+  }
+  .fence-line.show{ opacity: 0.85; }
+  .fence-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    fill: var(--red);
+    opacity: 0;
+    transition: opacity .35s ease;
+    font-weight: 600;
+  }
+  .fence-label.show{ opacity: 1; }
+
+  .pt{
+    fill: var(--blue);
+    stroke: #fff;
+    stroke-width: 1.2;
+    cursor: pointer;
+    transition: fill .35s ease, r .2s ease;
+  }
+  .pt.outlier.show-fences{ fill: var(--red); }
+  .pt-ring{
+    fill: none;
+    stroke: var(--red);
+    stroke-width: 1.6;
+    opacity: 0;
+    transition: opacity .35s ease;
+    pointer-events: none;
+  }
+  .pt-ring.show{ opacity: 0.9; }
+
+  .tooltip{
+    position:absolute;
+    pointer-events:none;
+    background: var(--ink);
+    color:#fff;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    transform: translate(-50%, -130%);
+    opacity: 0;
+    transition: opacity .1s ease;
+    white-space: nowrap;
+    z-index: 5;
+  }
+  .tooltip.show{ opacity: 1; }
+
+  /* ---------- Bottom row: summary / outliers / custom ---------- */
+  .bottom-row{
+    display:grid;
+    grid-template-columns: 1.15fr 1fr 1fr;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+  }
+  .stats-panel, .custom-panel, .outlier-panel{
+    background: var(--panel);
+    border-radius: var(--radius);
+    border: 1px solid var(--grid);
+    padding: 12px 16px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .stats-panel{ overflow-y: hidden; }
+  .panel-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+  .stat-row{
+    display:flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--grid);
+  }
+  .stat-row:last-child{ border-bottom:none; }
+  .stat-row .k{ color: var(--ink-soft); font-size: 16px; }
+  .stat-row .v{ font-weight: 600; color: var(--ink); }
+  .stat-row.fence .v{ color: var(--red); }
+  .stat-row.sd-row{ display:none; }
+
+  .outlier-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .outlier-list li{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    background: var(--red-soft);
+    color: var(--red);
+    padding: 7px 11px;
+    border-radius: 6px;
+    font-weight: 600;
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .outlier-list li span.side{
+    font-weight: 600;
+    opacity: .8;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .empty-note{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    color: var(--ink-soft);
+    line-height:1.5;
+  }
+
+  .custom-panel textarea{
+    width: 100%;
+    min-height: 48px;
+    resize: vertical;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    padding: 7px;
+    color: var(--ink);
+    background: #FCFCFD;
+  }
+  .custom-panel textarea:focus{ outline: none; border-color: var(--blue); }
+  .custom-row{ display:flex; gap:8px; margin-top: 7px; }
+  .custom-row input[type=text]{
+    flex: 1;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+  .btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    background: var(--ink);
+    color: #fff;
+    transition: background .15s ease;
+  }
+  .btn:hover{ background: var(--blue); }
+  .custom-hint{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .custom-error{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    color: var(--red);
+    margin-top: 6px;
+    display:none;
+  }
+
+  @media (max-width: 880px){
+    .bottom-row{ grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Rule switch (bottom-right corner control) ---------- */
+  .rule-switch{
+    position: fixed;
+    right: 22px;
+    bottom: 16px;
+    display:flex;
+    gap:4px;
+    background: var(--panel);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: 0 8px 22px rgba(27,36,48,0.14);
+    z-index: 30;
+  }
+  .rule-switch-btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all .15s ease;
+    white-space: nowrap;
+  }
+  .rule-switch-btn:hover{ color: var(--blue); }
+  .rule-switch-btn.active{
+    background: var(--ink);
+    color: #fff;
+  }
+  .rule-switch-btn.active:hover{ color: #fff; }
+
+  @media (max-width: 560px){
+    .rule-switch{ right: 12px; bottom: 10px; }
+    .rule-switch-btn{ padding: 8px 11px; font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="title-block">
+      <span class="eyebrow" id="ruleEyebrow">The 1.5 × IQR rule</span>
+      <h1>Outlier Detective</h1>
+    </div>
+    <div class="rule-readout">
+      reject if x &lt; <b id="loRuleLabel">Q1 − 1.5×IQR</b> <span class="lo" id="loFormula"></span><br>
+      reject if x &gt; <b id="hiRuleLabel">Q3 + 1.5×IQR</b> <span class="hi" id="hiFormula"></span>
+    </div>
+  </header>
+
+  <div class="body">
+    <div class="main-col">
+      <div class="tabs" id="tabs"></div>
+
+      <div class="plot-panel">
+        <div class="plot-head">
+          <div>
+            <div class="dataset-name" id="dsName">—</div>
+            <div class="dataset-unit" id="dsUnit">—</div>
+          </div>
+          <div class="fence-toggle" id="fenceToggle">
+            <span class="dot"></span>
+            <span id="fenceToggleLabel">Show fences</span>
+          </div>
+        </div>
+        <svg id="chart" viewBox="0 0 1000 340" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+    </div>
+
+    <div class="bottom-row">
+      <div class="stats-panel">
+        <p class="panel-title">Summary statistics</p>
+        <div class="stat-row"><span class="k">n</span><span class="v" id="stat-n">—</span></div>
+        <div class="stat-row"><span class="k">Min</span><span class="v" id="stat-min">—</span></div>
+        <div class="stat-row iqr-row"><span class="k">Q1</span><span class="v" id="stat-q1">—</span></div>
+        <div class="stat-row iqr-row"><span class="k">Median</span><span class="v" id="stat-med">—</span></div>
+        <div class="stat-row iqr-row"><span class="k">Q3</span><span class="v" id="stat-q3">—</span></div>
+        <div class="stat-row sd-row"><span class="k">Mean</span><span class="v" id="stat-mean">—</span></div>
+        <div class="stat-row"><span class="k">Max</span><span class="v" id="stat-max">—</span></div>
+        <div class="stat-row iqr-row"><span class="k">IQR</span><span class="v" id="stat-iqr">—</span></div>
+        <div class="stat-row sd-row"><span class="k">SD (σ)</span><span class="v" id="stat-sd">—</span></div>
+        <div class="stat-row fence"><span class="k" id="stat-lofence-label">Lower fence</span><span class="v" id="stat-lofence">—</span></div>
+        <div class="stat-row fence"><span class="k" id="stat-hifence-label">Upper fence</span><span class="v" id="stat-hifence">—</span></div>
+      </div>
+
+      <div class="outlier-panel">
+        <p class="panel-title">Outliers found</p>
+        <ul class="outlier-list" id="outlierList"></ul>
+        <p class="empty-note" id="outlierEmpty">Toggle "Show fences" above the chart to reveal which points are rejected.</p>
+      </div>
+
+      <div class="custom-panel">
+        <p class="panel-title">Try your own data</p>
+        <textarea id="customInput" placeholder="Paste 15–35 numbers, separated by commas, spaces or new lines&#10;e.g. 12, 14, 15, 13, 16, 41, 15, 14 ...">
+</textarea>
+        <div class="custom-row">
+          <input type="text" id="customLabel" placeholder="Dataset name (optional)">
+          <button class="btn" id="plotCustomBtn">Plot it</button>
+        </div>
+        <p class="custom-error" id="customError"></p>
+        <p class="custom-hint" id="customHint">Uses the same exclusive-median method for Q1/Q3 as the presets.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rule-switch" id="ruleSwitch">
+    <button type="button" class="rule-switch-btn active" data-rule="iqr">1.5 × IQR</button>
+    <button type="button" class="rule-switch-btn" data-rule="sd">Mean ± 2 SD</button>
+  </div>
+</div>
+
+<script>
+/* ---------------- Preset datasets ---------------- */
+const DATASETS = [
+  {
+    id: 'exam',
+    name: 'Mock Exam — Paper 2',
+    unit: '% score, n = 26 pupils',
+    values: [58,62,70,65,71,60,55,68,73,64,66,59,72,61,67,63,69,57,75,62,60,65,64,63,45,85]
+  },
+  {
+    id: 'sprint',
+    name: '100m Sprint Times',
+    unit: 'seconds, n = 24 runners',
+    values: [13.8,14.1,14.5,14.9,13.6,14.3,15.0,14.7,13.9,14.4,14.6,15.1,13.7,14.2,14.8,14.0,15.3,13.5,14.5,14.9,16.7,12.2,14.3,14.6]
+  },
+  {
+    id: 'shoes',
+    name: 'Family Shoe Sizes',
+    unit: 'UK size, n = 22 people',
+    values: [6,7,8,9,7,8,6,9,8,7,7,8,9,6,8,7,9,8,7,5,10,8]
+  },
+  {
+    id: 'grocery',
+    name: 'Weekly Grocery Spend',
+    unit: '£ per household, n = 28',
+    values: [78,82,90,85,88,79,95,83,87,91,80,84,89,86,92,81,77,93,85,88,90,83,86,79,84,108,70,87]
+  }
+];
+
+let currentValues = DATASETS[0].values.slice();
+let currentName = DATASETS[0].name;
+let currentUnit = DATASETS[0].unit;
+let currentId = DATASETS[0].id;
+let showFences = false;
+let currentRule = 'iqr';
+
+/* ---------------- Stats: exclusive-median quartile method ---------------- */
+function median(arr){
+  const s = arr.slice().sort((a,b)=>a-b);
+  const n = s.length;
+  const mid = Math.floor(n/2);
+  return n % 2 === 0 ? (s[mid-1]+s[mid])/2 : s[mid];
+}
+
+function quartiles(values){
+  const s = values.slice().sort((a,b)=>a-b);
+  const n = s.length;
+  const mid = Math.floor(n/2);
+  const lowerHalf = n % 2 === 0 ? s.slice(0, mid) : s.slice(0, mid);
+  const upperHalf = n % 2 === 0 ? s.slice(mid) : s.slice(mid+1);
+  const q1 = median(lowerHalf);
+  const q3 = median(upperHalf);
+  const med = median(s);
+  const iqr = q3 - q1;
+  const loFence = q1 - 1.5*iqr;
+  const hiFence = q3 + 1.5*iqr;
+  return {
+    rule: 'iqr',
+    sorted: s, min: s[0], max: s[n-1],
+    q1, q3, med, iqr, loFence, hiFence
+  };
+}
+
+/* ---------------- Stats: mean ± 2 standard deviations method ---------------- */
+function meanSDStats(values){
+  const s = values.slice().sort((a,b)=>a-b);
+  const n = s.length;
+  const mean = s.reduce((sum, v) => sum + v, 0) / n;
+  const variance = s.reduce((sum, v) => sum + (v - mean) ** 2, 0) / n;
+  const sd = Math.sqrt(variance);
+  const loFence = mean - 2*sd;
+  const hiFence = mean + 2*sd;
+  return {
+    rule: 'sd',
+    sorted: s, min: s[0], max: s[n-1],
+    mean, sd, loFence, hiFence
+  };
+}
+
+function computeStats(values, rule){
+  return rule === 'sd' ? meanSDStats(values) : quartiles(values);
+}
+
+function fmt(n){
+  if (Math.abs(n - Math.round(n)) < 1e-9) return Math.round(n).toString();
+  return (Math.round(n*100)/100).toString();
+}
+
+/* ---------------- Beeswarm layout ---------------- */
+function layoutPoints(values, xScale, radius){
+  const items = values.map(v => ({ value: v, x: xScale(v) })).sort((a,b)=> a.x - b.x);
+  const rows = []; // each row: array of placed x's
+  const rowGap = radius * 2.1;
+  items.forEach(item => {
+    let placed = false;
+    for (let r = 0; r < rows.length; r++){
+      const row = rows[r];
+      const last = row[row.length-1];
+      if (item.x - last.x >= radius*2.05){
+        row.push(item);
+        item.row = r;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed){
+      rows.push([item]);
+      item.row = rows.length - 1;
+    }
+  });
+  return { items, rowCount: rows.length, rowGap };
+}
+
+/* ---------------- Rendering ---------------- */
+const svg = document.getElementById('chart');
+const tooltip = document.getElementById('tooltip');
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function el(tag, attrs){
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function render(){
+  svg.innerHTML = '';
+  document.getElementById('dsName').textContent = currentName;
+  document.getElementById('dsUnit').textContent = currentUnit;
+
+  const stats = computeStats(currentValues, currentRule);
+  const W = 1000, H = 340;
+  const padL = 50, padR = 50, padTop = 26, padBottom = 46;
+  const plotW = W - padL - padR;
+
+  const dataMin = Math.min(stats.min, stats.loFence);
+  const dataMax = Math.max(stats.max, stats.hiFence);
+  const span = dataMax - dataMin;
+  const pad = span * 0.12 || 1;
+  const domainMin = dataMin - pad;
+  const domainMax = dataMax + pad;
+
+  const xScale = v => padL + ( (v - domainMin) / (domainMax - domainMin) ) * plotW;
+
+  const radius = 8;
+  const { items, rowCount } = layoutPoints(currentValues, xScale, radius);
+  const rowGap = radius * 2.2;
+  const axisY = padTop + Math.max(rowCount, 3) * rowGap + 14;
+  const totalH = axisY + padBottom;
+  svg.setAttribute('viewBox', `0 0 ${W} ${Math.max(totalH, 220)}`);
+
+  // background grid (vertical lines at nice intervals)
+  const niceStep = calcNiceStep(domainMax - domainMin);
+  for (let t = Math.ceil(domainMin/niceStep)*niceStep; t <= domainMax; t += niceStep){
+    const x = xScale(t);
+    svg.appendChild(el('line', { x1:x, x2:x, y1: padTop-10, y2: axisY, class:'grid-line' }));
+    const label = el('text', { x, y: axisY + 18, class:'tick-label', 'text-anchor':'middle' });
+    label.textContent = fmt(t);
+    svg.appendChild(label);
+  }
+
+  // fence zones (shaded rejection regions)
+  const loX = xScale(stats.loFence);
+  const hiX = xScale(stats.hiFence);
+  svg.appendChild(el('rect', {
+    x: padL, y: padTop-10, width: Math.max(0, loX - padL), height: axisY - (padTop-10),
+    class: 'fence-zone' + (showFences ? ' show' : '')
+  }));
+  svg.appendChild(el('rect', {
+    x: hiX, y: padTop-10, width: Math.max(0, (padL+plotW) - hiX), height: axisY - (padTop-10),
+    class: 'fence-zone' + (showFences ? ' show' : '')
+  }));
+
+  // fence lines
+  const loLabel = currentRule === 'sd' ? 'Mean − 2×SD' : 'Q1 − 1.5×IQR';
+  const hiLabel = currentRule === 'sd' ? 'Mean + 2×SD' : 'Q3 + 1.5×IQR';
+  [ [stats.loFence, loX, loLabel, 'start'],
+    [stats.hiFence, hiX, hiLabel, 'end'] ].forEach(([val, x, label, anchor]) => {
+    svg.appendChild(el('line', { x1:x, x2:x, y1: padTop-10, y2: axisY, class:'fence-line' + (showFences?' show':'') }));
+    const t = el('text', {
+      x: x + (anchor==='start' ? 6 : -6),
+      y: padTop - 14,
+      class: 'fence-label' + (showFences?' show':''),
+      'text-anchor': anchor
+    });
+    t.textContent = `${label} = ${fmt(val)}`;
+    svg.appendChild(t);
+  });
+
+  // axis line
+  svg.appendChild(el('line', { x1: padL, x2: padL+plotW, y1: axisY, y2: axisY, class:'axis-line' }));
+
+  // points
+  items.forEach(item => {
+    const cy = axisY - 14 - item.row * rowGap;
+    const isOutlier = item.value < stats.loFence || item.value > stats.hiFence;
+
+    if (isOutlier){
+      const ring = el('circle', {
+        cx: item.x, cy, r: radius + 4,
+        class: 'pt-ring' + (showFences ? ' show' : '')
+      });
+      svg.appendChild(ring);
+    }
+
+    const circle = el('circle', {
+      cx: item.x, cy, r: radius,
+      class: 'pt' + (isOutlier ? ' outlier' + (showFences ? ' show-fences' : '') : '')
+    });
+    circle.addEventListener('mouseenter', (e) => showTip(e, item.value));
+    circle.addEventListener('mousemove', (e) => moveTip(e));
+    circle.addEventListener('mouseleave', hideTip);
+    circle.addEventListener('touchstart', (e) => showTip(e.touches[0], item.value), {passive:true});
+    svg.appendChild(circle);
+  });
+
+  updateStatsPanel(stats);
+  updateOutlierList(stats);
+  updateFormulaReadout(stats);
+}
+
+function calcNiceStep(range){
+  const rough = range / 8;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / mag;
+  let step;
+  if (norm < 1.5) step = 1;
+  else if (norm < 3) step = 2;
+  else if (norm < 7) step = 5;
+  else step = 10;
+  return step * mag;
+}
+
+function showTip(e, value){
+  tooltip.textContent = fmt(value);
+  tooltip.classList.add('show');
+  moveTip(e);
+}
+function moveTip(e){
+  const rect = svg.parentElement.getBoundingClientRect();
+  const x = (e.clientX !== undefined ? e.clientX : 0) - rect.left;
+  const y = (e.clientY !== undefined ? e.clientY : 0) - rect.top;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+function hideTip(){ tooltip.classList.remove('show'); }
+
+function updateStatsPanel(stats){
+  document.getElementById('stat-n').textContent = currentValues.length;
+  document.getElementById('stat-min').textContent = fmt(stats.min);
+  document.getElementById('stat-max').textContent = fmt(stats.max);
+
+  const iqrRows = document.querySelectorAll('.iqr-row');
+  const sdRows = document.querySelectorAll('.sd-row');
+
+  if (stats.rule === 'sd'){
+    iqrRows.forEach(r => r.style.display = 'none');
+    sdRows.forEach(r => r.style.display = 'flex');
+    document.getElementById('stat-mean').textContent = fmt(stats.mean);
+    document.getElementById('stat-sd').textContent = fmt(stats.sd);
+    document.getElementById('stat-lofence-label').textContent = 'Lower bound';
+    document.getElementById('stat-hifence-label').textContent = 'Upper bound';
+  } else {
+    iqrRows.forEach(r => r.style.display = 'flex');
+    sdRows.forEach(r => r.style.display = 'none');
+    document.getElementById('stat-q1').textContent = fmt(stats.q1);
+    document.getElementById('stat-med').textContent = fmt(stats.med);
+    document.getElementById('stat-q3').textContent = fmt(stats.q3);
+    document.getElementById('stat-iqr').textContent = fmt(stats.iqr);
+    document.getElementById('stat-lofence-label').textContent = 'Lower fence';
+    document.getElementById('stat-hifence-label').textContent = 'Upper fence';
+  }
+
+  document.getElementById('stat-lofence').textContent = fmt(stats.loFence);
+  document.getElementById('stat-hifence').textContent = fmt(stats.hiFence);
+}
+
+function updateOutlierList(stats){
+  const list = document.getElementById('outlierList');
+  const empty = document.getElementById('outlierEmpty');
+  list.innerHTML = '';
+
+  if (!showFences){
+    empty.style.display = 'block';
+    empty.textContent = 'Toggle "Show fences" above the chart to reveal which points are rejected.';
+    return;
+  }
+
+  const outliers = currentValues
+    .filter(v => v < stats.loFence || v > stats.hiFence)
+    .sort((a,b)=>a-b);
+
+  if (outliers.length === 0){
+    empty.style.display = 'block';
+    empty.textContent = 'No outliers in this dataset — every point sits within the fences.';
+    return;
+  }
+  empty.style.display = 'none';
+  outliers.forEach(v => {
+    const li = document.createElement('li');
+    const side = v < stats.loFence ? 'low' : 'high';
+    li.innerHTML = `<span>${fmt(v)}</span><span class="side">${side}</span>`;
+    list.appendChild(li);
+  });
+}
+
+function updateFormulaReadout(stats){
+  const isSD = stats.rule === 'sd';
+  document.getElementById('ruleEyebrow').textContent = isSD ? 'The mean ± 2 SD rule' : 'The 1.5 × IQR rule';
+  document.getElementById('loRuleLabel').textContent = isSD ? 'Mean − 2×SD' : 'Q1 − 1.5×IQR';
+  document.getElementById('hiRuleLabel').textContent = isSD ? 'Mean + 2×SD' : 'Q3 + 1.5×IQR';
+  document.getElementById('loFormula').textContent = `→ ${fmt(stats.loFence)}`;
+  document.getElementById('hiFormula').textContent = `→ ${fmt(stats.hiFence)}`;
+  document.getElementById('customHint').textContent = isSD
+    ? 'Uses the mean and population standard deviation of whatever you paste in.'
+    : 'Uses the same exclusive-median method for Q1/Q3 as the presets.';
+}
+
+/* ---------------- Tabs ---------------- */
+const tabsEl = document.getElementById('tabs');
+function buildTabs(){
+  tabsEl.innerHTML = '';
+  DATASETS.forEach(ds => {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (ds.id === currentId ? ' active' : '');
+    tab.textContent = ds.name;
+    tab.addEventListener('click', () => {
+      currentId = ds.id;
+      currentValues = ds.values.slice();
+      currentName = ds.name;
+      currentUnit = ds.unit;
+      buildTabs();
+      render();
+    });
+    tabsEl.appendChild(tab);
+  });
+  const customTab = document.createElement('div');
+  customTab.className = 'tab custom-tab' + (currentId === 'custom' ? ' active' : '');
+  customTab.textContent = 'My data';
+  customTab.addEventListener('click', () => {
+    if (currentId !== 'custom'){
+      document.getElementById('customInput').focus();
+    }
+  });
+  tabsEl.appendChild(customTab);
+}
+
+/* ---------------- Fence toggle ---------------- */
+const fenceToggle = document.getElementById('fenceToggle');
+fenceToggle.addEventListener('click', () => {
+  showFences = !showFences;
+  fenceToggle.classList.toggle('on', showFences);
+  document.getElementById('fenceToggleLabel').textContent = showFences ? 'Hide fences' : 'Show fences';
+  render();
+});
+
+/* ---------------- Custom data ---------------- */
+document.getElementById('plotCustomBtn').addEventListener('click', () => {
+  const raw = document.getElementById('customInput').value;
+  const errorEl = document.getElementById('customError');
+  const nums = raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean).map(Number);
+
+  if (nums.some(isNaN) || nums.length === 0){
+    errorEl.textContent = "Couldn't read that as a list of numbers — separate them with commas, spaces or new lines.";
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (nums.length < 5){
+    errorEl.textContent = 'Add at least 5 values for a meaningful spread (15–35 works best).';
+    errorEl.style.display = 'block';
+    return;
+  }
+  errorEl.style.display = 'none';
+
+  const label = document.getElementById('customLabel').value.trim();
+  currentId = 'custom';
+  currentValues = nums;
+  currentName = label || 'My Data';
+  currentUnit = `n = ${nums.length} values`;
+  buildTabs();
+  render();
+});
+
+/* ---------------- Rule switch ---------------- */
+const ruleSwitch = document.getElementById('ruleSwitch');
+ruleSwitch.querySelectorAll('.rule-switch-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const rule = btn.dataset.rule;
+    if (rule === currentRule) return;
+    currentRule = rule;
+    ruleSwitch.querySelectorAll('.rule-switch-btn').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+});
+
+/* ---------------- Init ---------------- */
+buildTabs();
+render();
+</script>
+</body>
+</html>
