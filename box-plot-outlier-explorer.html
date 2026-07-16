@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Outlier Lab — Box Plot &amp; IQR Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDF2F8;
+    --grid-line:#D7E1EC;
+    --ink:#16233F;
+    --ink-soft:#5A6A8A;
+    --panel:#FFFFFF;
+    --panel-border:#C9D6E3;
+    --teal:#0E7C86;
+    --teal-soft:#DCEEF0;
+    --teal-line: #0E7C86;
+    --coral:#E8542E;
+    --coral-soft:#FBE3DC;
+    --navy-fill:#2C4A75;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+    --font-body:'Inter', sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background-color:var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--ink);
+    font-family:var(--font-body);
+    overflow-x:hidden;
+  }
+
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    padding:22px 28px 30px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+
+  .brand .eyebrow{
+    display:inline-block;
+    font-family:var(--font-mono);
+    font-size:16px;
+    letter-spacing:0.14em;
+    color:var(--teal);
+    background:var(--teal-soft);
+    padding:3px 9px;
+    border-radius:4px;
+    margin-bottom:8px;
+  }
+
+  .brand h1{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:32px;
+    margin:0 0 4px 0;
+    letter-spacing:-0.01em;
+  }
+
+  .brand .context-label{
+    margin:0;
+    font-size:16px;
+    color:var(--ink-soft);
+    font-family:var(--font-mono);
+  }
+
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .btn{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:16px;
+    border-radius:9px;
+    padding:12px 18px;
+    border:1.5px solid transparent;
+    cursor:pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+    white-space:nowrap;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn:focus-visible{ outline:3px solid #9DB6DA; outline-offset:2px; }
+
+  .btn-primary{
+    background:var(--ink);
+    color:#fff;
+    box-shadow:0 3px 0 #0A1526;
+  }
+  .btn-primary:hover{ background:#223258; }
+
+  .btn-secondary{
+    background:#fff;
+    color:var(--teal);
+    border-color:var(--teal);
+    box-shadow:0 3px 0 #0b636b33;
+  }
+  .btn-secondary[aria-pressed="true"]{
+    background:var(--teal);
+    color:#fff;
+    box-shadow:0 3px 0 #084b52;
+  }
+
+  /* ---------- Plot card ---------- */
+  .plot-card{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:16px;
+    padding:14px 18px 6px;
+    box-shadow: 0 1px 0 #fff inset, 0 10px 24px -18px rgba(22,35,63,0.35);
+  }
+
+  svg#plotSvg{
+    width:100%;
+    height:auto;
+    display:block;
+  }
+
+  .whisker-line{ stroke:var(--ink); stroke-width:2.5; }
+  .cap-line{ stroke:var(--ink); stroke-width:2.5; }
+  .box-rect{ fill:#F4F7FB; stroke:var(--ink); stroke-width:2.5; }
+  .median-line{ stroke:var(--ink); stroke-width:3.5; }
+
+  .sample-dot{
+    fill:var(--navy-fill);
+    fill-opacity:0.82;
+    stroke:#fff;
+    stroke-width:1;
+  }
+
+  .outlier-mark{
+    stroke:var(--coral);
+    stroke-width:3.4;
+    stroke-linecap:round;
+    transform-box: fill-box;
+    transform-origin:center;
+    animation: stampIn 0.32s cubic-bezier(.2,1.4,.4,1) both;
+  }
+  @keyframes stampIn{
+    0%{ opacity:0; transform:scale(1.9) rotate(-14deg); }
+    70%{ opacity:1; transform:scale(0.92) rotate(4deg); }
+    100%{ opacity:1; transform:scale(1) rotate(0deg); }
+  }
+
+  .axis-line{ stroke:var(--ink); stroke-width:2; }
+  .tick-line{ stroke:var(--ink-soft); stroke-width:1.5; }
+  .tick-label{ font-family:var(--font-mono); font-size:16px; fill:var(--ink-soft); text-anchor:middle; }
+  .axis-title{ font-family:var(--font-display); font-weight:600; font-size:17px; fill:var(--ink); text-anchor:middle; }
+
+  .fence-group{
+    opacity:0;
+    transition: opacity 0.28s ease;
+  }
+  .fence-group.visible{ opacity:1; }
+  .fence-band{ fill:var(--teal); fill-opacity:0.06; }
+  .fence-line{ stroke:var(--teal); stroke-width:2; stroke-dasharray:6 5; }
+  .fence-label{ font-family:var(--font-mono); font-size:16px; font-weight:600; fill:var(--teal); }
+  .fence-label-bg{ fill:#fff; opacity:0.88; }
+
+  .row-label{ font-family:var(--font-display); font-weight:600; font-size:16px; fill:var(--ink-soft); letter-spacing:0.06em; }
+
+  /* ---------- Stats bar ---------- */
+  .stats-bar{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:10px;
+  }
+  @media (min-width: 760px){
+    .stats-bar{ grid-template-columns: repeat(8, 1fr); }
+  }
+
+  .stat{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:10px 12px;
+    text-align:left;
+  }
+  .stat .label{
+    font-family:var(--font-body);
+    font-size:16px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    margin:0 0 4px;
+  }
+  .stat .value{
+    font-family:var(--font-mono);
+    font-weight:600;
+    font-size:20px;
+    color:var(--ink);
+    margin:0;
+  }
+
+  .stat.fence-stat{
+    border-color:#cfe6e8;
+    opacity:0.35;
+    transition: opacity 0.28s ease, background 0.28s ease;
+  }
+  .stat.fence-stat .value{ color:var(--teal); }
+  .stat.fence-stat.active{
+    opacity:1;
+    background:var(--teal-soft);
+  }
+  .stat.iqr-stat .value{ color:var(--coral); }
+
+  /* ---------- Legend ---------- */
+  .legend{
+    display:flex;
+    gap:22px;
+    flex-wrap:wrap;
+    align-items:center;
+    padding:2px 4px;
+    font-size:16px;
+    color:var(--ink-soft);
+  }
+  .legend span.item{ display:inline-flex; align-items:center; gap:8px; }
+  .legend-dot{
+    width:12px; height:12px; border-radius:50%;
+    background:var(--navy-fill); opacity:0.82;
+    display:inline-block;
+  }
+  .legend-x{
+    font-weight:700; color:var(--coral); font-size:18px;
+    font-family:var(--font-mono);
+  }
+
+  @media (max-width: 640px){
+    .topbar{ align-items:flex-start; }
+    .brand h1{ font-size:24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="eyebrow">IQR METHOD</span>
+      <h1>Outlier Lab</h1>
+      <p class="context-label" id="contextLabel">Loading dataset…</p>
+    </div>
+    <div class="controls">
+      <button class="btn btn-secondary" id="toggleFenceBtn" aria-pressed="false">Show IQR fences</button>
+      <button class="btn btn-primary" id="newDatasetBtn">New dataset</button>
+    </div>
+  </header>
+
+  <div class="plot-card">
+    <svg id="plotSvg" viewBox="0 0 1200 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Box plot with sample dot strip"></svg>
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat"><p class="label">Minimum</p><p class="value" id="statMin">–</p></div>
+    <div class="stat"><p class="label">Lower quartile (Q1)</p><p class="value" id="statQ1">–</p></div>
+    <div class="stat"><p class="label">Median</p><p class="value" id="statMedian">–</p></div>
+    <div class="stat"><p class="label">Upper quartile (Q3)</p><p class="value" id="statQ3">–</p></div>
+    <div class="stat"><p class="label">Maximum</p><p class="value" id="statMax">–</p></div>
+    <div class="stat iqr-stat"><p class="label">IQR (Q3 − Q1)</p><p class="value" id="statIqr">–</p></div>
+    <div class="stat fence-stat" id="lowerFenceStat"><p class="label">Lower fence</p><p class="value" id="statLowerFence">–</p></div>
+    <div class="stat fence-stat" id="upperFenceStat"><p class="label">Upper fence</p><p class="value" id="statUpperFence">–</p></div>
+  </div>
+
+  <div class="legend">
+    <span class="item"><span class="legend-dot"></span> Sample value</span>
+    <span class="item"><span class="legend-x">✕</span> Outlier — beyond 1.5 × IQR from the box</span>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Classroom contexts ----------
+  const CONTEXTS = [
+    { label:"Spelling test scores", axisLabel:"Score (marks out of 50)", meanRange:[26,36], sdRange:[4,7],   min:0,   max:50,  decimals:0 },
+    { label:"60 m sprint times",     axisLabel:"Time (seconds)",         meanRange:[9.2,10.8], sdRange:[0.5,0.9], min:7,  max:14,  decimals:1 },
+    { label:"Bean plant heights after 2 weeks", axisLabel:"Height (cm)", meanRange:[11,19], sdRange:[2,4],   min:1,   max:32,  decimals:0 },
+    { label:"Reaction time trial",   axisLabel:"Reaction time (ms)",     meanRange:[220,300], sdRange:[22,40], min:150, max:450, decimals:0 },
+    { label:"Standing long jump",    axisLabel:"Distance (m)",           meanRange:[1.4,1.9], sdRange:[0.15,0.3], min:0.5, max:3, decimals:2 },
+    { label:"Resting heart rate",    axisLabel:"Beats per minute",       meanRange:[68,82], sdRange:[6,10],  min:45,  max:120, decimals:0 }
+  ];
+
+  // ---------- Small helpers ----------
+  function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function randRange(min, max){ return min + Math.random() * (max - min); }
+  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+  function roundTo(v, decimals){ const f = Math.pow(10, decimals); return Math.round(v * f) / f; }
+  function gaussian(){
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function median(sortedArr){
+    const n = sortedArr.length;
+    const mid = Math.floor(n / 2);
+    return n % 2 === 0 ? (sortedArr[mid - 1] + sortedArr[mid]) / 2 : sortedArr[mid];
+  }
+
+  function computeStats(dataArr){
+    const sorted = [...dataArr].sort((a, b) => a - b);
+    const n = sorted.length;
+    const med = median(sorted);
+    let lowerHalf, upperHalf;
+    if (n % 2 === 0){
+      lowerHalf = sorted.slice(0, n / 2);
+      upperHalf = sorted.slice(n / 2);
+    } else {
+      lowerHalf = sorted.slice(0, (n - 1) / 2);
+      upperHalf = sorted.slice((n + 1) / 2);
+    }
+    const q1 = median(lowerHalf);
+    const q3 = median(upperHalf);
+    const iqr = q3 - q1;
+    const lowerFence = q1 - 1.5 * iqr;
+    const upperFence = q3 + 1.5 * iqr;
+    const nonOutliers = sorted.filter(v => v >= lowerFence && v <= upperFence);
+    const outliers = sorted.filter(v => v < lowerFence || v > upperFence);
+    return {
+      sorted, n, median: med, q1, q3, iqr, lowerFence, upperFence,
+      outliers, nonOutliers,
+      whiskerMin: nonOutliers.length ? nonOutliers[0] : sorted[0],
+      whiskerMax: nonOutliers.length ? nonOutliers[nonOutliers.length - 1] : sorted[n - 1],
+      dataMin: sorted[0], dataMax: sorted[n - 1]
+    };
+  }
+
+  // ---------- Dataset generation (guarantees 1–3 outliers) ----------
+  function generateDataset(){
+    const context = CONTEXTS[randInt(0, CONTEXTS.length - 1)];
+    const decimals = context.decimals || 0;
+    const n = randInt(15, 30);
+    const outlierCount = randInt(1, 3);
+    const coreCount = n - outlierCount;
+    const mean = randRange(context.meanRange[0], context.meanRange[1]);
+    const sd = randRange(context.sdRange[0], context.sdRange[1]);
+
+    let core = [];
+    for (let i = 0; i < coreCount; i++){
+      let v = mean + sd * gaussian();
+      v = clamp(v, context.min, context.max);
+      core.push(roundTo(v, decimals));
+    }
+
+    let coreStats = computeStats(core);
+    const iqrEst = coreStats.iqr || sd || 1;
+    const span = context.max - context.min;
+    const wideMin = context.min - span;
+    const wideMax = context.max + span;
+
+    let outlierVals = [];
+    for (let i = 0; i < outlierCount; i++){
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const magnitude = iqrEst * (2.1 + Math.random() * 1.6);
+      let val = side < 0 ? coreStats.q1 - magnitude : coreStats.q3 + magnitude;
+      val = clamp(val, wideMin, wideMax);
+      outlierVals.push(roundTo(val, decimals));
+    }
+
+    let full = core.concat(outlierVals);
+    let stats = computeStats(full);
+    let tries = 0;
+    // Safety loop: keep pushing intended outliers further out until the
+    // *final* IQR classification (computed on the whole dataset) lands
+    // between 1 and 3 flagged points, as required.
+    while ((stats.outliers.length < 1 || stats.outliers.length > 3) && tries < 20){
+      outlierVals = outlierVals.map(v => {
+        const dir = v > stats.median ? 1 : -1;
+        const nv = clamp(v + dir * iqrEst * 0.8, wideMin, wideMax);
+        return roundTo(nv, decimals);
+      });
+      full = core.concat(outlierVals);
+      stats = computeStats(full);
+      tries++;
+    }
+
+    return { context, n, decimals, data: full, stats };
+  }
+
+  // ---------- SVG helpers ----------
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) node.setAttribute(k, attrs[k]);
+    return node;
+  }
+
+  // ---------- Layout constants ----------
+  const PLOT_X0 = 140, PLOT_X1 = 1110;
+  const PLOT_W = PLOT_X1 - PLOT_X0;
+  const FENCE_Y0 = 48, FENCE_Y1 = 380;
+  const BOX_CENTER_Y = 140, BOX_HALF = 45;
+  const CAP_HALF = 22;
+  const DOT_BASE_Y = 345, DOT_STEP = 14, DOT_R = 6.2;
+  const AXIS_Y = 380, TICK_LEN = 8, TICK_LABEL_Y = 405, AXIS_TITLE_Y = 434;
+
+  function niceStep(rangeSpan, decimals){
+    const candidates = decimals > 0 ? [0.2, 0.5, 1, 2, 5] : [2, 5, 10, 20, 25, 50, 100];
+    let best = candidates[0];
+    for (const c of candidates){
+      const count = rangeSpan / c;
+      if (count >= 6 && count <= 12) { best = c; break; }
+      best = c;
+      if (count < 6) break;
+    }
+    return best;
+  }
+
+  let showFences = false;
+  let current = null;
+
+  function render(dataset){
+    current = dataset;
+    const { context, n, decimals, data, stats } = dataset;
+
+    // ----- header text -----
+    document.getElementById("contextLabel").textContent =
+      `${context.label} — n = ${n} samples`;
+    // ----- scale -----
+    const span = Math.max(stats.dataMax - stats.dataMin, decimals > 0 ? 1 : 2);
+    const pad = Math.max(span * 0.18, decimals > 0 ? 0.6 : 2);
+    const step = niceStep(span + pad * 2, decimals);
+    const domainMin = Math.floor((stats.dataMin - pad) / step) * step;
+    const domainMax = Math.ceil((stats.dataMax + pad) / step) * step;
+    const xScale = v => PLOT_X0 + ((v - domainMin) / (domainMax - domainMin)) * PLOT_W;
+
+    const svg = document.getElementById("plotSvg");
+    svg.innerHTML = "";
+
+    // ===== Fence band + lines (row label + toggle group) =====
+    const fenceGroup = el("g", { class: "fence-group" + (showFences ? " visible" : ""), id: "fenceGroup" });
+    const bandX0 = xScale(stats.lowerFence), bandX1 = xScale(stats.upperFence);
+    fenceGroup.appendChild(el("rect", {
+      class: "fence-band", x: bandX0, y: FENCE_Y0, width: Math.max(0, bandX1 - bandX0), height: FENCE_Y1 - FENCE_Y0
+    }));
+    [ ["lowerFence", stats.lowerFence, "Lower fence"], ["upperFence", stats.upperFence, "Upper fence"] ].forEach(([key, val, text]) => {
+      const x = xScale(val);
+      fenceGroup.appendChild(el("line", { class: "fence-line", x1: x, x2: x, y1: FENCE_Y0, y2: FENCE_Y1 }));
+      const labelText = `${text}: ${val.toFixed(decimals)}`;
+      const estW = labelText.length * 9.6;
+      const anchorX = clamp(x, PLOT_X0 + estW / 2 + 2, PLOT_X1 - estW / 2 - 2);
+      fenceGroup.appendChild(el("rect", { class: "fence-label-bg", x: anchorX - estW / 2 - 4, y: FENCE_Y0 - 25, width: estW + 8, height: 23, rx: 4 }));
+      const t = el("text", { class: "fence-label", x: anchorX, y: FENCE_Y0 - 8, "text-anchor": "middle" });
+      t.textContent = labelText;
+      fenceGroup.appendChild(t);
+    });
+    svg.appendChild(fenceGroup);
+
+    // ===== Row labels =====
+    const boxLabel = el("text", { class: "row-label", x: 14, y: BOX_CENTER_Y + 4 });
+    boxLabel.textContent = "BOX PLOT";
+    svg.appendChild(boxLabel);
+    const dotLabel = el("text", { class: "row-label", x: 14, y: DOT_BASE_Y - 6 });
+    dotLabel.textContent = "SAMPLES";
+    svg.appendChild(dotLabel);
+
+    // ===== Box plot =====
+    // Before the fences are revealed, the whiskers cover every sample (the
+    // plain, naive box plot). Once fences are shown, the whiskers pull in to
+    // the standard IQR method (stopping at the last non-outlier) and the
+    // outliers are cut loose and marked separately.
+    const boxMin = showFences ? stats.whiskerMin : stats.dataMin;
+    const boxMax = showFences ? stats.whiskerMax : stats.dataMax;
+    const xMin = xScale(boxMin), xMax = xScale(boxMax);
+    const xQ1 = xScale(stats.q1), xQ3 = xScale(stats.q3), xMed = xScale(stats.median);
+
+    svg.appendChild(el("line", { class: "whisker-line", x1: xMin, x2: xMax, y1: BOX_CENTER_Y, y2: BOX_CENTER_Y }));
+    svg.appendChild(el("line", { class: "cap-line", x1: xMin, x2: xMin, y1: BOX_CENTER_Y - CAP_HALF, y2: BOX_CENTER_Y + CAP_HALF }));
+    svg.appendChild(el("line", { class: "cap-line", x1: xMax, x2: xMax, y1: BOX_CENTER_Y - CAP_HALF, y2: BOX_CENTER_Y + CAP_HALF }));
+    svg.appendChild(el("rect", {
+      class: "box-rect", x: Math.min(xQ1, xQ3), y: BOX_CENTER_Y - BOX_HALF,
+      width: Math.abs(xQ3 - xQ1), height: BOX_HALF * 2, rx: 3
+    }));
+    svg.appendChild(el("line", { class: "median-line", x1: xMed, x2: xMed, y1: BOX_CENTER_Y - BOX_HALF, y2: BOX_CENTER_Y + BOX_HALF }));
+
+    // outliers marked on the box-plot row — only once fences are revealed
+    if (showFences){
+      stats.outliers.forEach(v => {
+        const x = xScale(v);
+        svg.appendChild(makeOutlierMark(x, BOX_CENTER_Y, 10));
+      });
+    }
+
+    // ===== Dot strip (stacked, aligned to same axis) =====
+    const stackCounts = {};
+    [...data].sort((a, b) => a - b).forEach(v => {
+      const key = v.toFixed(decimals);
+      stackCounts[key] = (stackCounts[key] || 0) + 1;
+      const idx = stackCounts[key] - 1;
+      const x = xScale(v);
+      const y = DOT_BASE_Y - idx * DOT_STEP;
+      const isOutlier = showFences && (v < stats.lowerFence || v > stats.upperFence);
+      if (isOutlier){
+        svg.appendChild(makeOutlierMark(x, y, 8));
+      } else {
+        svg.appendChild(el("circle", { class: "sample-dot", cx: x, cy: y, r: DOT_R }));
+      }
+    });
+
+    // ===== Axis =====
+    svg.appendChild(el("line", { class: "axis-line", x1: PLOT_X0, x2: PLOT_X1, y1: AXIS_Y, y2: AXIS_Y }));
+    for (let t = domainMin; t <= domainMax + 1e-9; t += step){
+      const x = xScale(t);
+      svg.appendChild(el("line", { class: "tick-line", x1: x, x2: x, y1: AXIS_Y, y2: AXIS_Y + TICK_LEN }));
+      const lbl = el("text", { class: "tick-label", x: x, y: TICK_LABEL_Y });
+      lbl.textContent = t.toFixed(decimals);
+      svg.appendChild(lbl);
+    }
+    const axisTitle = el("text", { class: "axis-title", x: (PLOT_X0 + PLOT_X1) / 2, y: AXIS_TITLE_Y });
+    axisTitle.textContent = context.axisLabel;
+    svg.appendChild(axisTitle);
+
+    // ----- stats bar -----
+    document.getElementById("statMin").textContent = boxMin.toFixed(decimals);
+    document.getElementById("statQ1").textContent = stats.q1.toFixed(decimals);
+    document.getElementById("statMedian").textContent = stats.median.toFixed(decimals);
+    document.getElementById("statQ3").textContent = stats.q3.toFixed(decimals);
+    document.getElementById("statMax").textContent = boxMax.toFixed(decimals);
+    document.getElementById("statIqr").textContent = stats.iqr.toFixed(decimals);
+    document.getElementById("statLowerFence").textContent = stats.lowerFence.toFixed(decimals);
+    document.getElementById("statUpperFence").textContent = stats.upperFence.toFixed(decimals);
+
+    document.getElementById("lowerFenceStat").classList.toggle("active", showFences);
+    document.getElementById("upperFenceStat").classList.toggle("active", showFences);
+  }
+
+  function makeOutlierMark(cx, cy, size){
+    const g = el("g", { class: "outlier-mark" });
+    g.appendChild(el("line", { x1: cx - size, x2: cx + size, y1: cy - size, y2: cy + size }));
+    g.appendChild(el("line", { x1: cx - size, x2: cx + size, y1: cy + size, y2: cy - size }));
+    return g;
+  }
+
+  // ---------- Controls ----------
+  document.getElementById("newDatasetBtn").addEventListener("click", () => {
+    render(generateDataset());
+  });
+
+  document.getElementById("toggleFenceBtn").addEventListener("click", (e) => {
+    showFences = !showFences;
+    e.currentTarget.setAttribute("aria-pressed", String(showFences));
+    e.currentTarget.textContent = showFences ? "Hide IQR fences" : "Show IQR fences";
+    render(current);
+  });
+
+  // ---------- Init ----------
+  render(generateDataset());
+})();
+</script>
+
+</body>
+</html>
