@@ -6,57 +6,80 @@
 <title>Averages Explorer</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-body{font-family:system-ui,sans-serif;background:#2b2b2b;color:#c8c8c8;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0.75rem 1rem;overflow:hidden}
-h1{font-size:1.3rem;font-weight:600;text-align:center;color:#c8c8c8;margin-bottom:0.1rem}
-.subtitle{font-size:0.85rem;color:#c8c8c8;text-align:center;margin-bottom:0.6rem}
+body{
+  font-family:system-ui,sans-serif;
+  color:#222;
+  height:100dvh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:0.75rem 1rem;overflow:hidden;
+  background-color:#f5f3ee;
+  background-image:
+    linear-gradient(rgba(180,190,200,0.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180,190,200,0.45) 1px, transparent 1px);
+  background-size:28px 28px;
+}
+h1{font-size:1.3rem;font-weight:700;text-align:center;color:#222;margin-bottom:0.1rem}
+.subtitle{font-size:0.85rem;color:#555;text-align:center;margin-bottom:0.6rem}
 
-/* top area — flask + columns + range panel, all in a row */
 #top{position:relative;display:flex;gap:0.9rem;align-items:flex-end;justify-content:center;margin-bottom:0.6rem}
 
-#flask-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;touch-action:none;justify-content:flex-end}
-#flask-label{font-size:11px;color:#c8c8c8;text-align:center;line-height:1.3;margin-bottom:4px}
+#flask-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;touch-action:none;justify-content:flex-end;transition:opacity 0.4s ease}
+#flask-wrap.dimmed{opacity:0.25;pointer-events:none}
+#flask-label{font-size:11px;color:#555;text-align:center;line-height:1.3;margin-bottom:4px}
 #flask{width:56px;height:200px;flex-shrink:0;touch-action:none}
 #flask svg{width:100%;height:100%;touch-action:none}
-#flask-val{font-size:13px;font-weight:600;min-height:16px;text-align:center;color:#c8c8c8}
+#flask-val{font-size:13px;font-weight:600;min-height:16px;text-align:center;color:#333}
 
 #stage-wrap{position:relative;display:flex;align-items:flex-end;gap:0}
 #cols-stage{position:relative;display:flex;align-items:flex-end;touch-action:none;flex-shrink:0}
 .col-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;position:absolute;bottom:0;transition:left 1.1s cubic-bezier(0.4,0,0.2,1)}
-.col-label{font-size:12px;color:#c8c8c8;font-weight:500}
-.col-track{border:1.5px solid #555;border-radius:6px;position:relative;overflow:hidden;background:#3a3a3a;touch-action:none;cursor:crosshair}
+.col-label{font-size:12px;color:#444;font-weight:600}
+.col-track{border:2px solid #555;border-radius:6px;position:relative;overflow:hidden;background:#e8e5de;touch-action:none;cursor:crosshair}
 .col-fill{position:absolute;bottom:0;left:0;right:0;transition:height 0.35s ease}
-.col-num{font-size:12px;font-weight:600;min-height:16px;color:#c8c8c8;text-align:center}
+.col-num{font-size:12px;font-weight:700;min-height:16px;color:#222;text-align:center}
 
-/* range panel */
 #range-panel{position:relative;flex-shrink:0;width:80px;opacity:0;transition:opacity 0.3s ease}
 #range-line-high{position:absolute;left:0;right:0;height:2px;background:#d63384;transform:scaleX(0);transform-origin:left;transition:transform 0.6s ease}
 #range-line-low{position:absolute;left:0;right:0;height:2px;background:#d63384;transform:scaleX(0);transform-origin:left;transition:transform 0.6s ease 0.2s}
-#range-box{position:absolute;right:0;width:70px;border-radius:8px;background:#d63384;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;opacity:0;transition:opacity 0.5s ease 0.7s}
-#range-box .range-label{font-size:11px;color:#fff;font-weight:500;text-transform:uppercase;letter-spacing:0.05em}
+#range-box{position:absolute;right:0;width:70px;border-radius:8px;border:2px solid #a0205a;background:#d63384;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;opacity:0;transition:opacity 0.5s ease 0.7s}
+#range-box .range-label{font-size:11px;color:#fff;font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
 #range-box .range-val{font-size:1.4rem;font-weight:700;color:#fff}
 
-/* copy overlay — covers the entire #top div */
-#copy-overlay{display:none;position:absolute;inset:0;background:#2b2b2b;border-radius:10px;align-items:center;justify-content:center;z-index:20;opacity:0;transition:opacity 0.4s ease}
-#copy-overlay.visible{display:flex;opacity:1}
+#copy-overlay{display:none;position:absolute;inset:0;background:#f5f3ee;border:2px solid #555;border-radius:10px;align-items:center;justify-content:center;z-index:20;opacity:0;transition:opacity 0.4s ease}
 #copy-grid{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;padding:1rem}
 .copy-cell{display:flex;flex-direction:column;align-items:center;gap:4px}
-.copy-cell-label{font-size:13px;color:#888;font-weight:500}
-.copy-cell-val{font-size:3rem;font-weight:700;color:#f5c431;line-height:1}
+.copy-cell-label{font-size:13px;color:#777;font-weight:500}
+.copy-cell-val{font-size:3rem;font-weight:700;color:#c49a10;line-height:1}
 
-/* buttons */
 #btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:0.4rem}
-#btns button{padding:12px 24px;font-size:16px;font-weight:500;border-radius:10px;border:1.5px solid #555;background:#3a3a3a;color:#c8c8c8;cursor:pointer;transition:background 0.15s;min-width:100px}
-#btns button:active{background:#505050}
-#btn-random{border-color:#777}
-#btn-mode{border-color:#d4a017;color:#f5c431}
-#btn-median{border-color:#2d7dd2;color:#7ec4f8}
-#btn-mean{border-color:#2a8f57;color:#5dd68a}
+#btns button{
+  padding:12px 24px;font-size:16px;font-weight:600;border-radius:10px;
+  border:2px solid #555;background:#f5f3ee;color:#222;
+  cursor:pointer;transition:background 0.15s;min-width:100px;
+  box-shadow:1px 1px 3px rgba(0,0,0,0.15)
+}
+#btns button:active{background:#ddd}
+#btn-random{border-color:#555;color:#333}
+#btn-mode{border-color:#c49a10;color:#8a6d00}
+#btn-median{border-color:#2d7dd2;color:#185faa}
+#btn-mean{border-color:#2a8f57;color:#1a6e3e}
+
 #btns2{display:flex;gap:10px;justify-content:center;margin-bottom:0.4rem}
-#btn-range{padding:10px 28px;font-size:15px;font-weight:500;border-radius:10px;border:1.5px solid #9b3060;background:#3a3a3a;color:#e07aaa;cursor:pointer;transition:background 0.15s}
-#btn-range:active{background:#505050}
-#btn-copy{padding:10px 28px;font-size:15px;font-weight:500;border-radius:10px;border:1.5px solid #5a7a9b;background:#3a3a3a;color:#7ec4f8;cursor:pointer;transition:background 0.15s}
-#btn-copy:active{background:#505050}
-#info{min-height:24px;text-align:center;font-size:13px;color:#c8c8c8;max-width:700px}
+#btn-range{
+  padding:10px 28px;font-size:15px;font-weight:600;border-radius:10px;
+  border:2px solid #9b3060;background:#f5f3ee;color:#9b3060;
+  cursor:pointer;transition:background 0.15s;
+  box-shadow:1px 1px 3px rgba(0,0,0,0.15)
+}
+#btn-range:active{background:#f0d8e5}
+#btn-copy{
+  padding:10px 28px;font-size:15px;font-weight:600;border-radius:10px;
+  border:2px solid #2d7dd2;background:#f5f3ee;color:#185faa;
+  cursor:pointer;transition:background 0.15s;
+  box-shadow:1px 1px 3px rgba(0,0,0,0.15)
+}
+#btn-copy:active{background:#d8e8f8}
+#info{min-height:24px;text-align:center;font-size:13px;color:#444;max-width:700px}
 </style>
 </head>
 <body>
@@ -73,9 +96,9 @@ h1{font-size:1.3rem;font-weight:600;text-align:center;color:#c8c8c8;margin-botto
           <path d="M20,10 L20,140 L4,220 Q2,236 14,238 L50,238 Q62,236 60,220 L44,140 L44,10 Z"/>
         </clipPath></defs>
         <rect id="flask-liquid" x="0" y="240" width="64" height="0" fill="#f5c431" clip-path="url(#fc)"/>
-        <path d="M20,10 L20,140 L4,220 Q2,236 14,238 L50,238 Q62,236 60,220 L44,140 L44,10 Z" fill="none" stroke="#c49a10" stroke-width="2.5"/>
-        <rect x="16" y="4" width="32" height="12" rx="4" fill="#c49a10"/>
-        <text x="32" y="165" text-anchor="middle" font-size="26" fill="#a07800">&#9879;</text>
+        <path d="M20,10 L20,140 L4,220 Q2,236 14,238 L50,238 Q62,236 60,220 L44,140 L44,10 Z" fill="none" stroke="#555" stroke-width="2.5"/>
+        <rect x="16" y="4" width="32" height="12" rx="4" fill="#555"/>
+        <text x="32" y="165" text-anchor="middle" font-size="26" fill="#888">&#9879;</text>
       </svg>
     </div>
     <div id="flask-val">–</div>
@@ -93,7 +116,6 @@ h1{font-size:1.3rem;font-weight:600;text-align:center;color:#c8c8c8;margin-botto
     </div>
   </div>
 
-  <!-- overlay covers entire #top -->
   <div id="copy-overlay">
     <div id="copy-grid"></div>
   </div>
@@ -126,6 +148,7 @@ const stage         = document.getElementById('cols-stage');
 const info          = document.getElementById('info');
 const flaskSvg      = document.getElementById('flask-svg');
 const flaskLiq      = document.getElementById('flask-liquid');
+const flaskWrap     = document.getElementById('flask-wrap');
 const rangePanel    = document.getElementById('range-panel');
 const rangeLineHigh = document.getElementById('range-line-high');
 const rangeLineLow  = document.getElementById('range-line-low');
@@ -134,23 +157,21 @@ const rangeValText  = document.getElementById('range-val-text');
 const copyOverlay   = document.getElementById('copy-overlay');
 const copyGrid      = document.getElementById('copy-grid');
 
-// ── sizing ──────────────────────────────────────────────────────────────────
 function calcSizes(){
-  const stageW = window.innerWidth - 56 - 32 - 24 - 90;
-  const colW   = Math.floor((stageW - 8*(COLS-1)) / COLS);
-  const GAP    = colW + 8;
-  const trackH = Math.min(200, window.innerHeight*0.42);
-  return {colW, GAP, trackH};
+  const stageW=window.innerWidth-56-32-24-90;
+  const colW=Math.floor((stageW-8*(COLS-1))/COLS);
+  const GAP=colW+8;
+  const trackH=Math.min(200,window.innerHeight*0.42);
+  return {colW,GAP,trackH};
 }
-let {colW, GAP, trackH} = calcSizes();
-function colH(v){ return (v/MAX)*trackH; }
+let {colW,GAP,trackH}=calcSizes();
+function colH(v){return (v/MAX)*trackH;}
 
-// ── build columns ───────────────────────────────────────────────────────────
 function buildCols(){
-  ({colW, GAP, trackH} = calcSizes());
-  stage.style.width  = (COLS*GAP-8)+'px';
-  stage.style.height = (trackH+30)+'px';
-  rangePanel.style.height = (trackH+30)+'px';
+  ({colW,GAP,trackH}=calcSizes());
+  stage.style.width=(COLS*GAP-8)+'px';
+  stage.style.height=(trackH+30)+'px';
+  rangePanel.style.height=(trackH+30)+'px';
   stage.innerHTML='';
 
   origOrder.forEach((origIdx,pos)=>{
@@ -179,7 +200,7 @@ function buildCols(){
     num.id='num-'+origIdx;
     num.textContent=vals[origIdx];
 
-    wrap.appendChild(lbl); wrap.appendChild(track); wrap.appendChild(num);
+    wrap.appendChild(lbl);wrap.appendChild(track);wrap.appendChild(num);
     stage.appendChild(wrap);
 
     track.addEventListener('touchstart',e=>{e.preventDefault();handleColTouch(e,track,origIdx);},{passive:false});
@@ -189,7 +210,6 @@ function buildCols(){
   });
 }
 
-// ── column interaction ──────────────────────────────────────────────────────
 function valFromY(clientY,rect){
   return Math.max(0,Math.min(MAX,Math.round(MAX*(1-(clientY-rect.top)/rect.height))));
 }
@@ -197,13 +217,13 @@ function setColVal(idx,v){
   vals[idx]=v;
   const f=document.getElementById('fill-'+idx);
   const n=document.getElementById('num-'+idx);
-  if(f){ f.style.height=colH(v)+'px'; if(!activeBtn&&!activeRange) f.style.cssText='background:'+YELLOW+';opacity:1;height:'+colH(v)+'px'; }
-  if(n) n.textContent=v;
-  if(activeBtn)   reapply();
-  if(activeRange) doRange(false);
+  if(f){f.style.height=colH(v)+'px';if(!activeBtn&&!activeRange)f.style.cssText='background:'+YELLOW+';opacity:1;height:'+colH(v)+'px';}
+  if(n)n.textContent=v;
+  if(activeBtn)reapply();
+  if(activeRange)doRange(false);
 }
-function handleColTouch(e,track,idx){ setColVal(idx,valFromY(e.touches[0].clientY,track.getBoundingClientRect())); }
-function handleColMouse(e,track,idx){ colDragIdx=idx; setColVal(idx,valFromY(e.clientY,track.getBoundingClientRect())); }
+function handleColTouch(e,track,idx){setColVal(idx,valFromY(e.touches[0].clientY,track.getBoundingClientRect()));}
+function handleColMouse(e,track,idx){colDragIdx=idx;setColVal(idx,valFromY(e.clientY,track.getBoundingClientRect()));}
 document.addEventListener('mouseup',()=>{colDragIdx=null;});
 
 stage.addEventListener('touchend',e=>{
@@ -215,12 +235,11 @@ stage.addEventListener('click',e=>{
   if(t){const idx=parseInt(t.dataset.colidx);setColVal(idx,flaskLevel);setInfo('Column '+labels[idx]+' set to '+flaskLevel);}
 });
 
-// ── flask ───────────────────────────────────────────────────────────────────
 function applyFlaskLevel(clientY){
   const r=flaskSvg.getBoundingClientRect();
   flaskLevel=Math.max(0,Math.min(MAX,Math.round(MAX*(1-(clientY-r.top)/r.height))));
   const h=240*flaskLevel/MAX;
-  flaskLiq.setAttribute('y',240-h); flaskLiq.setAttribute('height',h);
+  flaskLiq.setAttribute('y',240-h);flaskLiq.setAttribute('height',h);
   document.getElementById('flask-val').textContent=flaskLevel;
   setInfo('Tap a column to fill it to level '+flaskLevel);
 }
@@ -231,13 +250,12 @@ flaskSvg.addEventListener('mousedown',e=>{flaskActive=true;applyFlaskLevel(e.cli
 document.addEventListener('mousemove',e=>{if(flaskActive)applyFlaskLevel(e.clientY);});
 document.addEventListener('mouseup',  ()=>{flaskActive=false;});
 
-// ── helpers ─────────────────────────────────────────────────────────────────
-function setInfo(msg){info.style.color='#c8c8c8';info.textContent=msg;}
+function setInfo(msg){info.style.color='#444';info.textContent=msg;}
 
 function setPositions(order,animate){
   order.forEach((origIdx,pos)=>{
     const w=document.getElementById('wrap-'+origIdx);
-    if(!w) return;
+    if(!w)return;
     w.style.transition=animate?'left 1.1s cubic-bezier(0.4,0,0.2,1)':'none';
     w.style.left=(pos*GAP)+'px';
   });
@@ -246,14 +264,14 @@ function setPositions(order,animate){
 function resetAllFills(){
   for(let i=0;i<COLS;i++){
     const f=document.getElementById('fill-'+i);
-    if(f) f.style.cssText='background:'+YELLOW+';opacity:1;height:'+colH(vals[i])+'px';
+    if(f)f.style.cssText='background:'+YELLOW+';opacity:1;height:'+colH(vals[i])+'px';
   }
 }
 
 function resetBtns(){
   ['btn-mode','btn-median','btn-mean'].forEach(id=>{
     const b=document.getElementById(id);
-    b.style.background=''; b.style.color=''; b.style.borderColor='';
+    b.style.background='';b.style.color='';b.style.borderColor='';
   });
 }
 
@@ -264,28 +282,24 @@ function hideRange(){
   rangeBox.style.opacity='0';
   activeRange=false;
   const b=document.getElementById('btn-range');
-  b.style.background=''; b.style.color=''; b.style.borderColor='';
+  b.style.background='';b.style.color='';b.style.borderColor='';
 }
 
 function clearAll(){
   origOrder=Array.from({length:COLS},(_,i)=>i);
-  buildCols();
-  activeBtn=null;
-  resetBtns();
-  hideRange();
-  info.textContent='';
+  buildCols();activeBtn=null;resetBtns();hideRange();info.textContent='';
+  flaskWrap.classList.remove('dimmed');
 }
 
 function activateBtn(id,bg,col,border){
   resetBtns();
   const b=document.getElementById(id);
-  b.style.background=bg; b.style.color=col; b.style.borderColor=border;
+  b.style.background=bg;b.style.color=col;b.style.borderColor=border;
 }
 
-// ── copy overlay ─────────────────────────────────────────────────────────────
 function showCopyOverlay(){
   copyGrid.innerHTML='';
-  origOrder.forEach((origIdx, pos)=>{
+  origOrder.forEach((origIdx,pos)=>{
     const cell=document.createElement('div');
     cell.className='copy-cell';
     const lbl=document.createElement('div');
@@ -294,34 +308,30 @@ function showCopyOverlay(){
     const val=document.createElement('div');
     val.className='copy-cell-val';
     val.textContent=vals[origIdx]+(pos<COLS-1?',':'');
-    cell.appendChild(lbl); cell.appendChild(val);
+    cell.appendChild(lbl);cell.appendChild(val);
     copyGrid.appendChild(cell);
   });
-  // two-step to trigger CSS transition
   copyOverlay.style.display='flex';
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    copyOverlay.style.opacity='1';
-  }));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{copyOverlay.style.opacity='1';}));
   const b=document.getElementById('btn-copy');
-  b.style.background='#4a9ef5'; b.style.color='#fff'; b.style.borderColor='#2d7dd2';
+  b.style.background='#2d7dd2';b.style.color='#fff';b.style.borderColor='#1a5ca0';
   copyVisible=true;
 }
 
 function hideCopyOverlay(){
   copyOverlay.style.opacity='0';
-  setTimeout(()=>{ copyOverlay.style.display='none'; },400);
+  setTimeout(()=>{copyOverlay.style.display='none';},400);
   const b=document.getElementById('btn-copy');
-  b.style.background=''; b.style.color=''; b.style.borderColor='';
+  b.style.background='';b.style.color='';b.style.borderColor='';
   copyVisible=false;
 }
 
 document.getElementById('btn-copy').addEventListener('click',()=>{
-  copyVisible ? hideCopyOverlay() : showCopyOverlay();
+  copyVisible?hideCopyOverlay():showCopyOverlay();
 });
 
-// ── range ────────────────────────────────────────────────────────────────────
 function doRange(animate){
-  const hi=Math.max(...vals), lo=Math.min(...vals);
+  const hi=Math.max(...vals),lo=Math.min(...vals);
   const range=hi-lo;
   const panelRect=rangePanel.getBoundingClientRect();
   const hiFill=document.getElementById('fill-'+vals.indexOf(hi));
@@ -360,14 +370,12 @@ document.getElementById('btn-range').addEventListener('click',()=>{
   if(activeRange){hideRange();info.textContent='';return;}
   activeRange=true;
   const b=document.getElementById('btn-range');
-  b.style.background='#d63384'; b.style.color='#fff'; b.style.borderColor='#d63384';
+  b.style.background='#d63384';b.style.color='#fff';b.style.borderColor='#a0205a';
   doRange(true);
 });
 
-// ── mode ─────────────────────────────────────────────────────────────────────
 function doMode(){
-  setPositions(origOrder,false);
-  resetAllFills();
+  setPositions(origOrder,false);resetAllFills();
   const freq={};
   vals.forEach(v=>{freq[v]=(freq[v]||0)+1;});
   const maxF=Math.max(...Object.values(freq));
@@ -376,14 +384,14 @@ function doMode(){
   modes.forEach((m,i)=>{colourMap[m]=MODE_COLOURS[i%MODE_COLOURS.length];});
   for(let i=0;i<COLS;i++){
     const f=document.getElementById('fill-'+i);
-    if(!f) continue;
+    if(!f)continue;
     const isMode=maxF>1&&colourMap.hasOwnProperty(vals[i]);
     if(isMode){
       f.style.cssText='height:'+colH(vals[i])+'px;opacity:1;background:'+colourMap[vals[i]]+';transition:none';
     } else {
       f.style.cssText='height:'+colH(vals[i])+'px;opacity:1;background:'+YELLOW+';transition:none';
       f.getBoundingClientRect();
-      f.style.cssText='height:'+colH(vals[i])+'px;opacity:0.35;background:#888;transition:background 1s ease,opacity 1s ease';
+      f.style.cssText='height:'+colH(vals[i])+'px;opacity:0.25;background:#aaa;transition:background 1s ease,opacity 1s ease';
     }
   }
   setInfo(maxF===1?'No mode — all values appear once.'
@@ -391,10 +399,8 @@ function doMode(){
     :'Modes = '+modes.join(' & ')+' — each appears '+maxF+' times, shown in different colours.');
 }
 
-// ── median ────────────────────────────────────────────────────────────────────
 function doMedian(){
-  setPositions(origOrder,false);
-  resetAllFills();
+  setPositions(origOrder,false);resetAllFills();
   const sorted=[...vals.map((v,i)=>({v,i}))].sort((a,b)=>a.v-b.v);
   const sortedOrder=sorted.map(x=>x.i);
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -403,19 +409,17 @@ function doMedian(){
     setTimeout(()=>{
       sortedOrder.forEach((origIdx,pos)=>{
         const f=document.getElementById('fill-'+origIdx);
-        if(!f) return;
-        if(pos===mid) f.style.cssText='height:'+colH(vals[origIdx])+'px;background:#4a9ef5;opacity:1';
-        else          f.style.cssText='height:'+colH(vals[origIdx])+'px;background:#888;opacity:0.35';
+        if(!f)return;
+        if(pos===mid)f.style.cssText='height:'+colH(vals[origIdx])+'px;background:#4a9ef5;opacity:1';
+        else         f.style.cssText='height:'+colH(vals[origIdx])+'px;background:#aaa;opacity:0.25';
       });
       setInfo('Sorted smallest to largest — middle column (position '+(mid+1)+') is the median = '+vals[sortedOrder[mid]]+'.');
     },1200);
   }));
 }
 
-// ── mean ──────────────────────────────────────────────────────────────────────
 function doMean(){
-  setPositions(origOrder,false);
-  resetAllFills();
+  setPositions(origOrder,false);resetAllFills();
   const mean=vals.reduce((a,b)=>a+b,0)/COLS;
   const mH=colH(mean);
   const order=[...Array(COLS).keys()].sort((a,b)=>Math.abs(vals[b]-mean)-Math.abs(vals[a]-mean));
@@ -438,15 +442,16 @@ function doMean(){
   setInfo('Mean = ('+vals.join('+')+') ÷ '+COLS+' = '+mean.toFixed(2)+'. Liquid flows from taller columns to shorter ones.');
 }
 
-// ── wiring ────────────────────────────────────────────────────────────────────
 function reapply(){
   if(activeBtn==='btn-mode')        doMode();
   else if(activeBtn==='btn-median') doMedian();
   else if(activeBtn==='btn-mean')   doMean();
 }
+
 function toggleBtn(id,action){
   if(activeBtn===id){clearAll();return;}
   activeBtn=id;
+  flaskWrap.classList.add('dimmed');
   if(id==='btn-mode')        activateBtn(id,'#f5c431','#6b4a00','#c49a10');
   else if(id==='btn-median') activateBtn(id,'#4a9ef5','#fff','#2d7dd2');
   else if(id==='btn-mean')   activateBtn(id,'#4ac97e','#fff','#2a8f57');
@@ -455,7 +460,7 @@ function toggleBtn(id,action){
 
 document.getElementById('btn-random').addEventListener('click',()=>{
   vals=Array.from({length:COLS},()=>Math.floor(Math.random()*13));
-  clearAll(); buildCols(); setInfo('Random values placed!');
+  clearAll();buildCols();setInfo('Random values placed!');
 });
 document.getElementById('btn-mode').addEventListener('click',   ()=>toggleBtn('btn-mode',doMode));
 document.getElementById('btn-median').addEventListener('click', ()=>toggleBtn('btn-median',doMedian));
