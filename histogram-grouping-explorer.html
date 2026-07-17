@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Histogram Grouping Explorer — Class Width & Sample Shape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F9FB;
+    --grid:#D7E3ED;
+    --grid-strong:#B9CBDD;
+    --panel:#FFFFFF;
+    --ink:#16233F;
+    --ink-soft:#5B6B87;
+    --teal:#2A8C82;
+    --teal-dark:#1F6B63;
+    --teal-fill:#E4F3F1;
+    --terracotta:#C1502E;
+    --terracotta-fill:#FBEAE3;
+    --purple:#6B5CA5;
+    --purple-fill:#EEEBF7;
+    --error:#D64550;
+    --error-fill:#FCE9EA;
+    --radius:10px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    overflow:hidden;
+  }
+
+  body{
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .app{ display:flex; height:100vh; width:100vw; }
+
+  /* ---------- HEADER ---------- */
+  .header{
+    position:fixed; top:0; left:0; right:0;
+    height:64px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px;
+    background:var(--ink);
+    color:#F7F9FB;
+    z-index:20;
+  }
+  .header h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:20px;
+    font-weight:600;
+    letter-spacing:0.02em;
+    margin:0;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .header h1 .unit{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    font-weight:400;
+    color:#9FB4CC;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+
+  .mode-toggle{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+  }
+  .mode-toggle .lbl{ color:#9FB4CC; letter-spacing:0.03em; }
+  .mode-toggle .lbl.active{ color:#F7F9FB; font-weight:600; }
+
+  .switch{
+    position:relative;
+    width:52px; height:26px;
+    background:#2C3B5C;
+    border-radius:20px;
+    cursor:pointer;
+    border:1px solid #3D4E73;
+    flex-shrink:0;
+  }
+  .switch .knob{
+    position:absolute;
+    top:2px; left:2px;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:#5B6B87;
+    transition:left .25s cubic-bezier(.4,0,.2,1), background .25s ease;
+  }
+  .switch.on .knob{ left:28px; background:var(--purple); }
+
+  /* ---------- MAIN SPLIT ---------- */
+  .main{ display:flex; width:100%; height:100%; padding-top:64px; }
+
+  .panel-left{
+    width:42%;
+    min-width:400px;
+    height:100%;
+    padding:16px 14px 16px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    overflow-y:auto;
+  }
+
+  .panel-right{
+    width:58%;
+    height:100%;
+    padding:18px 22px 16px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    overflow:hidden;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--grid-strong);
+    border-radius:var(--radius);
+    box-shadow: 0 1px 2px rgba(22,35,63,0.04);
+  }
+
+  .card-head{
+    padding:12px 16px 10px 16px;
+    border-bottom:1px solid var(--grid);
+  }
+  .card-head .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    color:var(--teal-dark);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    font-weight:600;
+  }
+  .card-head h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:16px;
+    margin:3px 0 0 0;
+    font-weight:600;
+  }
+  .card-body{ padding:14px 16px 16px 16px; }
+
+  /* ---------- DISTRIBUTION CONTROLS ---------- */
+  .dist-row{
+    display:flex;
+    flex-wrap:nowrap;
+    gap:6px;
+    margin-bottom:12px;
+  }
+  .dist-btn{
+    font-family:'Inter', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    padding:9px 4px;
+    border-radius:8px;
+    border:1.5px solid var(--grid-strong);
+    background:#FCFDFE;
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:all .15s ease;
+    flex:1 1 0;
+    min-width:0;
+    white-space:nowrap;
+    text-align:center;
+  }
+  .dist-btn:hover{ border-color:var(--teal); color:var(--teal-dark); }
+  .dist-btn.active{
+    background:var(--teal);
+    border-color:var(--teal);
+    color:#fff;
+  }
+
+  .resample-btn{
+    font-family:'Inter', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    padding:9px 14px;
+    border-radius:8px;
+    border:1px solid var(--purple);
+    background:var(--purple-fill);
+    color:var(--purple);
+    cursor:pointer;
+    transition:all .15s ease;
+    width:100%;
+  }
+  .resample-btn:hover{ background:var(--purple); color:#fff; }
+
+  .stats-line{
+    margin-bottom:10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    color:var(--ink-soft);
+  }
+  .stats-line b{ color:var(--ink); }
+
+  /* ---------- STRIP PLOT (now lives in the raw-data card, right panel) ---------- */
+  .raw-data-card{ flex:0 0 auto; }
+  svg#stripPlot{ width:100%; height:64px; display:block; }
+  .strip-dot{ fill:var(--teal); opacity:0.25; }
+  .strip-axis{ stroke:var(--grid-strong); stroke-width:1; }
+  .strip-tick{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    fill:var(--ink-soft);
+  }
+
+  .coverage-line{
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .coverage-line b{ color:var(--ink); }
+  .coverage-line.warn b{ color:var(--terracotta); }
+
+  /* ---------- EDITABLE FREQUENCY TABLE ---------- */
+  .error-banner{
+    margin:0 0 10px 0;
+    padding:8px 12px;
+    background:var(--error-fill);
+    border:1px solid var(--error);
+    border-radius:7px;
+    font-size:14px;
+    color:var(--error);
+    font-family:'Inter', sans-serif;
+    display:none;
+    line-height:1.4;
+  }
+  .error-banner.show{ display:block; }
+
+  .table-scroll{
+    max-height:480px;
+    overflow-y:auto;
+    overflow-x:auto;
+  }
+  table.freq-table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+  }
+  table.freq-table thead th{
+    position:sticky; top:0;
+    background:var(--panel);
+    text-align:center;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    padding:8px 4px;
+    border-bottom:2px solid var(--ink);
+    z-index:2;
+  }
+  table.freq-table td{
+    padding:6px 4px;
+    text-align:center;
+    border-bottom:1px solid var(--grid);
+  }
+  table.freq-table tbody tr.row-error{ background:var(--error-fill); }
+  table.freq-table input[type="number"]{
+    width:62px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    padding:6px 2px;
+    border:1px solid var(--grid-strong);
+    border-radius:5px;
+    background:#FCFDFE;
+    color:var(--ink);
+  }
+  table.freq-table input[type="number"]:focus{
+    outline:none;
+    border-color:var(--teal);
+    box-shadow:0 0 0 2px var(--teal-fill);
+  }
+  table.freq-table .dash{ color:var(--ink-soft); font-weight:600; }
+  .computed{ color:var(--teal-dark); font-weight:600; }
+  .freq-val{ font-weight:600; color:var(--ink); }
+
+  .del-btn{
+    width:30px; height:30px;
+    border-radius:5px;
+    border:1px solid var(--grid-strong);
+    background:#FCFDFE;
+    color:var(--ink-soft);
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    transition:all .15s ease;
+  }
+  .del-btn:hover{ background:var(--error-fill); border-color:var(--error); color:var(--error); }
+
+  .table-foot{
+    padding-top:12px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+  }
+  .add-btn{
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:7px;
+    border:1px solid var(--teal);
+    background:var(--teal-fill);
+    color:var(--teal-dark);
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .add-btn:hover{ background:var(--teal); color:#fff; }
+
+  /* ---------- CHART PANEL ---------- */
+  .chart-card{ flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .chart-head{
+    padding:12px 18px 8px 18px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .chart-head .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    font-weight:600;
+    color:var(--teal-dark);
+  }
+  .chart-head h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    margin:2px 0 0 0;
+  }
+  .area-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    padding:4px 10px;
+    border-radius:20px;
+    font-weight:600;
+    background:var(--teal-fill);
+    color:var(--teal-dark);
+    white-space:nowrap;
+  }
+
+  .chart-wrap{ flex:1; padding:4px 12px 12px 12px; min-height:0; }
+  svg#histogram{ width:100%; height:100%; display:block; }
+
+  .bar{ transition: x .3s ease, width .3s ease, y .3s ease, height .3s ease; }
+  .bar-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    fill:var(--ink-soft);
+    text-anchor:middle;
+  }
+  .axis-line{ stroke:var(--ink); stroke-width:1.5; }
+  .tick-line{ stroke:var(--grid-strong); stroke-width:1; }
+  .tick-text{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    fill:var(--ink-soft);
+  }
+  .axis-title{
+    font-family:'Inter', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    fill:var(--ink-soft);
+  }
+  .class-boundary{
+    stroke:var(--grid-strong);
+    stroke-width:1;
+    stroke-dasharray:2,3;
+  }
+  .true-curve{
+    fill:none;
+    stroke:var(--purple);
+    stroke-width:2.5;
+    stroke-dasharray:6,4;
+    opacity:0.85;
+    transition:opacity .25s ease;
+  }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--grid-strong); border-radius:4px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+
+  @media (max-width: 900px){
+    .header h1{ font-size:16px; }
+    .header h1 .unit{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Histogram Grouping Explorer <span class="unit">n = 1000</span></h1>
+  <div class="mode-toggle">
+    <span class="lbl active" id="lblCurve">TRUE SHAPE</span>
+    <div class="switch on" id="curveSwitch"><div class="knob"></div></div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="main">
+
+    <!-- LEFT: SAMPLE + GROUPING CONTROLS -->
+    <div class="panel-left">
+
+      <div class="card">
+        <div class="card-head">
+          <div class="eyebrow">Sample</div>
+          <h2>Distribution shape</h2>
+        </div>
+        <div class="card-body">
+          <div class="dist-row">
+            <button class="dist-btn" data-dist="uniform">Random</button>
+            <button class="dist-btn active" data-dist="normal">Normal</button>
+            <button class="dist-btn" data-dist="skew">Skewed</button>
+            <button class="dist-btn" data-dist="bimodal">Bimodal</button>
+          </div>
+          <button class="resample-btn" id="resampleBtn">🎲 New sample</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="eyebrow">Grouping</div>
+          <h2>Frequency table</h2>
+        </div>
+        <div class="card-body">
+
+          <div class="coverage-line" id="coverageLine"></div>
+          <div class="error-banner" id="errorBanner"></div>
+
+          <div class="table-scroll">
+            <table class="freq-table">
+              <thead>
+                <tr>
+                  <th>Lower</th><th></th><th>Upper</th>
+                  <th>Freq</th><th>Width</th><th>F. Density</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="table-foot">
+            <button class="add-btn" id="addRow">+ Add class</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: RAW DATA (new, compact) + HISTOGRAM (shorter, to make room) -->
+    <div class="panel-right">
+      <div class="card raw-data-card">
+        <div class="card-head">
+          <div class="eyebrow">Sample</div>
+          <h2>Raw data (1000 values, 0–50)</h2>
+        </div>
+        <div class="card-body">
+          <div class="stats-line" id="statsLine"></div>
+          <svg id="stripPlot" viewBox="0 0 800 64" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div>
+            <div class="eyebrow">Grouped data</div>
+            <h2>Bar height = frequency density</h2>
+          </div>
+          <div class="area-badge" id="areaBadge">area ∝ frequency</div>
+        </div>
+        <div class="chart-wrap">
+          <svg id="histogram" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+
+  const DOMAIN_MIN = 0, DOMAIN_MAX = 50, N = 1000;
+  let currentDist = 'normal';
+  let showCurve = true;
+  let rawData = []; // { v, j }
+  let boundaries = []; // { lower, upper } — individually editable
+
+  // ---------- RANDOM GENERATORS ----------
+  function clamp(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
+
+  function randNormal(mean, sd){
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    return mean + z * sd;
+  }
+
+  function randBetaOrderStat(a, b){
+    const n = a + b - 1;
+    const us = [];
+    for (let i = 0; i < n; i++) us.push(Math.random());
+    us.sort((x, y) => x - y);
+    return us[a - 1];
+  }
+
+  function generateSample(dist){
+    const out = [];
+    for (let i = 0; i < N; i++){
+      let v;
+      if (dist === 'uniform'){
+        v = Math.random() * 50;
+      } else if (dist === 'normal'){
+        v = clamp(randNormal(25, 8), 0, 50);
+      } else if (dist === 'skew'){
+        v = randBetaOrderStat(2, 5) * 50;
+      } else { // bimodal
+        v = i < N / 2 ? clamp(randNormal(12, 4), 0, 50) : clamp(randNormal(38, 4), 0, 50);
+      }
+      out.push({ v, j: Math.random() });
+    }
+    for (let i = out.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+
+  function makeEqualBoundaries(numClasses){
+    // Whole-number boundaries spanning the full domain. Classes don't need
+    // to be perfectly equal — any leftover range is spread across the
+    // final few classes so every edge lands on an integer.
+    const range = DOMAIN_MAX - DOMAIN_MIN;
+    const base = Math.floor(range / numClasses);
+    const remainder = range - base * numClasses;
+    const rows = [];
+    let cur = DOMAIN_MIN;
+    for (let i = 0; i < numClasses; i++){
+      const w = base + (i >= numClasses - remainder ? 1 : 0);
+      rows.push({ lower: cur, upper: cur + w });
+      cur += w;
+    }
+    return rows;
+  }
+
+  // ---------- THEORETICAL PDFs (for the "true shape" overlay) ----------
+  function normalPdf(x, mean, sd){
+    return (1 / (sd * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / sd, 2));
+  }
+  function betaPdf01(t){ // Beta(2,5), B(2,5) = 1/30
+    if (t <= 0 || t >= 1) return 0;
+    return 30 * t * Math.pow(1 - t, 4);
+  }
+  function pdf(x, dist){
+    if (x < 0 || x > 50) return 0;
+    if (dist === 'uniform') return 1 / 50;
+    if (dist === 'normal') return normalPdf(x, 25, 8);
+    if (dist === 'skew') return betaPdf01(x / 50) / 50;
+    if (dist === 'bimodal') return 0.5 * normalPdf(x, 12, 4) + 0.5 * normalPdf(x, 38, 4);
+    return 0;
+  }
+
+  function mean(arr){ return arr.reduce((s, d) => s + d.v, 0) / arr.length; }
+  function sd(arr){
+    const m = mean(arr);
+    const variance = arr.reduce((s, d) => s + (d.v - m) * (d.v - m), 0) / arr.length;
+    return Math.sqrt(variance);
+  }
+
+  function fmt(n, dp){
+    if (isNaN(n) || !isFinite(n)) return '—';
+    const f = dp === undefined ? 2 : dp;
+    const rounded = Math.round(n * Math.pow(10, f)) / Math.pow(10, f);
+    return rounded.toString();
+  }
+
+  // ---------- DOM ----------
+  const distButtons   = document.querySelectorAll('.dist-btn');
+  const resampleBtn   = document.getElementById('resampleBtn');
+  const statsLine      = document.getElementById('statsLine');
+  const stripPlot      = document.getElementById('stripPlot');
+  const coverageLine   = document.getElementById('coverageLine');
+  const errorBanner    = document.getElementById('errorBanner');
+  const tableBody      = document.getElementById('tableBody');
+  const areaBadge      = document.getElementById('areaBadge');
+  const histogramSvg   = document.getElementById('histogram');
+  const curveSwitch    = document.getElementById('curveSwitch');
+
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs){
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // ---------- STRIP PLOT ----------
+  function renderStrip(){
+    stripPlot.innerHTML = '';
+    const margin = { left: 24, right: 24 };
+    const W = 800, H = 64;
+    const plotW = W - margin.left - margin.right;
+    const xScale = (v) => margin.left + (v / 50) * plotW;
+
+    stripPlot.appendChild(el('line', { x1: margin.left, x2: W - margin.right, y1: 40, y2: 40, class: 'strip-axis' }));
+    for (let t = 0; t <= 50; t += 10){
+      const x = xScale(t);
+      stripPlot.appendChild(el('line', { x1: x, x2: x, y1: 36, y2: 44, class: 'strip-axis' }));
+      const label = el('text', { x: x, y: 58, class: 'strip-tick', 'text-anchor': 'middle' });
+      label.textContent = t;
+      stripPlot.appendChild(label);
+    }
+    rawData.forEach(d => {
+      const cx = xScale(d.v);
+      const cy = 12 + d.j * 20;
+      stripPlot.appendChild(el('circle', { cx, cy, r: 2.4, class: 'strip-dot' }));
+    });
+  }
+
+  // ---------- BINNING (from user-defined, individually-editable boundaries) ----------
+  function computeRows(){
+    return boundaries.map(b => {
+      const width = b.upper - b.lower;
+      let freq = 0;
+      if (width > 0){
+        rawData.forEach(d => {
+          const inLast = b.upper === DOMAIN_MAX;
+          if (d.v >= b.lower && (inLast ? d.v <= b.upper : d.v < b.upper)) freq++;
+        });
+      }
+      return { lower: b.lower, upper: b.upper, width, freq, density: width > 0 ? freq / width : NaN };
+    });
+  }
+
+  function validate(rows){
+    const errors = [];
+    const rowFlags = rows.map(() => false);
+    rows.forEach((r, i) => {
+      if (r.upper <= r.lower){ errors.push(`Class ${i+1}: upper bound must exceed lower bound.`); rowFlags[i] = true; }
+    });
+    for (let i = 0; i < rows.length; i++){
+      for (let j = i + 1; j < rows.length; j++){
+        const a = rows[i], b = rows[j];
+        if (a.upper > b.lower && a.lower < b.upper){
+          errors.push(`Classes ${i+1} and ${j+1} overlap.`);
+          rowFlags[i] = true; rowFlags[j] = true;
+        }
+      }
+    }
+    return { errors, rowFlags };
+  }
+
+  // ---------- TABLE ----------
+  function renderTable(){
+    const rows = computeRows();
+    const { errors, rowFlags } = validate(rows);
+
+    tableBody.innerHTML = '';
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      if (rowFlags[i]) tr.classList.add('row-error');
+      tr.innerHTML = `
+        <td><input type="number" step="any" value="${fmt(r.lower,2)}" data-idx="${i}" data-field="lower"></td>
+        <td class="dash">–</td>
+        <td><input type="number" step="any" value="${fmt(r.upper,2)}" data-idx="${i}" data-field="upper"></td>
+        <td class="freq-val">${r.freq}</td>
+        <td class="computed">${fmt(r.width)}</td>
+        <td class="computed">${fmt(r.density)}</td>
+        <td><button class="del-btn" data-idx="${i}" title="Delete class">✕</button></td>
+      `;
+      tableBody.appendChild(tr);
+    });
+
+    if (errors.length){
+      errorBanner.classList.add('show');
+      errorBanner.innerHTML = '<b>Check your classes:</b> ' + errors.slice(0,3).join(' ');
+    } else {
+      errorBanner.classList.remove('show');
+    }
+
+    tableBody.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onCellEdit));
+    tableBody.querySelectorAll('.del-btn').forEach(btn => btn.addEventListener('click', onDeleteRow));
+
+    const totalCounted = rows.reduce((s, r) => s + r.freq, 0);
+    if (totalCounted < N){
+      coverageLine.classList.add('warn');
+      coverageLine.innerHTML = `<b>${totalCounted} of ${N}</b> values fall inside your current classes — the rest sit in gaps and aren't shown.`;
+    } else {
+      coverageLine.classList.remove('warn');
+      coverageLine.innerHTML = `All <b>${N}</b> values fall inside your current classes.`;
+    }
+
+    return { rows, errors };
+  }
+
+  function onCellEdit(e){
+    const idx = parseInt(e.target.dataset.idx, 10);
+    const field = e.target.dataset.field;
+    const val = parseFloat(e.target.value);
+    const selStart = e.target.selectionStart;
+    const selEnd = e.target.selectionEnd;
+
+    boundaries[idx][field] = isNaN(val) ? 0 : val;
+
+    if (!isNaN(val)){
+      if (field === 'lower' && idx > 0) boundaries[idx - 1].upper = val;
+      else if (field === 'upper' && idx < boundaries.length - 1) boundaries[idx + 1].lower = val;
+    }
+
+    const { rows } = renderTable();
+    drawChart(rows);
+
+    const input = tableBody.querySelector(`input[data-idx="${idx}"][data-field="${field}"]`);
+    if (input){
+      input.focus();
+      try { input.setSelectionRange(selStart, selEnd); } catch (err) {}
+    }
+  }
+
+  function onDeleteRow(e){
+    const idx = parseInt(e.currentTarget.dataset.idx, 10);
+    const deleted = boundaries[idx];
+    if (boundaries.length > 1){
+      if (idx > 0){
+        // extend the previous class forward to cover the deleted range
+        boundaries[idx - 1].upper = deleted.upper;
+      } else {
+        // deleting the first class: extend the next one back to cover it
+        boundaries[idx + 1].lower = deleted.lower;
+      }
+    }
+    boundaries.splice(idx, 1);
+    const { rows } = renderTable();
+    drawChart(rows);
+  }
+
+  document.getElementById('addRow').addEventListener('click', () => {
+    const last = boundaries[boundaries.length - 1];
+    const newLower = last ? last.upper : DOMAIN_MIN;
+    boundaries.push({ lower: newLower, upper: newLower + 5 });
+    const { rows } = renderTable();
+    drawChart(rows);
+  });
+
+  // ---------- CHART ----------
+  function drawChart(rows){
+    histogramSvg.innerHTML = '';
+
+    const validRows = rows.filter(r => r.upper > r.lower && isFinite(r.width) && r.width > 0);
+    if (validRows.length === 0){
+      const msg = el('text', { x: 400, y: 250, 'text-anchor': 'middle', class: 'axis-title' });
+      msg.textContent = 'Add valid classes to see the histogram';
+      histogramSvg.appendChild(msg);
+      areaBadge.textContent = '—';
+      return;
+    }
+
+    const margin = { top: 20, right: 24, bottom: 56, left: 64 };
+    const W = 800, H = 500;
+    const plotW = W - margin.left - margin.right;
+    const plotH = H - margin.top - margin.bottom;
+
+    const xMin = Math.min(DOMAIN_MIN, ...validRows.map(r => r.lower));
+    const xMax = Math.max(DOMAIN_MAX, ...validRows.map(r => r.upper));
+    const xRange = xMax - xMin || 1;
+    const xScale = (v) => margin.left + ((v - xMin) / xRange) * plotW;
+
+    let curvePoints = [];
+    if (showCurve){
+      for (let x = xMin; x <= xMax; x += (xRange / 200)){
+        curvePoints.push({ x, y: N * pdf(x, currentDist) });
+      }
+    }
+
+    const maxDensity = Math.max(...validRows.map(r => r.density), 0.0001);
+    const maxCurve = curvePoints.length ? Math.max(...curvePoints.map(p => p.y)) : 0;
+    const yMax = Math.max(maxDensity, maxCurve) * 1.25;
+    const yScale = (v) => margin.top + plotH - (v / yMax) * plotH;
+
+    function niceIntegerStep(maxVal, targetTicks){
+      let step = Math.ceil(maxVal / targetTicks);
+      if (step < 1) step = 1;
+      const niceSteps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
+      for (const s of niceSteps){ if (s >= step) return s; }
+      return step;
+    }
+
+    const tickStep = niceIntegerStep(yMax, 5);
+    for (let val = 0; val <= yMax; val += tickStep){
+      const y = yScale(val);
+      histogramSvg.appendChild(el('line', { x1: margin.left, x2: W - margin.right, y1: y, y2: y, class: 'tick-line' }));
+      const t = el('text', { x: margin.left - 8, y: y + 4, class: 'tick-text', 'text-anchor': 'end' });
+      t.textContent = Math.round(val);
+      histogramSvg.appendChild(t);
+    }
+
+    validRows.forEach((r) => {
+      const x1 = xScale(r.lower);
+      const x2 = xScale(r.upper);
+      const y = yScale(r.density);
+      const barH = (margin.top + plotH) - y;
+
+      histogramSvg.appendChild(el('rect', {
+        x: x1, y: y,
+        width: Math.max(x2 - x1 - 2, 1),
+        height: Math.max(barH, 0),
+        fill: '#2A8C82',
+        opacity: 0.82,
+        class: 'bar',
+        rx: 1.5
+      }));
+
+      const label = el('text', { x: (x1 + x2) / 2, y: margin.top + plotH + 18, class: 'bar-label' });
+      label.textContent = fmt(r.lower, 1) + '–' + fmt(r.upper, 1);
+      histogramSvg.appendChild(label);
+
+      histogramSvg.appendChild(el('line', { x1: x1, x2: x1, y1: margin.top, y2: margin.top + plotH, class: 'class-boundary' }));
+    });
+    const lastX = xScale(validRows[validRows.length - 1].upper);
+    histogramSvg.appendChild(el('line', { x1: lastX, x2: lastX, y1: margin.top, y2: margin.top + plotH, class: 'class-boundary' }));
+
+    if (showCurve && curvePoints.length){
+      let d = '';
+      curvePoints.forEach((p, i) => {
+        const x = xScale(p.x);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + yScale(p.y).toFixed(1) + ' ';
+      });
+      histogramSvg.appendChild(el('path', { d, class: 'true-curve' }));
+    }
+
+    histogramSvg.appendChild(el('line', { x1: margin.left, x2: W - margin.right, y1: margin.top + plotH, y2: margin.top + plotH, class: 'axis-line' }));
+    histogramSvg.appendChild(el('line', { x1: margin.left, x2: margin.left, y1: margin.top, y2: margin.top + plotH, class: 'axis-line' }));
+
+    const xTitle = el('text', { x: margin.left + plotW / 2, y: H - 8, 'text-anchor': 'middle', class: 'axis-title' });
+    xTitle.textContent = 'Value';
+    histogramSvg.appendChild(xTitle);
+
+    const yTitle = el('text', { x: -(margin.top + plotH / 2), y: 16, 'text-anchor': 'middle', class: 'axis-title', transform: 'rotate(-90)' });
+    yTitle.textContent = 'Frequency density';
+    histogramSvg.appendChild(yTitle);
+
+    const widths = new Set(validRows.map(r => Math.round(r.width * 100) / 100));
+    areaBadge.textContent = 'area ∝ frequency';
+  }
+
+  // ---------- MAIN RENDER ----------
+  function renderAll(){
+    const { rows } = renderTable();
+    drawChart(rows);
+  }
+
+  function refreshStats(){
+    statsLine.innerHTML = `n = <b>1000</b> &nbsp;·&nbsp; mean ≈ <b>${fmt(mean(rawData),1)}</b> &nbsp;·&nbsp; sd ≈ <b>${fmt(sd(rawData),1)}</b>`;
+  }
+
+  // ---------- EVENTS ----------
+  distButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      distButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentDist = btn.dataset.dist;
+      rawData = generateSample(currentDist);
+      renderStrip();
+      refreshStats();
+      renderAll();
+    });
+  });
+
+  resampleBtn.addEventListener('click', () => {
+    rawData = generateSample(currentDist);
+    renderStrip();
+    refreshStats();
+    renderAll();
+  });
+
+  curveSwitch.addEventListener('click', () => {
+    showCurve = !showCurve;
+    curveSwitch.classList.toggle('on', showCurve);
+    document.getElementById('lblCurve').classList.toggle('active', showCurve);
+    renderAll();
+  });
+
+  // ---------- INIT ----------
+  rawData = generateSample(currentDist);
+  boundaries = makeEqualBoundaries(8);
+  renderStrip();
+  refreshStats();
+  renderAll();
+
+})();
+</script>
+</body>
+</html>
