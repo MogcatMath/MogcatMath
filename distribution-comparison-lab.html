@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Distribution Comparison Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1f2d50;
+    --ink-soft:#425076;
+    --paper:#fbf8ef;
+    --card:#ffffff;
+    --grid-line:rgba(60,90,140,0.16);
+    --grid-line-strong:rgba(60,90,140,0.28);
+    --teal:#2a9d8f;
+    --teal-fill:rgba(42,157,143,0.28);
+    --amber:#e0983d;
+    --amber-fill:rgba(224,152,61,0.28);
+    --terracotta:#d96a4a;
+    --terracotta-fill:rgba(217,106,74,0.28);
+    --cyan:#3a8fb7;
+    --cyan-fill:rgba(58,143,183,0.28);
+    --shadow:0 6px 18px rgba(31,45,80,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(0deg, var(--grid-line) 0px, var(--grid-line) 1px, transparent 1px, transparent 28px),
+      repeating-linear-gradient(90deg, var(--grid-line) 0px, var(--grid-line) 1px, transparent 1px, transparent 28px);
+    color:var(--ink);
+    font-family:'Patrick Hand', cursive;
+    font-size:17px;
+  }
+  .page{ max-width:1400px; margin:0 auto; padding:18px 22px 28px; }
+  header{ display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:14px; border-bottom:3px solid var(--ink); padding-bottom:8px;}
+  header h1{ font-family:'Caveat', cursive; font-size:2.6rem; font-weight:700; margin:0; color:var(--ink); }
+  header p{ margin:0; color:var(--ink-soft); font-size:1.05rem; }
+  .layout{ display:flex; gap:18px; align-items:flex-start; }
+  .controls{
+    width:300px; flex:0 0 300px;
+    background:var(--card); border:2px solid var(--ink); border-radius:10px;
+    box-shadow:var(--shadow); padding:14px 14px 10px;
+  }
+  .mode-toggle{ display:flex; border:2px solid var(--ink); border-radius:8px; overflow:hidden; margin-bottom:14px; }
+  .mode-toggle button{
+    flex:1; padding:9px 4px; background:var(--card); border:none; cursor:pointer;
+    font-family:'Patrick Hand', cursive; font-size:1.05rem; color:var(--ink-soft);
+    border-right:2px solid var(--ink);
+  }
+  .mode-toggle button:last-child{ border-right:none; }
+  .mode-toggle button.active{ background:var(--ink); color:#fff; }
+
+  .dist-card{ border:2px solid var(--grid-line-strong); border-radius:8px; margin-bottom:10px; overflow:hidden; }
+  .dist-card .head{
+    display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; user-select:none;
+    background:var(--accent-soft, #eef1f7);
+  }
+  .dist-card .swatch{ width:16px; height:16px; border-radius:4px; border:2px solid var(--ink); flex:0 0 16px; }
+  .dist-card .head span.name{ font-size:1.15rem; flex:1; }
+  .dist-card .head input[type=checkbox]{ width:18px; height:18px; accent-color:var(--ink); }
+  .dist-card .body{ padding:10px 12px 12px; display:none; border-top:2px dashed var(--grid-line-strong); }
+  .dist-card.on .body{ display:block; }
+  .param-row{ margin-bottom:9px; }
+  .param-row label{ display:flex; justify-content:space-between; font-size:0.98rem; color:var(--ink-soft); margin-bottom:2px; }
+  .param-row label b{ color:var(--ink); font-weight:normal; font-family:'Caveat',cursive; font-size:1.15rem; }
+  .param-row input[type=range]{ width:100%; accent-color:var(--ink); }
+  .approx-row{ display:flex; align-items:center; gap:6px; margin-top:6px; font-size:0.95rem; color:var(--ink-soft); }
+  .approx-row input{ accent-color:var(--ink); }
+
+  .tips{ font-size:0.92rem; color:var(--ink-soft); border-top:2px solid var(--grid-line-strong); padding-top:8px; margin-top:6px; line-height:1.35; }
+  .tips b{ color:var(--ink); }
+
+  .chart-wrap{ flex:1; min-width:0; background:var(--card); border:2px solid var(--ink); border-radius:10px; box-shadow:var(--shadow); padding:12px; position:relative; }
+  .chart-title{ font-family:'Caveat',cursive; font-size:1.5rem; margin:0 0 4px 4px; color:var(--ink); }
+  svg#chart{ width:100%; height:auto; display:block; }
+  .legend{ display:flex; flex-wrap:wrap; gap:14px; padding:8px 6px 0; }
+  .legend .item{ display:flex; align-items:center; gap:6px; font-size:0.98rem; color:var(--ink-soft); }
+  .legend .dot{ width:13px; height:13px; border-radius:3px; }
+
+  #tooltip{
+    position:absolute; pointer-events:none; background:var(--ink); color:#fbf8ef;
+    font-family:'Patrick Hand', cursive; font-size:0.92rem; padding:7px 10px; border-radius:7px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.25); display:none; line-height:1.4; white-space:nowrap; z-index:10;
+  }
+  #tooltip .t-row{ display:flex; align-items:center; gap:6px; }
+  #tooltip .t-dot{ width:9px; height:9px; border-radius:2px; }
+
+  @media (max-width: 900px){
+    .layout{ flex-direction:column; }
+    .controls{ width:100%; flex:none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Distribution Comparison Lab</h1>
+    <p>Normal &middot; Poisson &middot; Binomial &middot; t &mdash; frequency &amp; cumulative views</p>
+  </header>
+
+  <div class="layout">
+    <aside class="controls">
+      <div class="mode-toggle">
+        <button id="btnFreq" class="active">Frequency</button>
+        <button id="btnCum">Cumulative</button>
+      </div>
+
+      <!-- NORMAL -->
+      <div class="dist-card" id="card-normal">
+        <div class="head" data-target="normal">
+          <input type="checkbox" id="chk-normal" checked>
+          <span class="swatch" style="background:var(--teal)"></span>
+          <span class="name">Normal</span>
+        </div>
+        <div class="body">
+          <div class="param-row">
+            <label>mean &mu; <b id="val-normal-mu">0</b></label>
+            <input type="range" id="normal-mu" min="-20" max="20" step="0.5" value="0">
+          </div>
+          <div class="param-row">
+            <label>std dev &sigma; <b id="val-normal-sigma">3</b></label>
+            <input type="range" id="normal-sigma" min="0.5" max="10" step="0.5" value="3">
+          </div>
+        </div>
+      </div>
+
+      <!-- POISSON -->
+      <div class="dist-card" id="card-poisson">
+        <div class="head" data-target="poisson">
+          <input type="checkbox" id="chk-poisson">
+          <span class="swatch" style="background:var(--amber)"></span>
+          <span class="name">Poisson</span>
+        </div>
+        <div class="body">
+          <div class="param-row">
+            <label>rate &lambda; <b id="val-poisson-lambda">4</b></label>
+            <input type="range" id="poisson-lambda" min="0.5" max="30" step="0.5" value="4">
+          </div>
+        </div>
+      </div>
+
+      <!-- BINOMIAL -->
+      <div class="dist-card" id="card-binomial">
+        <div class="head" data-target="binomial">
+          <input type="checkbox" id="chk-binomial">
+          <span class="swatch" style="background:var(--terracotta)"></span>
+          <span class="name">Binomial</span>
+        </div>
+        <div class="body">
+          <div class="param-row">
+            <label>trials n <b id="val-binomial-n">20</b></label>
+            <input type="range" id="binomial-n" min="1" max="100" step="1" value="20">
+          </div>
+          <div class="param-row">
+            <label>P(success) p <b id="val-binomial-p">0.50</b></label>
+            <input type="range" id="binomial-p" min="0.01" max="0.99" step="0.01" value="0.5">
+          </div>
+          <div class="approx-row">
+            <input type="checkbox" id="chk-binomial-approx">
+            <label for="chk-binomial-approx">show Normal approximation (dashed)</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- T -->
+      <div class="dist-card" id="card-t">
+        <div class="head" data-target="t">
+          <input type="checkbox" id="chk-t">
+          <span class="swatch" style="background:var(--cyan)"></span>
+          <span class="name">t distribution</span>
+        </div>
+        <div class="body">
+          <div class="param-row">
+            <label>degrees of freedom &nu; <b id="val-t-df">5</b></label>
+            <input type="range" id="t-df" min="1" max="50" step="1" value="5">
+          </div>
+        </div>
+      </div>
+
+      <div class="tips">
+        <b>Teaching tips:</b> increase &nu; on the t distribution to watch it converge to Normal.
+        Increase Binomial n (with p fixed) to see the De Moivre&ndash;Laplace Normal approximation improve.
+        Poisson with large &lambda; also looks increasingly Normal-shaped.
+      </div>
+    </aside>
+
+    <main class="chart-wrap">
+      <p class="chart-title" id="chartTitle">Frequency / density view</p>
+      <svg id="chart" viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="legend" id="legend"></div>
+      <div id="tooltip"></div>
+    </main>
+  </div>
+</div>
+
+<script>
+const NS = "http://www.w3.org/2000/svg";
+
+/* ---------------- math helpers ---------------- */
+function lgamma(x){
+  const g = 7;
+  const c = [0.99999999999980993,676.5203681218851,-1259.1392167224028,
+    771.32342877765313,-176.61502916214059,12.507343278686905,
+    -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if (x < 0.5){
+    return Math.log(Math.PI/Math.sin(Math.PI*x)) - lgamma(1-x);
+  }
+  x -= 1;
+  let a = c[0];
+  const t = x + g + 0.5;
+  for (let i=1;i<g+2;i++) a += c[i]/(x+i);
+  return 0.5*Math.log(2*Math.PI) + (x+0.5)*Math.log(t) - t + Math.log(a);
+}
+function erf(x){
+  const sign = x<0?-1:1; x=Math.abs(x);
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const t=1/(1+p*x);
+  const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return sign*y;
+}
+function normalPdf(x,mu,sigma){
+  return Math.exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma*Math.sqrt(2*Math.PI));
+}
+function normalCdf(x,mu,sigma){
+  return 0.5*(1+erf((x-mu)/(sigma*Math.sqrt(2))));
+}
+function poissonPmf(k,lambda){
+  if (k<0) return 0;
+  return Math.exp(k*Math.log(lambda) - lambda - lgamma(k+1));
+}
+function poissonCdf(k,lambda){
+  let s=0;
+  const K = Math.floor(k);
+  for (let i=0;i<=K;i++) s += poissonPmf(i,lambda);
+  return Math.min(s,1);
+}
+function binomialPmf(k,n,p){
+  if (k<0 || k>n) return 0;
+  return Math.exp(lgamma(n+1)-lgamma(k+1)-lgamma(n-k+1) + k*Math.log(p) + (n-k)*Math.log(1-p));
+}
+function binomialCdf(k,n,p){
+  let s=0;
+  const K = Math.min(Math.floor(k), n);
+  for (let i=0;i<=K;i++) s += binomialPmf(i,n,p);
+  return Math.min(s,1);
+}
+function tPdf(x,df){
+  const num = lgamma((df+1)/2);
+  const den = 0.5*Math.log(df*Math.PI) + lgamma(df/2);
+  return Math.exp(num-den) * Math.pow(1+(x*x)/df, -(df+1)/2);
+}
+function integrateSimpson(f,a,b,n){
+  if (n%2!==0) n++;
+  if (b<=a) return 0;
+  const h=(b-a)/n;
+  let sum = f(a)+f(b);
+  for (let i=1;i<n;i++){
+    const x=a+i*h;
+    sum += (i%2===0?2:4)*f(x);
+  }
+  return sum*h/3;
+}
+function tCdf(x,df){
+  const lo = -60;
+  if (x<=lo) return 0;
+  return Math.min(1, integrateSimpson(t=>tPdf(t,df), lo, x, 240));
+}
+
+/* ---------------- state / dom ---------------- */
+const els = {
+  chart: document.getElementById('chart'),
+  legend: document.getElementById('legend'),
+  tooltip: document.getElementById('tooltip'),
+  chartTitle: document.getElementById('chartTitle'),
+  btnFreq: document.getElementById('btnFreq'),
+  btnCum: document.getElementById('btnCum'),
+};
+
+let mode = 'freq'; // 'freq' | 'cum'
+
+const distDefs = {
+  normal:   { color:'var(--teal)',       colorHex:'#2a9d8f', fill:'rgba(42,157,143,0.28)',  discrete:false },
+  poisson:  { color:'var(--amber)',      colorHex:'#e0983d', fill:'rgba(224,152,61,0.28)',  discrete:true  },
+  binomial: { color:'var(--terracotta)', colorHex:'#d96a4a', fill:'rgba(217,106,74,0.28)',  discrete:true  },
+  t:        { color:'var(--cyan)',       colorHex:'#3a8fb7', fill:'rgba(58,143,183,0.28)',  discrete:false },
+};
+
+function getParams(){
+  return {
+    normal: {
+      mu: parseFloat(document.getElementById('normal-mu').value),
+      sigma: parseFloat(document.getElementById('normal-sigma').value),
+    },
+    poisson: {
+      lambda: parseFloat(document.getElementById('poisson-lambda').value),
+    },
+    binomial: {
+      n: parseInt(document.getElementById('binomial-n').value,10),
+      p: parseFloat(document.getElementById('binomial-p').value),
+    },
+    t: {
+      df: parseInt(document.getElementById('t-df').value,10),
+    },
+    binomialApprox: document.getElementById('chk-binomial-approx').checked,
+  };
+}
+
+function getActive(){
+  return {
+    normal: document.getElementById('chk-normal').checked,
+    poisson: document.getElementById('chk-poisson').checked,
+    binomial: document.getElementById('chk-binomial').checked,
+    t: document.getElementById('chk-t').checked,
+  };
+}
+
+/* ---------------- range / domain calc ---------------- */
+function distRange(key, params){
+  if (key==='normal'){
+    const {mu,sigma}=params.normal;
+    return [mu-4*sigma, mu+4*sigma];
+  }
+  if (key==='poisson'){
+    const {lambda}=params.poisson;
+    return [0, Math.ceil(lambda + 4*Math.sqrt(lambda) + 2)];
+  }
+  if (key==='binomial'){
+    const {n}=params.binomial;
+    return [0, n];
+  }
+  if (key==='t'){
+    const {df}=params.t;
+    let sd = df>2 ? Math.sqrt(df/(df-2)) : 4;
+    sd = Math.min(sd, 6);
+    let half = Math.max(5*sd, 4);
+    half = Math.min(half, 15);
+    return [-half, half];
+  }
+}
+
+/* ---------------- rendering ---------------- */
+function niceTicks(min,max,count){
+  const range = max-min;
+  if (range<=0) return [min];
+  const rawStep = range/count;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep/mag;
+  let step;
+  if (norm<1.5) step=1*mag;
+  else if (norm<3) step=2*mag;
+  else if (norm<7) step=5*mag;
+  else step=10*mag;
+  const start = Math.ceil(min/step)*step;
+  const ticks=[];
+  for (let v=start; v<=max+1e-9; v+=step) ticks.push(Math.round(v*1e6)/1e6);
+  return ticks;
+}
+function fmt(n){
+  if (Math.abs(n)<0.0001) return '0';
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2).replace(/\.?0+$/,'');
+}
+
+const margin = {top:20, right:24, bottom:52, left:60};
+const W = 1000, H = 540;
+const plotW = W - margin.left - margin.right;
+const plotH = H - margin.top - margin.bottom;
+
+let currentRender = null; // holds data used by tooltip
+
+function render(){
+  const active = getActive();
+  const params = getParams();
+
+  // sync labels
+  document.getElementById('val-normal-mu').textContent = fmt(params.normal.mu);
+  document.getElementById('val-normal-sigma').textContent = fmt(params.normal.sigma);
+  document.getElementById('val-poisson-lambda').textContent = fmt(params.poisson.lambda);
+  document.getElementById('val-binomial-n').textContent = params.binomial.n;
+  document.getElementById('val-binomial-p').textContent = params.binomial.p.toFixed(2);
+  document.getElementById('val-t-df').textContent = params.t.df;
+
+  document.getElementById('card-binomial').querySelector('.approx-row').style.display =
+    active.binomial ? 'flex' : 'none';
+
+  const activeKeys = Object.keys(active).filter(k=>active[k]);
+
+  els.chartTitle.textContent = mode==='freq'
+    ? 'Frequency / density view — f(x) or P(X = k)'
+    : 'Cumulative view — F(x) = P(X \u2264 x)';
+
+  els.chart.innerHTML = '';
+  els.legend.innerHTML = '';
+
+  if (activeKeys.length===0){
+    currentRender = null;
+    const t = document.createElementNS(NS,'text');
+    t.setAttribute('x', W/2); t.setAttribute('y', H/2);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-family',"'Patrick Hand', cursive");
+    t.setAttribute('font-size','22');
+    t.setAttribute('fill','#8a93ab');
+    t.textContent = 'Tick a distribution on the left to begin';
+    els.chart.appendChild(t);
+    return;
+  }
+
+  // domain
+  let xmin=Infinity, xmax=-Infinity;
+  activeKeys.forEach(k=>{
+    const [a,b] = distRange(k, params);
+    xmin = Math.min(xmin,a); xmax = Math.max(xmax,b);
+  });
+  if (xmin===xmax){ xmin-=1; xmax+=1; }
+
+  // sample continuous curves; compute bar heights for discrete
+  const NSAMPLES = 320;
+  const sampleXs = [];
+  for (let i=0;i<=NSAMPLES;i++) sampleXs.push(xmin + (xmax-xmin)*i/NSAMPLES);
+
+  const series = []; // {key,color,fill,discrete,points:[{x,y}], barPoints:[{k,y}]}
+
+  activeKeys.forEach(key=>{
+    const def = distDefs[key];
+    if (!def.discrete){
+      const pts = sampleXs.map(x=>{
+        let y;
+        if (key==='normal') y = mode==='freq' ? normalPdf(x, params.normal.mu, params.normal.sigma) : normalCdf(x, params.normal.mu, params.normal.sigma);
+        else if (key==='t') y = mode==='freq' ? tPdf(x, params.t.df) : tCdf(x, params.t.df);
+        return {x,y};
+      });
+      series.push({key, def, discrete:false, points:pts});
+    } else {
+      const [a,b] = distRange(key, params);
+      const kmin = Math.max(0, Math.ceil(a));
+      const kmax = Math.floor(b);
+      const bars = [];
+      let acc = 0;
+      for (let k=kmin;k<=kmax;k++){
+        let y;
+        if (key==='poisson'){
+          y = mode==='freq' ? poissonPmf(k, params.poisson.lambda) : poissonCdf(k, params.poisson.lambda);
+        } else if (key==='binomial'){
+          y = mode==='freq' ? binomialPmf(k, params.binomial.n, params.binomial.p) : binomialCdf(k, params.binomial.n, params.binomial.p);
+        }
+        bars.push({k,y});
+      }
+      series.push({key, def, discrete:true, bars});
+    }
+  });
+
+  // binomial normal-approx overlay
+  let approxSeries = null;
+  if (active.binomial && params.binomialApprox){
+    const n=params.binomial.n, p=params.binomial.p;
+    const muA = n*p, sdA = Math.sqrt(n*p*(1-p)) || 0.0001;
+    const pts = sampleXs.map(x=>{
+      const y = mode==='freq' ? normalPdf(x,muA,sdA) : normalCdf(x,muA,sdA);
+      return {x,y};
+    });
+    approxSeries = {points: pts, color:'#2a9d8f'};
+  }
+
+  // y domain
+  let ymax;
+  if (mode==='cum'){
+    ymax = 1.05;
+  } else {
+    ymax = 0;
+    series.forEach(s=>{
+      if (!s.discrete) s.points.forEach(p=>{ if (isFinite(p.y)) ymax = Math.max(ymax,p.y); });
+      else s.bars.forEach(p=>{ if (isFinite(p.y)) ymax = Math.max(ymax,p.y); });
+    });
+    if (approxSeries) approxSeries.points.forEach(p=>{ if (isFinite(p.y)) ymax = Math.max(ymax,p.y); });
+    if (ymax<=0) ymax = 1;
+    ymax *= 1.18;
+  }
+  const ymin = 0;
+
+  function xScale(x){ return margin.left + (x-xmin)/(xmax-xmin) * plotW; }
+  function yScale(y){ return margin.top + plotH - (y-ymin)/(ymax-ymin) * plotH; }
+
+  // --- draw axes / gridlines ---
+  const xt = niceTicks(xmin,xmax,9);
+  const yt = niceTicks(ymin,ymax,6);
+
+  xt.forEach(v=>{
+    const gx = xScale(v);
+    const line = document.createElementNS(NS,'line');
+    line.setAttribute('x1',gx); line.setAttribute('x2',gx);
+    line.setAttribute('y1',margin.top); line.setAttribute('y2',margin.top+plotH);
+    line.setAttribute('stroke','rgba(60,90,140,0.14)');
+    line.setAttribute('stroke-width','1');
+    els.chart.appendChild(line);
+
+    const txt = document.createElementNS(NS,'text');
+    txt.setAttribute('x',gx); txt.setAttribute('y', margin.top+plotH+22);
+    txt.setAttribute('text-anchor','middle');
+    txt.setAttribute('font-family',"'Patrick Hand', cursive");
+    txt.setAttribute('font-size','15');
+    txt.setAttribute('fill','#425076');
+    txt.textContent = fmt(v);
+    els.chart.appendChild(txt);
+  });
+  yt.forEach(v=>{
+    const gy = yScale(v);
+    const line = document.createElementNS(NS,'line');
+    line.setAttribute('x1',margin.left); line.setAttribute('x2',margin.left+plotW);
+    line.setAttribute('y1',gy); line.setAttribute('y2',gy);
+    line.setAttribute('stroke','rgba(60,90,140,0.14)');
+    line.setAttribute('stroke-width','1');
+    els.chart.appendChild(line);
+
+    const txt = document.createElementNS(NS,'text');
+    txt.setAttribute('x',margin.left-8); txt.setAttribute('y', gy+4);
+    txt.setAttribute('text-anchor','end');
+    txt.setAttribute('font-family',"'Patrick Hand', cursive");
+    txt.setAttribute('font-size','15');
+    txt.setAttribute('fill','#425076');
+    txt.textContent = fmt(v);
+    els.chart.appendChild(txt);
+  });
+
+  // axes lines
+  [[margin.left,margin.top,margin.left,margin.top+plotH],
+   [margin.left,margin.top+plotH,margin.left+plotW,margin.top+plotH]].forEach(coords=>{
+    const line = document.createElementNS(NS,'line');
+    line.setAttribute('x1',coords[0]); line.setAttribute('y1',coords[1]);
+    line.setAttribute('x2',coords[2]); line.setAttribute('y2',coords[3]);
+    line.setAttribute('stroke','#1f2d50'); line.setAttribute('stroke-width','2');
+    els.chart.appendChild(line);
+  });
+
+  // axis titles
+  const xlab = document.createElementNS(NS,'text');
+  xlab.setAttribute('x', margin.left+plotW/2); xlab.setAttribute('y', H-8);
+  xlab.setAttribute('text-anchor','middle');
+  xlab.setAttribute('font-family',"'Caveat', cursive"); xlab.setAttribute('font-size','19');
+  xlab.setAttribute('fill','#1f2d50');
+  xlab.textContent = 'x';
+  els.chart.appendChild(xlab);
+
+  const ylab = document.createElementNS(NS,'text');
+  ylab.setAttribute('x', 16); ylab.setAttribute('y', margin.top+14);
+  ylab.setAttribute('font-family',"'Caveat', cursive"); ylab.setAttribute('font-size','19');
+  ylab.setAttribute('fill','#1f2d50');
+  ylab.textContent = mode==='freq' ? 'f(x) / P(X=k)' : 'F(x)';
+  els.chart.appendChild(ylab);
+
+  // --- draw discrete bars (frequency mode) or step lines (cumulative mode) ---
+  series.filter(s=>s.discrete).forEach(s=>{
+    const domainSpan = xmax-xmin;
+    const pxPerUnit = plotW/domainSpan;
+    const barW = Math.max(1.5, pxPerUnit*0.62);
+
+    if (mode==='freq'){
+      s.bars.forEach(b=>{
+        const cx = xScale(b.k);
+        const y0 = yScale(0), y1 = yScale(b.y);
+        const rect = document.createElementNS(NS,'rect');
+        rect.setAttribute('x', cx-barW/2);
+        rect.setAttribute('y', y1);
+        rect.setAttribute('width', barW);
+        rect.setAttribute('height', Math.max(0,y0-y1));
+        rect.setAttribute('fill', s.def.fill);
+        rect.setAttribute('stroke', s.def.colorHex);
+        rect.setAttribute('stroke-width','1.3');
+        rect.setAttribute('rx','1.5');
+        els.chart.appendChild(rect);
+      });
+    } else {
+      // step function
+      let d = '';
+      s.bars.forEach((b,i)=>{
+        const xL = xScale(b.k-0.5), xR = xScale(b.k+0.5), y = yScale(b.y);
+        if (i===0) d += `M ${xL} ${y} `;
+        d += `L ${xR} ${y} `;
+        if (i<s.bars.length-1){
+          const yNext = yScale(s.bars[i+1].y);
+          d += `L ${xR} ${yNext} `;
+        }
+      });
+      const path = document.createElementNS(NS,'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill','none');
+      path.setAttribute('stroke', s.def.colorHex);
+      path.setAttribute('stroke-width','2.6');
+      path.setAttribute('stroke-linejoin','round');
+      els.chart.appendChild(path);
+    }
+  });
+
+  // --- draw continuous curves ---
+  series.filter(s=>!s.discrete).forEach(s=>{
+    let d = '';
+    s.points.forEach((p,i)=>{
+      const px = xScale(p.x), py = yScale(Math.min(p.y, ymax*3));
+      d += (i===0?'M ':'L ') + px + ' ' + py + ' ';
+    });
+    const path = document.createElementNS(NS,'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke', s.def.colorHex);
+    path.setAttribute('stroke-width','3');
+    path.setAttribute('stroke-linejoin','round');
+    els.chart.appendChild(path);
+  });
+
+  // --- normal-approx dashed overlay ---
+  if (approxSeries){
+    let d = '';
+    approxSeries.points.forEach((p,i)=>{
+      const px = xScale(p.x), py = yScale(Math.min(p.y, ymax*3));
+      d += (i===0?'M ':'L ') + px + ' ' + py + ' ';
+    });
+    const path = document.createElementNS(NS,'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke', approxSeries.color);
+    path.setAttribute('stroke-width','2.4');
+    path.setAttribute('stroke-dasharray','7,5');
+    path.setAttribute('opacity','0.85');
+    els.chart.appendChild(path);
+  }
+
+  // legend
+  const names = {normal:'Normal', poisson:'Poisson', binomial:'Binomial', t:'t distribution'};
+  activeKeys.forEach(key=>{
+    const item = document.createElement('div');
+    item.className='item';
+    const dot = document.createElement('span');
+    dot.className='dot'; dot.style.background = distDefs[key].colorHex;
+    item.appendChild(dot);
+    const label = document.createElement('span');
+    let extra = '';
+    if (key==='normal') extra = `(&mu;=${fmt(params.normal.mu)}, &sigma;=${fmt(params.normal.sigma)})`;
+    if (key==='poisson') extra = `(&lambda;=${fmt(params.poisson.lambda)})`;
+    if (key==='binomial') extra = `(n=${params.binomial.n}, p=${params.binomial.p.toFixed(2)})`;
+    if (key==='t') extra = `(&nu;=${params.t.df})`;
+    label.innerHTML = `${names[key]} ${extra}`;
+    item.appendChild(label);
+    els.legend.appendChild(item);
+  });
+  if (approxSeries){
+    const item = document.createElement('div');
+    item.className='item';
+    item.innerHTML = `<span class="dot" style="background:#2a9d8f;border:2px dashed #1f2d50;"></span><span>Normal approx to Binomial</span>`;
+    els.legend.appendChild(item);
+  }
+
+  currentRender = {xmin,xmax,ymin,ymax,xScale,yScale,series,approxSeries,params,mode};
+}
+
+/* ---------------- tooltip ---------------- */
+els.chart.addEventListener('mousemove', (e)=>{
+  if (!currentRender) return;
+  const rect = els.chart.getBoundingClientRect();
+  const scaleX = W/rect.width, scaleY = H/rect.height;
+  const mx = (e.clientX-rect.left)*scaleX;
+  const my = (e.clientY-rect.top)*scaleY;
+  if (mx<margin.left || mx>margin.left+plotW || my<margin.top || my>margin.top+plotH){
+    els.tooltip.style.display='none'; return;
+  }
+  const {xmin,xmax} = currentRender;
+  const xVal = xmin + (mx-margin.left)/plotW * (xmax-xmin);
+
+  let html = `<div style="margin-bottom:3px;"><b>x &asymp; ${fmt(Math.round(xVal*100)/100)}</b></div>`;
+  currentRender.series.forEach(s=>{
+    let y;
+    if (!s.discrete){
+      // nearest sample
+      let best=null, bd=Infinity;
+      s.points.forEach(p=>{ const dd=Math.abs(p.x-xVal); if (dd<bd){bd=dd; best=p;} });
+      y = best ? best.y : 0;
+    } else {
+      const k = Math.round(xVal);
+      const found = s.bars.find(b=>b.k===k);
+      y = found ? found.y : 0;
+    }
+    html += `<div class="t-row"><span class="t-dot" style="background:${s.def.colorHex}"></span>${y.toFixed(4)}</div>`;
+  });
+  els.tooltip.innerHTML = html;
+  els.tooltip.style.display = 'block';
+  els.tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
+  els.tooltip.style.top = (e.clientY - rect.top + 10) + 'px';
+});
+els.chart.addEventListener('mouseleave', ()=>{ els.tooltip.style.display='none'; });
+
+/* ---------------- wiring ---------------- */
+document.querySelectorAll('.dist-card .head').forEach(head=>{
+  const key = head.dataset.target;
+  const chk = head.querySelector('input[type=checkbox]');
+  const card = document.getElementById('card-'+key);
+  function sync(){ card.classList.toggle('on', chk.checked); render(); }
+  chk.addEventListener('change', sync);
+  head.addEventListener('click', (e)=>{
+    if (e.target===chk) return;
+    chk.checked = !chk.checked;
+    sync();
+  });
+  sync();
+});
+
+document.querySelectorAll('.controls input[type=range]').forEach(inp=>{
+  inp.addEventListener('input', render);
+});
+document.getElementById('chk-binomial-approx').addEventListener('change', render);
+
+els.btnFreq.addEventListener('click', ()=>{
+  mode='freq'; els.btnFreq.classList.add('active'); els.btnCum.classList.remove('active'); render();
+});
+els.btnCum.addEventListener('click', ()=>{
+  mode='cum'; els.btnCum.classList.add('active'); els.btnFreq.classList.remove('active'); render();
+});
+
+render();
+</script>
+</body>
+</html>
