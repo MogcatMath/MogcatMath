@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quartiles &amp; Percentiles Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #FBF7EC;
+    --grid-line: rgba(27, 42, 74, 0.09);
+    --ink: #1B2A4A;
+    --ink-soft: #4A5A78;
+    --teal: #2A9D8F;
+    --teal-dark: #1F766B;
+    --terracotta: #D9673B;
+    --terracotta-dark: #B14E27;
+    --grey: #8A93A6;
+    --card: #FFFDF7;
+    --shadow: rgba(27, 42, 74, 0.15);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: 'Patrick Hand', cursive;
+  }
+
+  .page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 28px 40px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+
+  header h1 {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 3rem;
+    margin: 0 0 2px;
+    color: var(--ink);
+    letter-spacing: 0.5px;
+  }
+
+  header p {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Data section ---------- */
+  .data-section {
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    box-shadow: 3px 4px 0 var(--shadow);
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+
+  .dist-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .dist-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .sample-row .p-tag {
+    min-width: 150px;
+  }
+
+  .dist-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1.05rem;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 2px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    padding: 9px 16px;
+    min-height: 44px;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+
+  button:hover { transform: translateY(-1px); }
+  button:active { transform: translateY(1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .dist-buttons button.active {
+    background: var(--teal);
+    color: #fff;
+    border-color: var(--teal-dark);
+  }
+
+  .dist-buttons button[data-dist="right"].active {
+    background: var(--terracotta);
+    border-color: var(--terracotta-dark);
+  }
+
+  .n-label {
+    font-size: 1rem;
+    color: var(--ink-soft);
+  }
+
+  .data-grid {
+    max-height: 220px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 3px 4px;
+    padding: 10px;
+    background: repeating-linear-gradient(var(--card), var(--card) 22px, var(--grid-line) 23px);
+    border: 1.5px dashed var(--ink-soft);
+    border-radius: 6px;
+  }
+
+  .data-grid span {
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+
+  /* ---------- Panels ---------- */
+  .panels {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .panel {
+    flex: 1 1 50%;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    box-shadow: 3px 4px 0 var(--shadow);
+    padding: 16px 18px 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel h2 {
+    font-family: 'Caveat', cursive;
+    font-size: 2rem;
+    margin: 0 0 10px;
+  }
+
+  .quartile-panel h2 { color: var(--teal-dark); }
+  .percentile-panel h2 { color: var(--terracotta-dark); }
+
+  .panel-controls {
+    margin-bottom: 10px;
+  }
+
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
+  }
+
+  .slider-row .p-tag {
+    min-width: 118px;
+  }
+
+  .slider-row .p-value {
+    font-weight: 700;
+    color: var(--terracotta-dark);
+  }
+  .slider-row.lower .p-value { color: var(--teal-dark); }
+
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--terracotta);
+  }
+  .slider-row.lower input[type="range"] { accent-color: var(--teal); }
+  .sample-row input[type="range"] { accent-color: var(--teal); }
+
+  .number-line-wrap {
+    background: var(--paper);
+    border: 1.5px dashed var(--ink-soft);
+    border-radius: 6px;
+    padding: 6px 4px 2px;
+    margin-bottom: 12px;
+  }
+
+  .number-line-wrap[hidden] { display: none; }
+
+  svg.number-line { width: 100%; height: auto; display: block; font-family: 'Patrick Hand', cursive; }
+  svg.number-line text { fill: var(--ink); }
+  svg.number-line .axis { stroke: var(--ink); stroke-width: 2; }
+  svg.number-line .tick { stroke: var(--ink-soft); stroke-width: 1; }
+  svg.number-line .tick-label { fill: var(--ink-soft); font-size: 12px; }
+
+  table.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: auto;
+    font-size: 1.05rem;
+  }
+
+  table.stats-table td {
+    padding: 5px 6px;
+    border-bottom: 1px dotted var(--grid-line);
+  }
+
+  table.stats-table td.label { color: var(--ink-soft); width: 62%; }
+  table.stats-table td.value { text-align: right; font-weight: 700; }
+
+  table.stats-table tr.highlight td.value { color: var(--terracotta-dark); }
+  table.stats-table tr.iqr-row td { border-top: 2px solid var(--ink); border-bottom: none; padding-top: 8px; }
+
+  @media (max-width: 880px) {
+    .panels { flex-direction: column; }
+    header h1 { font-size: 2.3rem; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Quartiles &amp; Percentiles Explorer</h1>
+    <p>500 values, sorted low to high &mdash; explore how shape changes what the numbers tell us</p>
+  </header>
+
+  <section class="data-section">
+    <div class="dist-controls">
+      <div class="slider-row sample-row">
+        <span class="p-tag">Sample size: <span class="p-value" id="sampleSizeVal">500</span></span>
+        <input type="range" id="sampleSizeSlider" min="9" max="1000" value="500" step="1">
+      </div>
+      <div class="dist-row">
+        <div class="dist-buttons">
+          <button data-dist="normal" class="active">Normal</button>
+          <button data-dist="equal">Equal</button>
+          <button data-dist="right">Right-Skewed</button>
+        </div>
+        <div class="n-label">values from 1&ndash;100</div>
+      </div>
+    </div>
+    <div class="data-grid" id="dataGrid"></div>
+  </section>
+
+  <section class="panels">
+
+    <div class="panel quartile-panel">
+      <h2>Quartiles</h2>
+      <div class="number-line-wrap" id="quartileLineWrap">
+        <svg class="number-line" id="quartileLine" viewBox="0 0 600 130"></svg>
+      </div>
+      <table class="stats-table">
+        <tr><td class="label">Lowest value</td><td class="value" id="qLowest">&mdash;</td></tr>
+        <tr><td class="label">Lower quartile, Q&#8321;</td><td class="value" id="qQ1">&mdash;</td></tr>
+        <tr class="highlight"><td class="label">Median</td><td class="value" id="qMedian">&mdash;</td></tr>
+        <tr><td class="label">Upper quartile, Q&#8323;</td><td class="value" id="qQ3">&mdash;</td></tr>
+        <tr><td class="label">Highest value</td><td class="value" id="qHighest">&mdash;</td></tr>
+        <tr class="iqr-row"><td class="label">Interquartile range (Q&#8323; &minus; Q&#8321;)</td><td class="value" id="qIQR">&mdash;</td></tr>
+      </table>
+    </div>
+
+    <div class="panel percentile-panel">
+      <h2>Percentiles</h2>
+      <div class="slider-group">
+        <div class="slider-row lower">
+          <span class="p-tag">Lower: <span class="p-value" id="lowerPVal">10</span>th</span>
+          <input type="range" id="lowerSlider" min="0" max="50" value="10" step="1">
+        </div>
+        <div class="slider-row">
+          <span class="p-tag">Upper: <span class="p-value" id="upperPVal">90</span>th</span>
+          <input type="range" id="upperSlider" min="50" max="100" value="90" step="1">
+        </div>
+      </div>
+      <div class="number-line-wrap">
+        <svg class="number-line" id="percentileLine" viewBox="0 0 600 130"></svg>
+      </div>
+      <table class="stats-table">
+        <tr><td class="label">Lowest value</td><td class="value" id="pLowest">&mdash;</td></tr>
+        <tr><td class="label"><span id="pLowerLabel">10</span>th percentile</td><td class="value" id="pLower">&mdash;</td></tr>
+        <tr class="highlight"><td class="label"><span id="pUpperLabel">90</span>th percentile</td><td class="value" id="pUpper">&mdash;</td></tr>
+        <tr><td class="label">Highest value</td><td class="value" id="pHighest">&mdash;</td></tr>
+      </table>
+    </div>
+
+  </section>
+
+</div>
+
+<script>
+(function () {
+  let N = 500;
+  let data = [];
+  let currentDist = 'normal';
+
+  // ---------- Data generators ----------
+  function randNormal(mean, sd) {
+    let u1 = Math.random(), u2 = Math.random();
+    let z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    return mean + z * sd;
+  }
+
+  function genNormal() {
+    const out = [];
+    for (let i = 0; i < N; i++) {
+      let v = Math.round(randNormal(50.5, 15));
+      v = Math.max(1, Math.min(100, v));
+      out.push(v);
+    }
+    return out.sort((a, b) => a - b);
+  }
+
+  function genEqual() {
+    const out = [];
+    for (let i = 0; i < N; i++) out.push(Math.floor(Math.random() * 100) + 1);
+    return out.sort((a, b) => a - b);
+  }
+
+  function genRightSkew() {
+    const out = [];
+    for (let i = 0; i < N; i++) {
+      const r = Math.pow(Math.random(), 2.3); // bias toward 0
+      let v = Math.round(r * 99) + 1;
+      v = Math.max(1, Math.min(100, v));
+      out.push(v);
+    }
+    return out.sort((a, b) => a - b);
+  }
+
+  function generate(dist) {
+    if (dist === 'equal') return genEqual();
+    if (dist === 'right') return genRightSkew();
+    return genNormal();
+  }
+
+  // ---------- Stats ----------
+  function fmt(n) {
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+
+  function median(arr) {
+    const n = arr.length;
+    if (n % 2 === 1) return arr[(n - 1) / 2];
+    return (arr[n / 2 - 1] + arr[n / 2]) / 2;
+  }
+
+  function calcQuartiles(arr) {
+    const n = arr.length;
+    const lowest = arr[0];
+    const highest = arr[n - 1];
+    const med = median(arr);
+    let lowerHalf, upperHalf;
+    if (n % 2 === 0) {
+      lowerHalf = arr.slice(0, n / 2);
+      upperHalf = arr.slice(n / 2);
+    } else {
+      // odd n: exclude the median itself before splitting (standard GCSE method)
+      lowerHalf = arr.slice(0, (n - 1) / 2);
+      upperHalf = arr.slice((n + 1) / 2);
+    }
+    const q1 = median(lowerHalf);
+    const q3 = median(upperHalf);
+    return { lowest, q1, median: med, q3, highest, iqr: q3 - q1 };
+  }
+
+  function calcPercentile(arr, p) {
+    const n = arr.length;
+    const pos = (p / 100) * n;
+    if (pos <= 0) return arr[0];
+    if (pos >= n) return arr[n - 1];
+    if (Number.isInteger(pos)) {
+      return (arr[pos - 1] + arr[pos]) / 2;
+    }
+    const idx = Math.ceil(pos) - 1;
+    return arr[Math.max(0, Math.min(n - 1, idx))];
+  }
+
+  // ---------- Number line rendering ----------
+  const AXIS_MIN = 1, AXIS_MAX = 100;
+
+  function renderNumberLine(svgEl, points) {
+    const W = 600, H = 130, PAD = 30, AXIS_Y = 92;
+    const xFor = v => PAD + ((v - AXIS_MIN) / (AXIS_MAX - AXIS_MIN)) * (W - 2 * PAD);
+
+    let svg = `<line class="axis" x1="${PAD}" y1="${AXIS_Y}" x2="${W - PAD}" y2="${AXIS_Y}" />`;
+
+    const majorTicks = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    majorTicks.forEach(t => {
+      const x = xFor(t);
+      svg += `<line class="tick" x1="${x}" y1="${AXIS_Y - 5}" x2="${x}" y2="${AXIS_Y + 5}" />`;
+      svg += `<text class="tick-label" x="${x}" y="${AXIS_Y + 20}" text-anchor="middle">${t}</text>`;
+    });
+
+    const sorted = points.slice().sort((a, b) => a.value - b.value);
+    sorted.forEach((pt, i) => {
+      const x = xFor(pt.value);
+      const level = i % 2; // alternate stacking to reduce label collisions
+      const labelY = AXIS_Y - 18 - level * 26;
+      svg += `<line x1="${x}" y1="${AXIS_Y}" x2="${x}" y2="${labelY + 6}" stroke="${pt.color}" stroke-width="1.5" stroke-dasharray="2,2" />`;
+      svg += `<circle cx="${x}" cy="${AXIS_Y}" r="6" fill="${pt.color}" stroke="#1B2A4A" stroke-width="1.2" />`;
+      svg += `<text x="${x}" y="${labelY}" text-anchor="middle" font-size="13" font-weight="700" fill="${pt.color}">${pt.label}</text>`;
+      svg += `<text x="${x}" y="${labelY + 14}" text-anchor="middle" font-size="12" fill="#1B2A4A">${fmt(pt.value)}</text>`;
+    });
+
+    svgEl.innerHTML = svg;
+  }
+
+  // ---------- Update UI ----------
+  function updateDataGrid() {
+    const grid = document.getElementById('dataGrid');
+    grid.innerHTML = data.map(v => `<span>${v}</span>`).join('');
+  }
+
+  function updateSampleSizeLabels(size) {
+    document.getElementById('sampleSizeVal').textContent = size;
+  }
+
+  function updateQuartiles() {
+    const q = calcQuartiles(data);
+    document.getElementById('qLowest').textContent = fmt(q.lowest);
+    document.getElementById('qQ1').textContent = fmt(q.q1);
+    document.getElementById('qMedian').textContent = fmt(q.median);
+    document.getElementById('qQ3').textContent = fmt(q.q3);
+    document.getElementById('qHighest').textContent = fmt(q.highest);
+    document.getElementById('qIQR').textContent = fmt(q.iqr);
+
+    renderNumberLine(document.getElementById('quartileLine'), [
+      { label: 'Lowest', value: q.lowest, color: '#8A93A6' },
+      { label: 'Q\u2081', value: q.q1, color: '#2A9D8F' },
+      { label: 'Median', value: q.median, color: '#D9673B' },
+      { label: 'Q\u2083', value: q.q3, color: '#2A9D8F' },
+      { label: 'Highest', value: q.highest, color: '#8A93A6' }
+    ]);
+  }
+
+  function updatePercentiles() {
+    const lowerP = parseInt(document.getElementById('lowerSlider').value, 10);
+    const upperP = parseInt(document.getElementById('upperSlider').value, 10);
+    document.getElementById('lowerPVal').textContent = lowerP;
+    document.getElementById('upperPVal').textContent = upperP;
+    document.getElementById('pLowerLabel').textContent = lowerP;
+    document.getElementById('pUpperLabel').textContent = upperP;
+
+    const lowest = data[0];
+    const highest = data[data.length - 1];
+    const lowerVal = calcPercentile(data, lowerP);
+    const upperVal = calcPercentile(data, upperP);
+
+    document.getElementById('pLowest').textContent = fmt(lowest);
+    document.getElementById('pLower').textContent = fmt(lowerVal);
+    document.getElementById('pUpper').textContent = fmt(upperVal);
+    document.getElementById('pHighest').textContent = fmt(highest);
+
+    renderNumberLine(document.getElementById('percentileLine'), [
+      { label: 'Lowest', value: lowest, color: '#8A93A6' },
+      { label: lowerP + 'th', value: lowerVal, color: '#2A9D8F' },
+      { label: upperP + 'th', value: upperVal, color: '#D9673B' },
+      { label: 'Highest', value: highest, color: '#8A93A6' }
+    ]);
+  }
+
+  function refreshAll() {
+    updateDataGrid();
+    updateQuartiles();
+    updatePercentiles();
+  }
+
+  function regenerate(dist) {
+    currentDist = dist;
+    data = generate(dist);
+    document.querySelectorAll('.dist-buttons button').forEach(b => {
+      b.classList.toggle('active', b.dataset.dist === dist);
+    });
+    refreshAll();
+  }
+
+  // ---------- Wire up events ----------
+  document.querySelectorAll('.dist-buttons button').forEach(btn => {
+    btn.addEventListener('click', () => regenerate(btn.dataset.dist));
+  });
+
+  document.getElementById('sampleSizeSlider').addEventListener('input', function () {
+    N = parseInt(this.value, 10);
+    updateSampleSizeLabels(N);
+    regenerate(currentDist);
+  });
+
+  document.getElementById('lowerSlider').addEventListener('input', updatePercentiles);
+  document.getElementById('upperSlider').addEventListener('input', updatePercentiles);
+
+  // ---------- Init ----------
+  updateSampleSizeLabels(N);
+  regenerate('normal');
+})();
+</script>
+
+</body>
+</html>
