@@ -199,6 +199,96 @@
   }
   .resample-btn:hover{ background:var(--purple); color:#fff; }
 
+  .estimate-btn{
+    font-family:'Inter', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    padding:9px 14px;
+    border-radius:8px;
+    border:1px solid var(--purple);
+    background:var(--purple-fill);
+    color:var(--purple);
+    cursor:pointer;
+    transition:all .15s ease;
+    width:100%;
+    margin-top:8px;
+  }
+  .estimate-btn:hover{ background:var(--purple); color:#fff; }
+
+  .return-btn{
+    font-family:'Inter', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    padding:9px 14px;
+    border-radius:8px;
+    border:1px solid var(--purple);
+    background:var(--purple-fill);
+    color:var(--purple);
+    cursor:pointer;
+    transition:all .15s ease;
+    width:100%;
+    margin-top:4px;
+  }
+  .return-btn:hover{ background:var(--purple); color:#fff; }
+
+  .calc-btn{
+    font-family:'Inter', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    padding:9px 14px;
+    border-radius:8px;
+    border:1px solid var(--purple);
+    background:var(--purple-fill);
+    color:var(--purple);
+    cursor:pointer;
+    transition:all .15s ease;
+    width:100%;
+    margin-top:4px;
+  }
+  .calc-btn:hover{ background:var(--purple); color:#fff; }
+  .calc-btn.active{
+    background:var(--purple);
+    color:#fff;
+  }
+
+  .estimate-slider-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .estimate-slider-row label{
+    font-family:'Inter', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    color:var(--ink);
+    min-width:95px;
+  }
+  .estimate-slider-row input[type="range"]{
+    flex:1;
+    accent-color:var(--terracotta);
+    height:6px;
+    cursor:pointer;
+  }
+  .estimate-readout{
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    font-weight:600;
+    color:var(--terracotta);
+    min-width:34px;
+    text-align:right;
+  }
+
+  .hidden{ display:none !important; }
+
+  .table-region{
+    transition:opacity .2s ease;
+  }
+  .table-region.locked{
+    opacity:0.42;
+    pointer-events:none;
+  }
+
   .stats-line{
     margin-bottom:10px;
     font-family:'JetBrains Mono', monospace;
@@ -206,6 +296,24 @@
     color:var(--ink-soft);
   }
   .stats-line b{ color:var(--ink); }
+
+  .calc-lines{
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    line-height:1.7;
+    color:var(--ink-soft);
+    max-height:140px;
+    overflow-y:auto;
+  }
+  .calc-lines .calc-line b{ color:var(--ink); }
+  .calc-lines .calc-total{
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid var(--grid);
+    color:var(--ink);
+    font-weight:600;
+  }
+  .calc-lines .calc-empty{ color:var(--ink-soft); font-style:italic; }
 
   /* ---------- STRIP PLOT (now lives in the raw-data card, right panel) ---------- */
   .raw-data-card{ flex:0 0 auto; }
@@ -401,6 +509,18 @@
     opacity:0.85;
     transition:opacity .25s ease;
   }
+  .estimate-marker{
+    stroke:var(--ink);
+    stroke-width:2;
+    stroke-dasharray:5,3;
+  }
+  .estimate-marker-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:15px;
+    font-weight:700;
+    fill:var(--terracotta);
+    text-anchor:middle;
+  }
 
   ::-webkit-scrollbar{ width:8px; }
   ::-webkit-scrollbar-thumb{ background:var(--grid-strong); border-radius:4px; }
@@ -430,17 +550,37 @@
 
       <div class="card">
         <div class="card-head">
-          <div class="eyebrow">Sample</div>
-          <h2>Distribution shape</h2>
+          <div class="eyebrow" id="sampleEyebrow">Sample</div>
+          <h2 id="sampleTitle">Distribution shape</h2>
         </div>
         <div class="card-body">
-          <div class="dist-row">
-            <button class="dist-btn" data-dist="uniform">Random</button>
-            <button class="dist-btn active" data-dist="normal">Normal</button>
-            <button class="dist-btn" data-dist="skew">Skewed</button>
-            <button class="dist-btn" data-dist="bimodal">Bimodal</button>
+
+          <div id="distContent">
+            <div class="dist-row">
+              <button class="dist-btn" data-dist="uniform">Random</button>
+              <button class="dist-btn active" data-dist="normal">Normal</button>
+              <button class="dist-btn" data-dist="skew">Skewed</button>
+              <button class="dist-btn" data-dist="bimodal">Bimodal</button>
+            </div>
+            <button class="resample-btn" id="resampleBtn">🎲 New sample</button>
+            <button class="estimate-btn" id="estimateBtn">Estimate between two points</button>
           </div>
-          <button class="resample-btn" id="resampleBtn">🎲 New sample</button>
+
+          <div id="estimateContent" class="hidden">
+            <div class="estimate-slider-row">
+              <label for="lowerSlider">Lower value</label>
+              <input type="range" id="lowerSlider" step="1">
+              <div class="estimate-readout" id="lowerReadout">0</div>
+            </div>
+            <div class="estimate-slider-row">
+              <label for="upperSlider">Upper value</label>
+              <input type="range" id="upperSlider" step="1">
+              <div class="estimate-readout" id="upperReadout">0</div>
+            </div>
+            <button class="calc-btn" id="calcBtn">Calculation</button>
+            <button class="return-btn" id="returnBtn">Return to table</button>
+          </div>
+
         </div>
       </div>
 
@@ -454,20 +594,22 @@
           <div class="coverage-line" id="coverageLine"></div>
           <div class="error-banner" id="errorBanner"></div>
 
-          <div class="table-scroll">
-            <table class="freq-table">
-              <thead>
-                <tr>
-                  <th>Lower</th><th></th><th>Upper</th>
-                  <th>Freq</th><th>Width</th><th>F. Density</th><th></th>
-                </tr>
-              </thead>
-              <tbody id="tableBody"></tbody>
-            </table>
-          </div>
+          <div class="table-region" id="tableRegion">
+            <div class="table-scroll">
+              <table class="freq-table">
+                <thead>
+                  <tr>
+                    <th>Lower</th><th></th><th>Upper</th>
+                    <th>Freq</th><th>Width</th><th>F. Density</th><th></th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
 
-          <div class="table-foot">
-            <button class="add-btn" id="addRow">+ Add class</button>
+            <div class="table-foot">
+              <button class="add-btn" id="addRow">+ Add class</button>
+            </div>
           </div>
         </div>
       </div>
@@ -477,12 +619,17 @@
     <div class="panel-right">
       <div class="card raw-data-card">
         <div class="card-head">
-          <div class="eyebrow">Sample</div>
-          <h2>Raw data (1000 values, 0–50)</h2>
+          <div class="eyebrow" id="rawDataEyebrow">Sample</div>
+          <h2 id="rawDataTitle">Raw data (1000 values, 0–50)</h2>
         </div>
         <div class="card-body">
-          <div class="stats-line" id="statsLine"></div>
-          <svg id="stripPlot" viewBox="0 0 800 64" preserveAspectRatio="xMidYMid meet"></svg>
+          <div id="rawDataContent">
+            <div class="stats-line" id="statsLine"></div>
+            <svg id="stripPlot" viewBox="0 0 800 64" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+          <div id="calcContent" class="hidden">
+            <div class="calc-lines" id="calcLines"></div>
+          </div>
         </div>
       </div>
 
@@ -511,6 +658,11 @@
   let showCurve = true;
   let rawData = []; // { v, j }
   let boundaries = []; // { lower, upper } — individually editable
+  let lastRows = [];
+
+  let estimateMode = false;
+  let estLower = 0, estUpper = 0;
+  let calcMode = false;
 
   // ---------- RANDOM GENERATORS ----------
   function clamp(x, lo, hi){ return Math.max(lo, Math.min(hi, x)); }
@@ -612,6 +764,26 @@
   const areaBadge      = document.getElementById('areaBadge');
   const histogramSvg   = document.getElementById('histogram');
   const curveSwitch    = document.getElementById('curveSwitch');
+
+  const sampleEyebrow  = document.getElementById('sampleEyebrow');
+  const sampleTitle    = document.getElementById('sampleTitle');
+  const distContent    = document.getElementById('distContent');
+  const estimateContent = document.getElementById('estimateContent');
+  const estimateBtn    = document.getElementById('estimateBtn');
+  const returnBtn      = document.getElementById('returnBtn');
+  const lowerSlider    = document.getElementById('lowerSlider');
+  const upperSlider    = document.getElementById('upperSlider');
+  const lowerReadout   = document.getElementById('lowerReadout');
+  const upperReadout   = document.getElementById('upperReadout');
+  const tableRegion    = document.getElementById('tableRegion');
+  const addRowBtn      = document.getElementById('addRow');
+
+  const rawDataEyebrow = document.getElementById('rawDataEyebrow');
+  const rawDataTitle   = document.getElementById('rawDataTitle');
+  const rawDataContent = document.getElementById('rawDataContent');
+  const calcContent    = document.getElementById('calcContent');
+  const calcLines      = document.getElementById('calcLines');
+  const calcBtn        = document.getElementById('calcBtn');
 
   const NS = 'http://www.w3.org/2000/svg';
   function el(tag, attrs){
@@ -716,6 +888,7 @@
       coverageLine.innerHTML = `All <b>${N}</b> values fall inside your current classes.`;
     }
 
+    lastRows = rows;
     return { rows, errors };
   }
 
@@ -781,15 +954,11 @@
       return;
     }
 
-    const margin = { top: 20, right: 24, bottom: 56, left: 64 };
     const W = 800, H = 500;
-    const plotW = W - margin.left - margin.right;
-    const plotH = H - margin.top - margin.bottom;
 
     const xMin = Math.min(DOMAIN_MIN, ...validRows.map(r => r.lower));
     const xMax = Math.max(DOMAIN_MAX, ...validRows.map(r => r.upper));
     const xRange = xMax - xMin || 1;
-    const xScale = (v) => margin.left + ((v - xMin) / xRange) * plotW;
 
     let curvePoints = [];
     if (showCurve){
@@ -801,7 +970,6 @@
     const maxDensity = Math.max(...validRows.map(r => r.density), 0.0001);
     const maxCurve = curvePoints.length ? Math.max(...curvePoints.map(p => p.y)) : 0;
     const yMax = Math.max(maxDensity, maxCurve) * 1.25;
-    const yScale = (v) => margin.top + plotH - (v / yMax) * plotH;
 
     function niceIntegerStep(maxVal, targetTicks){
       let step = Math.ceil(maxVal / targetTicks);
@@ -812,13 +980,36 @@
     }
 
     const tickStep = niceIntegerStep(yMax, 5);
-    for (let val = 0; val <= yMax; val += tickStep){
+    const tickValues = [];
+    for (let val = 0; val <= yMax; val += tickStep) tickValues.push(Math.round(val));
+
+    // Reserve enough left margin for the widest tick label plus a fixed
+    // clearance band for the rotated axis title, so the two never overlap
+    // regardless of how many digits the frequency-density values need.
+    const maxLabelChars = Math.max(...tickValues.map(v => String(v).length), 1);
+    const charWidth = 9.6; // approx width of a JetBrains Mono character at 16px
+    const maxLabelWidth = maxLabelChars * charWidth;
+    const titleBand = 26; // horizontal space reserved for the rotated title
+    const labelAxisGap = 8; // gap between axis line and the numbers
+    const titleLabelGap = 8; // gap between the title and the numbers
+
+    const margin = {
+      top: 20, right: 24, bottom: 56,
+      left: titleBand + titleLabelGap + maxLabelWidth + labelAxisGap
+    };
+    const plotW = W - margin.left - margin.right;
+    const plotH = H - margin.top - margin.bottom;
+
+    const xScale = (v) => margin.left + ((v - xMin) / xRange) * plotW;
+    const yScale = (v) => margin.top + plotH - (v / yMax) * plotH;
+
+    tickValues.forEach(val => {
       const y = yScale(val);
       histogramSvg.appendChild(el('line', { x1: margin.left, x2: W - margin.right, y1: y, y2: y, class: 'tick-line' }));
-      const t = el('text', { x: margin.left - 8, y: y + 4, class: 'tick-text', 'text-anchor': 'end' });
-      t.textContent = Math.round(val);
+      const t = el('text', { x: margin.left - labelAxisGap, y: y + 4, class: 'tick-text', 'text-anchor': 'end' });
+      t.textContent = val;
       histogramSvg.appendChild(t);
-    }
+    });
 
     validRows.forEach((r) => {
       const x1 = xScale(r.lower);
@@ -845,6 +1036,35 @@
     const lastX = xScale(validRows[validRows.length - 1].upper);
     histogramSvg.appendChild(el('line', { x1: lastX, x2: lastX, y1: margin.top, y2: margin.top + plotH, class: 'class-boundary' }));
 
+    if (estimateMode){
+      validRows.forEach(r => {
+        const overlapLower = Math.max(r.lower, estLower);
+        const overlapUpper = Math.min(r.upper, estUpper);
+        if (overlapUpper > overlapLower){
+          const y = yScale(r.density);
+          const barH = (margin.top + plotH) - y;
+          const ox1 = xScale(overlapLower);
+          const ox2 = xScale(overlapUpper);
+          histogramSvg.appendChild(el('rect', {
+            x: ox1, y: y,
+            width: Math.max(ox2 - ox1, 0.5),
+            height: Math.max(barH, 0),
+            fill: '#C1502E',
+            opacity: 0.9,
+            rx: 1.5
+          }));
+        }
+      });
+
+      [estLower, estUpper].forEach(val => {
+        const x = xScale(val);
+        histogramSvg.appendChild(el('line', { x1: x, x2: x, y1: margin.top - 8, y2: margin.top + plotH, class: 'estimate-marker' }));
+        const lbl = el('text', { x: x, y: margin.top - 12, class: 'estimate-marker-label' });
+        lbl.textContent = val;
+        histogramSvg.appendChild(lbl);
+      });
+    }
+
     if (showCurve && curvePoints.length){
       let d = '';
       curvePoints.forEach((p, i) => {
@@ -861,7 +1081,7 @@
     xTitle.textContent = 'Value';
     histogramSvg.appendChild(xTitle);
 
-    const yTitle = el('text', { x: -(margin.top + plotH / 2), y: 16, 'text-anchor': 'middle', class: 'axis-title', transform: 'rotate(-90)' });
+    const yTitle = el('text', { x: -(margin.top + plotH / 2), y: titleBand - 10, 'text-anchor': 'middle', class: 'axis-title', transform: 'rotate(-90)' });
     yTitle.textContent = 'Frequency density';
     histogramSvg.appendChild(yTitle);
 
@@ -904,6 +1124,138 @@
     curveSwitch.classList.toggle('on', showCurve);
     document.getElementById('lblCurve').classList.toggle('active', showCurve);
     renderAll();
+  });
+
+  // ---------- ESTIMATE BETWEEN TWO POINTS ----------
+  function enterEstimateMode(){
+    const validRows = lastRows.filter(r => r.upper > r.lower && isFinite(r.width) && r.width > 0);
+    if (validRows.length === 0) return;
+
+    const domainMin = Math.floor(Math.min(...validRows.map(r => r.lower)));
+    const domainMax = Math.ceil(Math.max(...validRows.map(r => r.upper)));
+    const range = Math.max(domainMax - domainMin, 1);
+
+    estLower = Math.round(domainMin + range * 0.25);
+    estUpper = Math.round(domainMin + range * 0.75);
+    if (estUpper <= estLower) estUpper = Math.min(domainMax, estLower + 1);
+
+    [lowerSlider, upperSlider].forEach(s => {
+      s.min = domainMin;
+      s.max = domainMax;
+      s.step = 1;
+    });
+    lowerSlider.value = estLower;
+    upperSlider.value = estUpper;
+    lowerReadout.textContent = estLower;
+    upperReadout.textContent = estUpper;
+
+    estimateMode = true;
+    sampleEyebrow.textContent = 'Estimate';
+    sampleTitle.textContent = 'Estimate frequency between two values';
+    distContent.classList.add('hidden');
+    estimateContent.classList.remove('hidden');
+    tableRegion.classList.add('locked');
+    addRowBtn.disabled = true;
+
+    drawChart(lastRows);
+  }
+
+  function exitEstimateMode(){
+    estimateMode = false;
+    sampleEyebrow.textContent = 'Sample';
+    sampleTitle.textContent = 'Distribution shape';
+    distContent.classList.remove('hidden');
+    estimateContent.classList.add('hidden');
+    tableRegion.classList.remove('locked');
+    addRowBtn.disabled = false;
+
+    if (calcMode) exitCalcMode();
+
+    drawChart(lastRows);
+  }
+
+  estimateBtn.addEventListener('click', enterEstimateMode);
+  returnBtn.addEventListener('click', exitEstimateMode);
+
+  lowerSlider.addEventListener('input', () => {
+    estLower = parseInt(lowerSlider.value, 10);
+    if (estLower > estUpper){ estUpper = estLower; upperSlider.value = estUpper; upperReadout.textContent = estUpper; }
+    lowerReadout.textContent = estLower;
+    drawChart(lastRows);
+    if (calcMode) renderCalculation();
+  });
+
+  upperSlider.addEventListener('input', () => {
+    estUpper = parseInt(upperSlider.value, 10);
+    if (estUpper < estLower){ estLower = estUpper; lowerSlider.value = estLower; lowerReadout.textContent = estLower; }
+    upperReadout.textContent = estUpper;
+    drawChart(lastRows);
+    if (calcMode) renderCalculation();
+  });
+
+  // ---------- CALCULATION (frequency between the two values) ----------
+  function computeContributions(){
+    const validRows = lastRows.filter(r => r.upper > r.lower && isFinite(r.width) && r.width > 0);
+    const sorted = [...validRows].sort((a, b) => a.lower - b.lower);
+    const items = [];
+    let total = 0;
+    sorted.forEach(r => {
+      const ovLower = Math.max(r.lower, estLower);
+      const ovUpper = Math.min(r.upper, estUpper);
+      if (ovUpper > ovLower){
+        const ovWidth = ovUpper - ovLower;
+        const contribution = ovWidth * r.density;
+        total += contribution;
+        items.push({ r, ovLower, ovUpper, ovWidth, contribution });
+      }
+    });
+    return { items, total };
+  }
+
+  function renderCalculation(){
+    const { items, total } = computeContributions();
+
+    if (items.length === 0){
+      calcLines.innerHTML = '<div class="calc-empty">No classes fall between these values.</div>';
+      return;
+    }
+
+    let html = '';
+    items.forEach(it => {
+      html += `<div class="calc-line">${fmt(it.r.lower,1)}–${fmt(it.r.upper,1)}: shaded width ${fmt(it.ovLower,1)}–${fmt(it.ovUpper,1)} → `
+        + `width ${fmt(it.ovWidth,1)} × height ${fmt(it.r.density,2)} = <b>${fmt(it.contribution,1)}</b></div>`;
+    });
+
+    const contribStr = items.map(it => fmt(it.contribution, 1)).join(' + ');
+    const totalLine = contribStr.length < 60
+      ? `${contribStr} = ${fmt(total,1)} ≈ <b>${Math.round(total)}</b>`
+      : `Sum of contributions ≈ ${fmt(total,1)} ≈ <b>${Math.round(total)}</b>`;
+
+    html += `<div class="calc-total">Total frequency between ${estLower} and ${estUpper}:<br>${totalLine}</div>`;
+    calcLines.innerHTML = html;
+  }
+
+  function enterCalcMode(){
+    calcMode = true;
+    rawDataEyebrow.textContent = 'Calculation';
+    rawDataTitle.textContent = 'Frequency between the two values';
+    rawDataContent.classList.add('hidden');
+    calcContent.classList.remove('hidden');
+    calcBtn.classList.add('active');
+    renderCalculation();
+  }
+
+  function exitCalcMode(){
+    calcMode = false;
+    rawDataEyebrow.textContent = 'Sample';
+    rawDataTitle.textContent = `Raw data (${N} values, ${DOMAIN_MIN}–${DOMAIN_MAX})`;
+    rawDataContent.classList.remove('hidden');
+    calcContent.classList.add('hidden');
+    calcBtn.classList.remove('active');
+  }
+
+  calcBtn.addEventListener('click', () => {
+    if (calcMode) exitCalcMode(); else enterCalcMode();
   });
 
   // ---------- INIT ----------
