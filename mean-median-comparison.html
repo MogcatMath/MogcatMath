@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Comparing Datasets: Median/IQR vs Mean/SD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1e2a44;
+    --navy-soft:#33456b;
+    --paper:#faf6ec;
+    --grid:#d8e3e0;
+    --teal:#1f8a82;
+    --teal-soft:#e4f3f1;
+    --terracotta:#c8623e;
+    --terracotta-soft:#fbe9e1;
+    --amber:#d9a441;
+    --ink-red:#a63d3d;
+    --card-shadow: 2px 3px 0 rgba(30,42,68,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    height:100%;
+    margin:0;
+    overflow:hidden;
+    background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(0deg, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent 28px),
+      repeating-linear-gradient(90deg, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent 28px);
+    color:var(--navy);
+    font-family:'Patrick Hand', cursive;
+  }
+  h1,h2,h3,.hand-title{ font-family:'Caveat', cursive; }
+
+  #app{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding:10px 16px 12px;
+    gap:8px;
+  }
+
+  /* ---------- Title bar ---------- */
+  .titlebar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:3px solid var(--navy);
+    padding-bottom:6px;
+  }
+  .titlebar h1{
+    margin:0;
+    font-size:30px;
+    font-weight:700;
+    color:var(--navy);
+  }
+  .titlebar .subtitle{
+    font-size:15px;
+    color:var(--navy-soft);
+    margin-top:-4px;
+  }
+  .quiz-btn{
+    font-family:'Caveat', cursive;
+    font-size:20px;
+    font-weight:700;
+    background:var(--amber);
+    color:var(--navy);
+    border:2px solid var(--navy);
+    border-radius:10px;
+    padding:8px 18px;
+    cursor:pointer;
+    box-shadow:var(--card-shadow);
+  }
+  .quiz-btn:hover{ filter:brightness(1.06); transform:translateY(-1px); }
+
+  /* ---------- Data box ---------- */
+  .databox{
+    flex:0 0 auto;
+    border:2.5px solid var(--navy);
+    border-radius:12px;
+    background:rgba(255,255,255,0.55);
+    box-shadow:var(--card-shadow);
+    padding:8px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .databox-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .databox-head h2{
+    margin:0;
+    font-size:22px;
+  }
+  .databox-head .unit-pill{
+    font-family:'Patrick Hand', cursive;
+    font-size:13px;
+    background:var(--navy);
+    color:var(--paper);
+    padding:2px 10px;
+    border-radius:999px;
+  }
+  .new-data-btn{
+    font-family:'Caveat', cursive;
+    font-size:19px;
+    font-weight:700;
+    background:var(--teal);
+    color:white;
+    border:2px solid var(--navy);
+    border-radius:10px;
+    padding:6px 16px;
+    cursor:pointer;
+    box-shadow:var(--card-shadow);
+  }
+  .new-data-btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+
+  .dataset-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .dataset-label{
+    flex:0 0 78px;
+    font-family:'Caveat', cursive;
+    font-weight:700;
+    font-size:19px;
+    padding:2px 8px;
+    border-radius:8px;
+    text-align:center;
+  }
+  .dataset-label.A{ background:var(--teal-soft); color:var(--teal); border:2px solid var(--teal); }
+  .dataset-label.B{ background:var(--terracotta-soft); color:var(--terracotta); border:2px solid var(--terracotta); }
+
+  .chip-row{
+    flex:1;
+    display:flex;
+    flex-wrap:wrap;
+    gap:3px;
+    max-height:34px;
+    overflow-y:auto;
+    padding:2px;
+  }
+  .chip{
+    font-size:12px;
+    padding:2px 6px;
+    border-radius:6px;
+    background:white;
+    border:1px solid var(--navy-soft);
+    white-space:nowrap;
+  }
+  .chip.A{ border-color:var(--teal); }
+  .chip.B{ border-color:var(--terracotta); }
+
+  /* ---------- Stats boxes wrapper ---------- */
+  .stats-wrapper{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-height:0;
+  }
+  .statbox{
+    flex:1;
+    border:2.5px solid var(--navy);
+    border-radius:12px;
+    background:rgba(255,255,255,0.55);
+    box-shadow:var(--card-shadow);
+    padding:8px 16px;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    overflow:hidden;
+  }
+  .statbox.median-box{ border-color:var(--teal); }
+  .statbox.mean-box{ border-color:var(--terracotta); }
+
+  .statbox-title{
+    font-size:22px;
+    margin:0 0 2px 0;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .statbox.median-box .statbox-title{ color:var(--teal); }
+  .statbox.mean-box .statbox-title{ color:var(--terracotta); }
+
+  .stat-top{
+    display:flex;
+    gap:16px;
+    align-items:stretch;
+    flex:0 0 auto;
+  }
+  .stat-cards{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    justify-content:center;
+    flex:0 0 210px;
+  }
+  .stat-card-line{
+    font-size:15px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:1px 6px;
+    border-radius:6px;
+  }
+  .stat-card-line span.lbl{ color:var(--navy-soft); }
+  .stat-card-line span.valA{ color:var(--teal); font-weight:bold; }
+  .stat-card-line span.valB{ color:var(--terracotta); font-weight:bold; }
+
+  .boxplot-wrap{
+    flex:1;
+    min-width:0;
+  }
+  .boxplot-wrap svg{ width:100%; height:auto; display:block; }
+
+  .comparison-text{
+    flex:1;
+    overflow-y:auto;
+    margin-top:6px;
+    padding-top:6px;
+    border-top:2px dashed var(--grid);
+    font-size:16px;
+    line-height:1.4;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .comparison-text p{ margin:0; }
+  .comparison-text .lead{ font-weight:bold; }
+
+  /* ---------- Quiz modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(30,42,68,0.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background:var(--paper);
+    background-image:
+      repeating-linear-gradient(0deg, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent 26px),
+      repeating-linear-gradient(90deg, var(--grid) 0px, var(--grid) 1px, transparent 1px, transparent 26px);
+    border:3px solid var(--navy);
+    border-radius:16px;
+    box-shadow:4px 5px 0 rgba(30,42,68,0.25);
+    width:min(640px, 90vw);
+    max-height:86vh;
+    overflow-y:auto;
+    padding:20px 26px;
+  }
+  .modal h2{ margin:0 0 4px; font-size:28px; }
+  .modal .modal-sub{ font-size:14px; color:var(--navy-soft); margin-bottom:10px; }
+  .qblock{
+    border:2px solid var(--navy-soft);
+    border-radius:10px;
+    padding:10px 14px;
+    margin-bottom:12px;
+    background:rgba(255,255,255,0.6);
+  }
+  .qblock .qtext{ font-size:17px; font-weight:bold; margin-bottom:6px; }
+  .qblock label{
+    display:block;
+    font-size:15px;
+    padding:4px 8px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .qblock label:hover{ background:var(--teal-soft); }
+  .qblock input{ margin-right:8px; }
+  .feedback{
+    margin-top:6px;
+    font-size:14.5px;
+    padding:6px 10px;
+    border-radius:8px;
+    display:none;
+  }
+  .feedback.correct{ background:var(--teal-soft); color:var(--teal); border:1.5px solid var(--teal); }
+  .feedback.incorrect{ background:var(--terracotta-soft); color:var(--ink-red); border:1.5px solid var(--ink-red); }
+
+  .modal-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:6px;
+  }
+  .check-btn, .close-btn{
+    font-family:'Caveat', cursive;
+    font-size:20px;
+    font-weight:700;
+    border:2px solid var(--navy);
+    border-radius:10px;
+    padding:7px 18px;
+    cursor:pointer;
+  }
+  .check-btn{ background:var(--amber); color:var(--navy); }
+  .close-btn{ background:white; color:var(--navy); }
+  .score-line{ font-size:17px; font-weight:bold; }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--navy-soft); border-radius:4px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="titlebar">
+    <div>
+      <h1>Comparing Two Datasets</h1>
+      <div class="subtitle">Median &amp; IQR vs Mean &amp; Standard Deviation</div>
+    </div>
+    <button class="quiz-btn" id="openQuizBtn">✏️ Check Your Understanding</button>
+  </div>
+
+  <div class="databox">
+    <div class="databox-head">
+      <h2>Dataset <span class="unit-pill" id="unitPill">mm</span></h2>
+      <button class="new-data-btn" id="newDataBtn">🎲 New Data Set</button>
+    </div>
+    <div class="dataset-row">
+      <div class="dataset-label A">Dataset A</div>
+      <div class="chip-row" id="chipsA"></div>
+    </div>
+    <div class="dataset-row">
+      <div class="dataset-label B">Dataset B</div>
+      <div class="chip-row" id="chipsB"></div>
+    </div>
+  </div>
+
+  <div class="stats-wrapper">
+
+    <div class="statbox median-box">
+      <h3 class="statbox-title">📏 Median &amp; IQR</h3>
+      <div class="stat-top">
+        <div class="stat-cards" id="medianCards"></div>
+        <div class="boxplot-wrap" id="boxplotWrap"></div>
+      </div>
+      <div class="comparison-text" id="medianComparison"></div>
+    </div>
+
+    <div class="statbox mean-box">
+      <h3 class="statbox-title">📐 Mean &amp; Standard Deviation</h3>
+      <div class="stat-top">
+        <div class="stat-cards" id="meanCards"></div>
+      </div>
+      <div class="comparison-text" id="meanComparison"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Check Your Understanding</h2>
+    <div class="modal-sub">Answer using the current dataset shown behind this window.</div>
+    <div id="quizQuestions"></div>
+    <div class="modal-actions">
+      <span class="score-line" id="scoreLine"></span>
+      <div>
+        <button class="check-btn" id="checkAnswersBtn">Check Answers</button>
+        <button class="close-btn" id="closeQuizBtn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== CONFIG ===================== */
+const UNIT_CONFIG = {
+  mm: { name:'length',  decimals:0, adjHigh:'longer',  adjLow:'shorter', spreadHigh:'more varied in length', spreadLow:'more consistent in length', centerRange:[40,220], symbol:'mm' },
+  g:  { name:'mass',    decimals:1, adjHigh:'heavier', adjLow:'lighter', spreadHigh:'more varied in mass',   spreadLow:'more consistent in mass',   centerRange:[15,180], symbol:'g'  },
+  L:  { name:'volume',  decimals:2, adjHigh:'larger (by volume)', adjLow:'smaller (by volume)', spreadHigh:'more varied in volume', spreadLow:'more consistent in volume', centerRange:[1,18], symbol:'L' }
+};
+
+let state = null;
+
+/* ===================== RANDOM DATA GENERATION ===================== */
+function randNormal(){
+  let u=0, v=0;
+  while(u===0) u=Math.random();
+  while(v===0) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function generateValues(n, spread, center, decimals){
+  const raw = Array.from({length:n}, ()=>randNormal());
+  const min = Math.min(...raw), max = Math.max(...raw);
+  const range = (max-min) || 1;
+  const scale = spread/range;
+  let scaled = raw.map(v=>v*scale);
+  const scaledMin = Math.min(...scaled);
+  const baseMin = center - spread/2;
+  let values = scaled.map(v=> v - scaledMin + baseMin);
+  const vmin = Math.min(...values);
+  if(vmin < 0.5){
+    const adj = 0.5 - vmin;
+    values = values.map(v=>v+adj);
+  }
+  const factor = Math.pow(10, decimals);
+  return values.map(v=> Math.round(v*factor)/factor);
+}
+
+function pickCenter(range){ return range[0] + Math.random()*(range[1]-range[0]); }
+
+function generateState(){
+  const units = Object.keys(UNIT_CONFIG);
+  const unit = units[Math.floor(Math.random()*units.length)];
+  const cfg = UNIT_CONFIG[unit];
+
+  const n = Math.floor(20 + Math.random()*21); // 20-40 inclusive-ish
+  const spreadA = 15 + Math.random()*15;
+  const spreadB = 15 + Math.random()*15;
+
+  let centerA = pickCenter(cfg.centerRange);
+  const diffMag = (0.4 + Math.random()*0.9) * ((spreadA+spreadB)/2);
+  let centerB = centerA + diffMag * (Math.random()<0.5?-1:1);
+  const lo = cfg.centerRange[0]*0.5, hi = cfg.centerRange[1]*1.3;
+  centerB = Math.max(lo, Math.min(hi, centerB));
+
+  const valuesA = generateValues(n, spreadA, centerA, cfg.decimals);
+  const valuesB = generateValues(n, spreadB, centerB, cfg.decimals);
+
+  return { unit, cfg, n, valuesA, valuesB };
+}
+
+/* ===================== STATS ===================== */
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function stddevPop(arr){
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((s,x)=>s+(x-m)*(x-m),0)/arr.length);
+}
+function quantile(sorted, q){
+  const pos = (sorted.length-1)*q;
+  const base = Math.floor(pos);
+  const rest = pos-base;
+  if(sorted[base+1] !== undefined){
+    return sorted[base] + rest*(sorted[base+1]-sorted[base]);
+  }
+  return sorted[base];
+}
+function computeStats(values){
+  const sorted = [...values].sort((a,b)=>a-b);
+  const med = quantile(sorted,0.5);
+  const q1 = quantile(sorted,0.25);
+  const q3 = quantile(sorted,0.75);
+  const iqr = q3-q1;
+  const lowerFence = q1 - 1.5*iqr;
+  const upperFence = q3 + 1.5*iqr;
+  const inFence = sorted.filter(v=>v>=lowerFence && v<=upperFence);
+  const whiskerMin = inFence.length ? Math.min(...inFence) : sorted[0];
+  const whiskerMax = inFence.length ? Math.max(...inFence) : sorted[sorted.length-1];
+  const outliers = sorted.filter(v=>v<lowerFence || v>upperFence);
+  return {
+    sorted, med, q1, q3, iqr, whiskerMin, whiskerMax, outliers,
+    mean: mean(values), sd: stddevPop(values),
+    min: sorted[0], max: sorted[sorted.length-1]
+  };
+}
+
+function fmt(v, cfg){ return v.toFixed(cfg.decimals) + cfg.symbol; }
+
+/* ===================== COMPARISON TEXT ===================== */
+function buildComparison(A, B, cfg, label1, val1A, val1B, label2, val2A, val2B){
+  const cmp1 = val1A > val1B ? 'higher' : (val1A < val1B ? 'lower' : 'about the same');
+  const cmp2 = val2A > val2B ? 'higher' : (val2A < val2B ? 'lower' : 'about the same');
+
+  const contextAdj = cmp1==='higher' ? cfg.adjHigh : cmp1==='lower' ? cfg.adjLow : `similar in ${cfg.name}`;
+  const spreadAdj = cmp2==='higher' ? 'more variable' : cmp2==='lower' ? 'less variable' : 'similarly variable';
+
+  const part1 = cmp1==='about the same'
+    ? `a ${label1} about the same as Dataset B (${fmt(val1A,cfg)} compared to ${fmt(val1B,cfg)})`
+    : `a ${cmp1} ${label1} than Dataset B (${fmt(val1A,cfg)} compared to ${fmt(val1B,cfg)})`;
+
+  const part2 = cmp2==='about the same'
+    ? `a ${label2} about the same as Dataset B (${fmt(val2A,cfg)} compared to ${fmt(val2B,cfg)})`
+    : `a ${cmp2} ${label2} than Dataset B (${fmt(val2A,cfg)} compared to ${fmt(val2B,cfg)})`;
+
+  const summary = `This means that on average Dataset A is ${contextAdj} and ${spreadAdj} than Dataset B.`;
+
+  return `<p>On average, Dataset A has ${part1} and ${part2}.</p><p class="lead">${summary}</p>`;
+}
+
+/* ===================== BOXPLOT SVG ===================== */
+function boxplotSVG(A, B, cfg){
+  const allVals = [A.min, A.max, B.min, B.max, ...A.outliers, ...B.outliers];
+  const domainMin = Math.min(...allVals);
+  const domainMax = Math.max(...allVals);
+  const pad = Math.max((domainMax-domainMin)*0.1, 1);
+  const dMin = domainMin - pad, dMax = domainMax + pad;
+  const W = 620, H = 118, marginL = 10, marginR = 14;
+  const sx = v => marginL + (v-dMin)/(dMax-dMin) * (W-marginL-marginR);
+
+  function rowSVG(stats, yCenter, color){
+    const boxTop = yCenter-13, boxH = 26;
+    let s = '';
+    s += `<line x1="${sx(stats.whiskerMin)}" y1="${yCenter}" x2="${sx(stats.q1)}" y2="${yCenter}" stroke="${color}" stroke-width="2"/>`;
+    s += `<line x1="${sx(stats.whiskerMax)}" y1="${yCenter}" x2="${sx(stats.q3)}" y2="${yCenter}" stroke="${color}" stroke-width="2"/>`;
+    s += `<line x1="${sx(stats.whiskerMin)}" y1="${yCenter-7}" x2="${sx(stats.whiskerMin)}" y2="${yCenter+7}" stroke="${color}" stroke-width="2"/>`;
+    s += `<line x1="${sx(stats.whiskerMax)}" y1="${yCenter-7}" x2="${sx(stats.whiskerMax)}" y2="${yCenter+7}" stroke="${color}" stroke-width="2"/>`;
+    s += `<rect x="${sx(stats.q1)}" y="${boxTop}" width="${Math.max(sx(stats.q3)-sx(stats.q1),1)}" height="${boxH}" fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-width="2.5"/>`;
+    s += `<line x1="${sx(stats.med)}" y1="${boxTop}" x2="${sx(stats.med)}" y2="${boxTop+boxH}" stroke="${color}" stroke-width="3"/>`;
+    stats.outliers.forEach(v=>{
+      const cx = sx(v), r = 5;
+      s += `<line x1="${cx-r}" y1="${yCenter-r}" x2="${cx+r}" y2="${yCenter+r}" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>`;
+      s += `<line x1="${cx-r}" y1="${yCenter+r}" x2="${cx+r}" y2="${yCenter-r}" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>`;
+    });
+    return s;
+  }
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Patrick Hand, cursive">`;
+  svg += rowSVG(A, 32, 'var(--teal)');
+  svg += rowSVG(B, 82, 'var(--terracotta)');
+  svg += `<line x1="${marginL}" y1="105" x2="${W-marginR}" y2="105" stroke="var(--navy-soft)" stroke-width="1" stroke-dasharray="2,3"/>`;
+  svg += `<text x="${sx(dMin)}" y="118" font-size="11" fill="var(--navy-soft)">${dMin.toFixed(cfg.decimals)}${cfg.symbol}</text>`;
+  svg += `<text x="${sx(dMax)-24}" y="118" font-size="11" fill="var(--navy-soft)">${dMax.toFixed(cfg.decimals)}${cfg.symbol}</text>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+/* ===================== RENDER ===================== */
+function renderChips(containerId, values, letter, cfg){
+  const container = document.getElementById(containerId);
+  container.innerHTML = values.map(v=>
+    `<span class="chip ${letter}">${v.toFixed(cfg.decimals)}</span>`
+  ).join('');
+}
+
+function render(){
+  const { unit, cfg, valuesA, valuesB } = state;
+
+  document.getElementById('unitPill').textContent = unit + ' (' + cfg.name + ')';
+  renderChips('chipsA', valuesA, 'A', cfg);
+  renderChips('chipsB', valuesB, 'B', cfg);
+
+  const A = computeStats(valuesA);
+  const B = computeStats(valuesB);
+  state.statsA = A; state.statsB = B;
+
+  // Median box
+  document.getElementById('medianCards').innerHTML = `
+    <div class="stat-card-line"><span class="lbl">Median</span><span class="valA">${fmt(A.med,cfg)}</span><span class="valB">${fmt(B.med,cfg)}</span></div>
+    <div class="stat-card-line"><span class="lbl">Q1</span><span class="valA">${fmt(A.q1,cfg)}</span><span class="valB">${fmt(B.q1,cfg)}</span></div>
+    <div class="stat-card-line"><span class="lbl">Q3</span><span class="valA">${fmt(A.q3,cfg)}</span><span class="valB">${fmt(B.q3,cfg)}</span></div>
+    <div class="stat-card-line"><span class="lbl">IQR</span><span class="valA">${fmt(A.iqr,cfg)}</span><span class="valB">${fmt(B.iqr,cfg)}</span></div>
+  `;
+  document.getElementById('boxplotWrap').innerHTML = boxplotSVG(A,B,cfg);
+  document.getElementById('medianComparison').innerHTML =
+    buildComparison(A,B,cfg,'median',A.med,B.med,'IQR',A.iqr,B.iqr);
+
+  // Mean box
+  document.getElementById('meanCards').innerHTML = `
+    <div class="stat-card-line"><span class="lbl">Mean</span><span class="valA">${fmt(A.mean,cfg)}</span><span class="valB">${fmt(B.mean,cfg)}</span></div>
+    <div class="stat-card-line"><span class="lbl">Std Dev</span><span class="valA">${fmt(A.sd,cfg)}</span><span class="valB">${fmt(B.sd,cfg)}</span></div>
+    <div class="stat-card-line"><span class="lbl">n</span><span class="valA">${valuesA.length}</span><span class="valB">${valuesB.length}</span></div>
+  `;
+  document.getElementById('meanComparison').innerHTML =
+    buildComparison(A,B,cfg,'mean',A.mean,B.mean,'standard deviation',A.sd,B.sd);
+
+  buildQuiz();
+}
+
+function newDataset(){
+  state = generateState();
+  render();
+}
+
+/* ===================== QUIZ ===================== */
+let quizAnswers = {};
+
+function buildQuiz(){
+  const A = state.statsA, B = state.statsB;
+  quizAnswers = {
+    q1: { correct: A.med > B.med ? 'A' : 'B' },
+    q2: { correct: A.iqr > B.iqr ? 'A' : 'B' },
+    q3: { correct: A.sd > B.sd ? 'A' : 'B' }
+  };
+
+  const container = document.getElementById('quizQuestions');
+  container.innerHTML = `
+    <div class="qblock" data-q="q1">
+      <div class="qtext">1. Based on the median, which dataset has the higher typical value?</div>
+      <label><input type="radio" name="q1" value="A"> Dataset A</label>
+      <label><input type="radio" name="q1" value="B"> Dataset B</label>
+      <div class="feedback" id="fb-q1"></div>
+    </div>
+    <div class="qblock" data-q="q2">
+      <div class="qtext">2. Based on the IQR, which dataset is more spread out (less consistent)?</div>
+      <label><input type="radio" name="q2" value="A"> Dataset A</label>
+      <label><input type="radio" name="q2" value="B"> Dataset B</label>
+      <div class="feedback" id="fb-q2"></div>
+    </div>
+    <div class="qblock" data-q="q3">
+      <div class="qtext">3. Based on the standard deviation, which dataset varies more from its own mean?</div>
+      <label><input type="radio" name="q3" value="A"> Dataset A</label>
+      <label><input type="radio" name="q3" value="B"> Dataset B</label>
+      <div class="feedback" id="fb-q3"></div>
+    </div>
+  `;
+  document.getElementById('scoreLine').textContent = '';
+  document.querySelectorAll('.feedback').forEach(f=>{ f.style.display='none'; f.className='feedback'; });
+}
+
+function checkAnswers(){
+  let score = 0;
+  const explanations = {
+    q1: `Median A = ${fmt(state.statsA.med, state.cfg)}, Median B = ${fmt(state.statsB.med, state.cfg)}.`,
+    q2: `IQR A = ${fmt(state.statsA.iqr, state.cfg)}, IQR B = ${fmt(state.statsB.iqr, state.cfg)}.`,
+    q3: `SD A = ${fmt(state.statsA.sd, state.cfg)}, SD B = ${fmt(state.statsB.sd, state.cfg)}.`
+  };
+
+  ['q1','q2','q3'].forEach(q=>{
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const fb = document.getElementById('fb-'+q);
+    fb.style.display = 'block';
+    if(!selected){
+      fb.className = 'feedback incorrect';
+      fb.textContent = 'Pick an answer before checking. ' + explanations[q];
+      return;
+    }
+    const isCorrect = selected.value === quizAnswers[q].correct;
+    if(isCorrect) score++;
+    fb.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+    fb.textContent = (isCorrect ? '✓ Correct. ' : '✗ Not quite. ') + explanations[q];
+  });
+
+  document.getElementById('scoreLine').textContent = `Score: ${score} / 3`;
+}
+
+/* ===================== EVENTS ===================== */
+document.getElementById('newDataBtn').addEventListener('click', newDataset);
+document.getElementById('openQuizBtn').addEventListener('click', ()=>{
+  buildQuiz();
+  document.getElementById('modalOverlay').classList.add('open');
+});
+document.getElementById('closeQuizBtn').addEventListener('click', ()=>{
+  document.getElementById('modalOverlay').classList.remove('open');
+});
+document.getElementById('modalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'modalOverlay') document.getElementById('modalOverlay').classList.remove('open');
+});
+document.getElementById('checkAnswersBtn').addEventListener('click', checkAnswers);
+
+/* ===================== INIT ===================== */
+newDataset();
+</script>
+</body>
+</html>
