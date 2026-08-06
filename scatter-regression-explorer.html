@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scatter Graphs &amp; Lines of Best Fit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#fbf7ec;
+    --line:#c9d6e3;
+    --ink:#1b2a4a;
+    --ink-soft:#3c4c6b;
+    --teal:#2a9d8f;
+    --teal-dark:#1f746a;
+    --terracotta:#e2725b;
+    --amber:#c9860a;
+    --paper-card:#fffdf7;
+    --shadow: 3px 3px 0 rgba(27,42,74,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Patrick Hand', sans-serif;
+    color:var(--ink);
+    background-color:var(--page);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:26px 26px;
+    font-size:18px;
+  }
+  h1,h2,h3{font-family:'Caveat', cursive; font-weight:700; margin:0 0 6px 0; color:var(--ink);}
+  h1{font-size:2.1rem;}
+  h2{font-size:1.5rem; border-bottom:2px solid var(--ink); display:inline-block; padding-bottom:2px;}
+  .app{display:flex; flex-direction:column; min-height:100vh; padding:14px;}
+
+  /* ---- top bar ---- */
+  .topbar{
+    background:var(--paper-card);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    box-shadow:var(--shadow);
+    padding:10px 16px;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  .topbar h1{margin-right:auto; white-space:nowrap;}
+  .dataset-btns{display:flex; flex-wrap:wrap; gap:8px;}
+  .ds-btn{
+    font-family:'Patrick Hand', sans-serif;
+    font-size:0.95rem;
+    background:var(--page);
+    border:2px solid var(--ink);
+    border-radius:8px;
+    padding:6px 12px;
+    cursor:pointer;
+    color:var(--ink);
+    transition:transform .08s ease;
+  }
+  .ds-btn:hover{transform:translateY(-2px);}
+  .ds-btn.active{background:var(--teal); color:#fff; border-color:var(--teal-dark);}
+  .ds-btn.custom-btn.active{background:var(--terracotta); border-color:#a94a37;}
+
+  /* ---- layout ---- */
+  .layout{
+    display:flex;
+    gap:12px;
+    flex:1;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .card{
+    background:var(--paper-card);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    box-shadow:var(--shadow);
+    padding:12px 14px;
+  }
+
+  /* ---- data panel ---- */
+  .data-panel{flex:0 0 300px; display:flex; flex-direction:column; gap:8px; max-height:calc(100vh - 110px);}
+  .context-text{font-size:0.98rem; color:var(--ink-soft); margin:0 0 4px 0; line-height:1.3;}
+  .table-wrap{overflow:auto; max-height:340px; border:1px solid var(--line); border-radius:6px;}
+  table{border-collapse:collapse; width:100%; font-size:0.95rem;}
+  th,td{border-bottom:1px solid var(--line); padding:4px 8px; text-align:center;}
+  thead th{position:sticky; top:0; background:var(--teal); color:#fff; z-index:1;}
+  tr.sums-row td{font-weight:bold; background:#f1ead6; border-top:2px solid var(--ink);}
+  td input{
+    width:56px; font-family:'Patrick Hand', sans-serif; font-size:0.95rem;
+    border:1px solid var(--line); border-radius:4px; text-align:center; padding:2px;
+    background:#fff;
+  }
+  .table-controls{display:flex; gap:8px;}
+  .small-btn{
+    font-family:'Patrick Hand', sans-serif;
+    background:var(--page); border:2px solid var(--ink); border-radius:6px;
+    padding:4px 10px; cursor:pointer; font-size:0.9rem;
+  }
+  .calc-btn{
+    margin-top:auto;
+    font-family:'Caveat', cursive;
+    font-size:1.3rem; font-weight:700;
+    background:var(--terracotta); color:#fff;
+    border:2px solid #a94a37; border-radius:8px;
+    padding:8px 12px; cursor:pointer;
+    box-shadow:var(--shadow);
+  }
+  .calc-btn:hover{filter:brightness(1.05);}
+
+  /* ---- graph panel ---- */
+  .graph-panel{flex:1 1 460px; min-width:420px; display:flex; flex-direction:column; gap:8px;}
+  #chart{width:100%; height:auto; background:#fffdf9; border:1px solid var(--line); border-radius:8px;}
+  .reading-box{
+    font-size:1rem; min-height:2.6em; line-height:1.35;
+    padding:8px 10px; border:2px dashed var(--amber); border-radius:8px; background:#fffaef;
+  }
+  .reading-box b{color:var(--amber);}
+  .reading-box.interp b{color:var(--teal-dark);}
+  .reading-box.extrap b{color:var(--terracotta);}
+
+  /* ---- calc panel ---- */
+  .calc-panel{flex:0 0 320px; max-height:calc(100vh - 110px); overflow:auto;}
+  .step{margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--line);}
+  .step:last-child{border-bottom:none;}
+  .step .label{font-family:'Caveat', cursive; font-size:1.15rem; color:var(--teal-dark); font-weight:700;}
+  .formula{font-size:1.05rem; margin:3px 0; color:var(--ink);}
+  .result{color:var(--terracotta); font-weight:bold;}
+  .placeholder{color:var(--ink-soft); font-style:italic;}
+  .note-box{
+    margin-top:6px; padding:8px 10px; border-radius:8px;
+    background:#fdeee9; border:2px solid var(--terracotta); font-size:0.95rem; line-height:1.3;
+  }
+  .equation-box{
+    font-family:'Caveat', cursive; font-size:1.6rem; text-align:center;
+    background:#eaf6f4; border:2px solid var(--teal); border-radius:8px;
+    padding:6px; margin:8px 0; color:var(--teal-dark);
+  }
+
+  @media (max-width: 1000px){
+    .data-panel, .calc-panel{flex:1 1 100%; max-height:none;}
+    .graph-panel{flex:1 1 100%;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1>Scatter Graphs &amp; Lines of Best Fit</h1>
+    <div class="dataset-btns" id="datasetBtns"></div>
+  </div>
+
+  <div class="layout">
+    <aside class="card data-panel">
+      <h2 id="datasetTitle">Dataset</h2>
+      <p class="context-text" id="contextText"></p>
+      <div class="table-wrap"><table id="dataTable"></table></div>
+      <div class="table-controls" id="tableControls"></div>
+      <button class="calc-btn" id="calcBtn">Calculate best fit line</button>
+    </aside>
+
+    <section class="card graph-panel">
+      <h2>Scattergraph</h2>
+      <svg id="chart" viewBox="0 0 680 520" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="reading-box" id="readingBox">Once the best fit line is drawn, click anywhere on the graph to read off a predicted value.</div>
+    </section>
+
+    <aside class="card calc-panel">
+      <h2>Working</h2>
+      <div id="calcSteps"><p class="placeholder">Press &ldquo;Calculate best fit line&rdquo; to see the least-squares working, step by step.</p></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ================= DATASETS ================= */
+const DATASETS = {
+  posStrong:{
+    label:"Positive · Strong",
+    title:"Revision time vs test score",
+    context:"Year 10 students recorded how many hours they revised for a topic test, and the percentage score they achieved.",
+    xLabel:"Revision time", xUnit:"hours",
+    yLabel:"Test score", yUnit:"%",
+    points:[{x:0.5,y:32},{x:1,y:38},{x:1.5,y:45},{x:2,y:50},{x:2.5,y:55},{x:3,y:58},{x:4,y:68},{x:5,y:74},{x:6,y:80},{x:7,y:85},{x:8,y:90},{x:9,y:93}]
+  },
+  posWeak:{
+    label:"Positive · Weak",
+    title:"Shoe size vs spelling score",
+    context:"A class recorded each student's shoe size and their score (out of 20) in a spelling test — a classic case where the link is weak.",
+    xLabel:"Shoe size", xUnit:"UK size",
+    yLabel:"Spelling score", yUnit:"/20",
+    points:[{x:4,y:10},{x:5,y:14},{x:5,y:9},{x:6,y:12},{x:6,y:16},{x:7,y:11},{x:7,y:15},{x:8,y:13},{x:8,y:17},{x:9,y:12},{x:9,y:18},{x:10,y:14}]
+  },
+  negStrong:{
+    label:"Negative · Strong",
+    title:"Car age vs value",
+    context:"A garage recorded the age of second-hand cars and their sale value.",
+    xLabel:"Age", xUnit:"years",
+    yLabel:"Value", yUnit:"£1000s",
+    points:[{x:1,y:18},{x:2,y:16},{x:2,y:15.5},{x:3,y:14},{x:4,y:12},{x:5,y:10.5},{x:6,y:9},{x:7,y:7.5},{x:8,y:6},{x:9,y:5},{x:9,y:4.5},{x:10,y:3}]
+  },
+  negWeak:{
+    label:"Negative · Weak",
+    title:"Temperature vs bus passengers",
+    context:"A bus company recorded the midday temperature and the number of passengers (thousands) carried that day.",
+    xLabel:"Temperature", xUnit:"°C",
+    yLabel:"Passengers", yUnit:"thousands",
+    points:[{x:2,y:40},{x:5,y:30},{x:8,y:42},{x:10,y:38},{x:12,y:35},{x:14,y:33},{x:16,y:32},{x:18,y:30},{x:20,y:31},{x:22,y:33},{x:24,y:27},{x:25,y:37}]
+  },
+  nonlinear:{
+    label:"Non-linear",
+    title:"Speed vs braking distance",
+    context:"A driving school recorded a car's speed and the distance it took to brake to a stop. Notice the curve — a straight line may not model this well.",
+    xLabel:"Speed", xUnit:"mph",
+    yLabel:"Braking distance", yUnit:"m",
+    points:[{x:10,y:3},{x:15,y:4.5},{x:20,y:6},{x:25,y:8},{x:30,y:12},{x:35,y:15},{x:40,y:20},{x:45,y:25},{x:50,y:30},{x:55,y:38},{x:60,y:45},{x:65,y:52}],
+    caution:true
+  },
+  custom:{
+    label:"My own data",
+    title:"Custom dataset",
+    context:"Enter your own bivariate data below (type a value into each x and y box), then calculate the line of best fit.",
+    xLabel:"x", xUnit:"",
+    yLabel:"y", yUnit:"",
+    points:[{x:'',y:''},{x:'',y:''},{x:'',y:''},{x:'',y:''},{x:'',y:''},{x:'',y:''}]
+  }
+};
+
+let currentId = 'posStrong';
+let currentPoints = DATASETS.posStrong.points.map(p=>({...p}));
+let calcResult = null; // regression output
+let lastLineGeom = null; // for click-to-read
+
+/* ================= UTIL ================= */
+function fmt(n, dp=2){
+  if(!isFinite(n)) return "—";
+  return n.toLocaleString(undefined,{minimumFractionDigits:dp, maximumFractionDigits:dp});
+}
+function niceNum(range, round){
+  const exponent = Math.floor(Math.log10(range===0?1:range));
+  const fraction = range / Math.pow(10, exponent);
+  let niceFraction;
+  if(round){
+    if(fraction < 1.5) niceFraction = 1;
+    else if(fraction < 3) niceFraction = 2;
+    else if(fraction < 7) niceFraction = 5;
+    else niceFraction = 10;
+  } else {
+    if(fraction <= 1) niceFraction = 1;
+    else if(fraction <= 2) niceFraction = 2;
+    else if(fraction <= 5) niceFraction = 5;
+    else niceFraction = 10;
+  }
+  return niceFraction * Math.pow(10, exponent);
+}
+function niceAxis(min, max, maxTicks=6){
+  if(min===max){ min-=1; max+=1; }
+  const range = niceNum(max-min, false);
+  const step = niceNum(range/(maxTicks-1), true);
+  let niceMin = Math.floor(min/step)*step;
+  let niceMax = Math.ceil(max/step)*step;
+  if(min>=0 && niceMin<0) niceMin = 0;
+  return {min:niceMin, max:niceMax, step};
+}
+function validPoints(pts){
+  return pts.filter(p=>p.x!=='' && p.y!=='' && p.x!==null && p.y!==null && isFinite(+p.x) && isFinite(+p.y))
+             .map(p=>({x:+p.x, y:+p.y}));
+}
+
+/* ================= DATASET SWITCHING ================= */
+function buildTopBar(){
+  const wrap = document.getElementById('datasetBtns');
+  wrap.innerHTML='';
+  Object.keys(DATASETS).forEach(id=>{
+    const btn=document.createElement('button');
+    btn.className='ds-btn'+(id==='custom'?' custom-btn':'')+(id===currentId?' active':'');
+    btn.textContent = DATASETS[id].label;
+    btn.onclick=()=>selectDataset(id);
+    wrap.appendChild(btn);
+  });
+}
+function selectDataset(id){
+  currentId = id;
+  currentPoints = DATASETS[id].points.map(p=>({...p}));
+  calcResult = null; lastLineGeom = null;
+  document.getElementById('datasetTitle').textContent = DATASETS[id].title;
+  document.getElementById('contextText').textContent = DATASETS[id].context;
+  [...document.querySelectorAll('.ds-btn')].forEach((b,i)=>{
+    b.classList.toggle('active', Object.keys(DATASETS)[i]===id);
+  });
+  resetReading();
+  renderTable();
+  renderCalcSteps(true);
+  renderChart();
+}
+
+/* ================= TABLE ================= */
+function renderTable(){
+  const table = document.getElementById('dataTable');
+  const ds = DATASETS[currentId];
+  const editable = currentId==='custom';
+  const showCalc = !!calcResult;
+  let head = `<thead><tr><th>${ds.xLabel}</th><th>${ds.yLabel}</th>`;
+  if(showCalc) head += `<th>xy</th><th>x&sup2;</th>`;
+  head += `</tr></thead>`;
+  let body = '<tbody>';
+  currentPoints.forEach((p,i)=>{
+    if(editable){
+      body += `<tr>
+        <td><input type="number" step="any" value="${p.x}" placeholder="x" data-i="${i}" data-f="x"></td>
+        <td><input type="number" step="any" value="${p.y}" placeholder="y" data-i="${i}" data-f="y"></td>`;
+      if(showCalc){
+        const xv=+p.x, yv=+p.y;
+        const ok = p.x!=='' && p.y!=='' && isFinite(xv) && isFinite(yv);
+        body += `<td>${ok?fmt(xv*yv,1):'—'}</td><td>${ok?fmt(xv*xv,1):'—'}</td>`;
+      }
+      body += `</tr>`;
+    } else {
+      body += `<tr><td>${fmt(p.x,2).replace(/\.00$/,'')}</td><td>${fmt(p.y,2).replace(/\.00$/,'')}</td>`;
+      if(showCalc) body += `<td>${fmt(p.x*p.y,1)}</td><td>${fmt(p.x*p.x,1)}</td>`;
+      body += `</tr>`;
+    }
+  });
+  body += '</tbody>';
+  if(showCalc){
+    const r = calcResult;
+    body += `<tfoot><tr class="sums-row"><td>&Sigma;x = ${fmt(r.sx,1)}</td><td>&Sigma;y = ${fmt(r.sy,1)}</td><td>&Sigma;xy = ${fmt(r.sxy,1)}</td><td>&Sigma;x&sup2; = ${fmt(r.sxx,1)}</td></tr></tfoot>`;
+  }
+  table.innerHTML = head+body;
+
+  if(editable){
+    table.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const i = +e.target.dataset.i, f = e.target.dataset.f;
+        currentPoints[i][f] = e.target.value;
+        const hadResult = !!calcResult;
+        calcResult = null; lastLineGeom=null; resetReading();
+        renderChart();
+        renderCalcSteps(true);
+        if(hadResult){
+          // a calculated result just became stale — rebuild the table to drop the xy/x² columns
+          const focusInfo = {i, f};
+          renderTable();
+          const toFocus = table.querySelector(`input[data-i="${focusInfo.i}"][data-f="${focusInfo.f}"]`);
+          if(toFocus){ toFocus.focus(); const v=toFocus.value; toFocus.setSelectionRange(v.length, v.length); }
+        }
+        // otherwise, no extra columns exist yet — leave the table as is to preserve focus
+      });
+    });
+  }
+
+  const controls = document.getElementById('tableControls');
+  controls.innerHTML='';
+  if(editable){
+    const addBtn=document.createElement('button');
+    addBtn.className='small-btn'; addBtn.textContent='+ Add row';
+    addBtn.onclick=()=>{ currentPoints.push({x:'',y:''}); renderTable(); };
+    const delBtn=document.createElement('button');
+    delBtn.className='small-btn'; delBtn.textContent='– Remove last row';
+    delBtn.onclick=()=>{ if(currentPoints.length>2){ currentPoints.pop(); calcResult=null; renderTable(); renderChart(); renderCalcSteps(true);} };
+    controls.appendChild(addBtn); controls.appendChild(delBtn);
+  }
+}
+
+/* ================= REGRESSION ================= */
+function computeRegression(points){
+  const n = points.length;
+  const sx = points.reduce((s,p)=>s+p.x,0);
+  const sy = points.reduce((s,p)=>s+p.y,0);
+  const sxy = points.reduce((s,p)=>s+p.x*p.y,0);
+  const sxx = points.reduce((s,p)=>s+p.x*p.x,0);
+  const syy = points.reduce((s,p)=>s+p.y*p.y,0);
+  const xbar = sx/n, ybar = sy/n;
+  const Sxy = sxy - (sx*sy)/n;
+  const Sxx = sxx - (sx*sx)/n;
+  const Syy = syy - (sy*sy)/n;
+  const b = Sxy/Sxx;
+  const a = ybar - b*xbar;
+  const r = Sxy/Math.sqrt(Sxx*Syy);
+  return {n, sx, sy, sxy, sxx, syy, xbar, ybar, Sxy, Sxx, Syy, b, a, r};
+}
+
+document.getElementById('calcBtn').addEventListener('click', ()=>{
+  const pts = validPoints(currentPoints);
+  if(pts.length < 2){
+    alert('Enter at least two valid (x, y) points first.');
+    return;
+  }
+  calcResult = computeRegression(pts);
+  renderTable();
+  renderChart();
+  renderCalcSteps(false);
+});
+
+/* ================= CALC STEPS PANEL ================= */
+function renderCalcSteps(placeholderOnly){
+  const el = document.getElementById('calcSteps');
+  if(placeholderOnly || !calcResult){
+    el.innerHTML = '<p class="placeholder">Press &ldquo;Calculate best fit line&rdquo; to see the least-squares working, step by step.</p>';
+    return;
+  }
+  const r = calcResult;
+  const bSign = r.b>=0 ? '+' : '&minus;';
+  const bAbs = Math.abs(r.b);
+  const strength = Math.abs(r.r) >= 0.8 ? 'strong' : (Math.abs(r.r) >= 0.5 ? 'moderate' : 'weak');
+  const direction = r.r >= 0 ? 'positive' : 'negative';
+
+  el.innerHTML = `
+    <div class="step">
+      <div class="label">1 · Totals (n = ${r.n})</div>
+      <div class="formula">&Sigma;x = ${fmt(r.sx,1)} &nbsp; &Sigma;y = ${fmt(r.sy,1)}</div>
+      <div class="formula">&Sigma;xy = ${fmt(r.sxy,1)} &nbsp; &Sigma;x&sup2; = ${fmt(r.sxx,1)}</div>
+    </div>
+    <div class="step">
+      <div class="label">2 · S<sub>xy</sub></div>
+      <div class="formula">S<sub>xy</sub> = &Sigma;xy &minus; (&Sigma;x)(&Sigma;y) / n</div>
+      <div class="formula">= ${fmt(r.sxy,1)} &minus; (${fmt(r.sx,1)} &times; ${fmt(r.sy,1)}) / ${r.n}</div>
+      <div class="formula result">S<sub>xy</sub> = ${fmt(r.Sxy,3)}</div>
+    </div>
+    <div class="step">
+      <div class="label">3 · S<sub>xx</sub></div>
+      <div class="formula">S<sub>xx</sub> = &Sigma;x&sup2; &minus; (&Sigma;x)&sup2; / n</div>
+      <div class="formula">= ${fmt(r.sxx,1)} &minus; (${fmt(r.sx,1)})&sup2; / ${r.n}</div>
+      <div class="formula result">S<sub>xx</sub> = ${fmt(r.Sxx,3)}</div>
+    </div>
+    <div class="step">
+      <div class="label">4 · Gradient, b</div>
+      <div class="formula">b = S<sub>xy</sub> / S<sub>xx</sub> = ${fmt(r.Sxy,3)} / ${fmt(r.Sxx,3)}</div>
+      <div class="formula result">b = ${fmt(r.b,3)}</div>
+    </div>
+    <div class="step">
+      <div class="label">5 · Intercept, a</div>
+      <div class="formula">a = &#563; &minus; b&#772;x&nbsp; (using x&#772; = ${fmt(r.xbar,2)}, &#563; = ${fmt(r.ybar,2)})</div>
+      <div class="formula">= ${fmt(r.ybar,2)} &minus; (${fmt(r.b,3)} &times; ${fmt(r.xbar,2)})</div>
+      <div class="formula result">a = ${fmt(r.a,3)}</div>
+    </div>
+    <div class="equation-box">y = ${fmt(r.a,2)} ${bSign} ${fmt(bAbs,2)}x</div>
+    <div class="step">
+      <div class="label">6 · Correlation coefficient, r</div>
+      <div class="formula">r = S<sub>xy</sub> / &radic;(S<sub>xx</sub> S<sub>yy</sub>)</div>
+      <div class="formula result">r = ${fmt(r.r,3)} &nbsp;→ ${strength} ${direction} correlation</div>
+    </div>
+    ${DATASETS[currentId].caution ? `<div class="note-box"><b>Careful:</b> the points curve rather than following a straight line. A line of best fit isn't a good model here, even though the calculation still "works" — always look at the shape of the scatter first.</div>` : ''}
+    <div class="note-box" style="background:#eaf6f4;border-color:var(--teal);">The line always passes through the mean point (x&#772;, &#563;) = (${fmt(r.xbar,2)}, ${fmt(r.ybar,2)}), shown as a diamond on the graph. Click on the line to read off a predicted value.</div>
+  `;
+}
+
+/* ================= CHART ================= */
+const NS = 'http://www.w3.org/2000/svg';
+const MARGIN = {left:66, right:24, top:20, bottom:64};
+const VB_W = 680, VB_H = 520;
+
+function el(tag, attrs){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function renderChart(){
+  const svg = document.getElementById('chart');
+  svg.innerHTML='';
+  const ds = DATASETS[currentId];
+  const pts = validPoints(currentPoints);
+  if(pts.length===0){
+    const msg = el('text',{x:VB_W/2,y:VB_H/2,'text-anchor':'middle',fill:'var(--ink-soft)','font-family':'Patrick Hand','font-size':18});
+    msg.textContent = 'Enter at least two (x, y) values to see the scattergraph.';
+    svg.appendChild(msg);
+    return;
+  }
+  const dataXmin = Math.min(...pts.map(p=>p.x)), dataXmax = Math.max(...pts.map(p=>p.x));
+  const dataYmin = Math.min(...pts.map(p=>p.y)), dataYmax = Math.max(...pts.map(p=>p.y));
+  const axX = niceAxis(dataXmin, dataXmax);
+  const axY = niceAxis(dataYmin, dataYmax);
+
+  const plotW = VB_W - MARGIN.left - MARGIN.right;
+  const plotH = VB_H - MARGIN.top - MARGIN.bottom;
+
+  const xScale = x => MARGIN.left + (x-axX.min)/(axX.max-axX.min) * plotW;
+  const yScale = y => MARGIN.top + plotH - (y-axY.min)/(axY.max-axY.min) * plotH;
+
+  // axes
+  svg.appendChild(el('line',{x1:MARGIN.left,y1:MARGIN.top,x2:MARGIN.left,y2:MARGIN.top+plotH,stroke:'var(--ink)','stroke-width':2}));
+  svg.appendChild(el('line',{x1:MARGIN.left,y1:MARGIN.top+plotH,x2:MARGIN.left+plotW,y2:MARGIN.top+plotH,stroke:'var(--ink)','stroke-width':2}));
+
+  // ticks x
+  for(let v=axX.min; v<=axX.max+1e-9; v+=axX.step){
+    const px = xScale(v);
+    svg.appendChild(el('line',{x1:px,y1:MARGIN.top+plotH,x2:px,y2:MARGIN.top+plotH+6,stroke:'var(--ink)','stroke-width':1.5}));
+    const t = el('text',{x:px,y:MARGIN.top+plotH+22,'text-anchor':'middle','font-family':'Patrick Hand','font-size':13,fill:'var(--ink)'});
+    t.textContent = fmt(v,0).replace(/\.0$/,'');
+    svg.appendChild(t);
+  }
+  // ticks y
+  for(let v=axY.min; v<=axY.max+1e-9; v+=axY.step){
+    const py = yScale(v);
+    svg.appendChild(el('line',{x1:MARGIN.left-6,y1:py,x2:MARGIN.left,y2:py,stroke:'var(--ink)','stroke-width':1.5}));
+    const t = el('text',{x:MARGIN.left-10,y:py+4,'text-anchor':'end','font-family':'Patrick Hand','font-size':13,fill:'var(--ink)'});
+    t.textContent = fmt(v,0).replace(/\.0$/,'');
+    svg.appendChild(t);
+  }
+
+  // axis labels
+  const xl = el('text',{x:MARGIN.left+plotW/2, y:VB_H-10,'text-anchor':'middle','font-family':'Caveat','font-size':18,fill:'var(--ink)'});
+  xl.textContent = `${ds.xLabel}${ds.xUnit? ' ('+ds.xUnit+')':''}`;
+  svg.appendChild(xl);
+  const yl = el('text',{x:16, y:MARGIN.top+plotH/2,'text-anchor':'middle','font-family':'Caveat','font-size':18,fill:'var(--ink)', transform:`rotate(-90 16 ${MARGIN.top+plotH/2})`});
+  yl.textContent = `${ds.yLabel}${ds.yUnit? ' ('+ds.yUnit+')':''}`;
+  svg.appendChild(yl);
+
+  // best fit line
+  lastLineGeom = null;
+  if(calcResult){
+    const {a,b} = calcResult;
+    const x0=axX.min, x1=axX.max, y0=axY.min, y1=axY.max;
+    function yAt(x){return a+b*x;}
+    function xAt(y){return (y-a)/b;}
+    let cands=[];
+    const yl0=yAt(x0), yl1=yAt(x1);
+    if(yl0>=y0-1e-9 && yl0<=y1+1e-9) cands.push([x0,yl0]);
+    if(yl1>=y0-1e-9 && yl1<=y1+1e-9) cands.push([x1,yl1]);
+    if(b!==0){
+      const xb0=xAt(y0), xb1=xAt(y1);
+      if(xb0>=x0-1e-9 && xb0<=x1+1e-9) cands.push([xb0,y0]);
+      if(xb1>=x0-1e-9 && xb1<=x1+1e-9) cands.push([xb1,y1]);
+    }
+    cands.sort((p,q)=>p[0]-q[0]);
+    if(cands.length>=2){
+      const P0=cands[0], P1=cands[cands.length-1];
+      lastLineGeom = {a,b,xLo:P0[0],xHi:P1[0]};
+      // full extended line, dashed (extrapolation zone)
+      svg.appendChild(el('line',{x1:xScale(P0[0]),y1:yScale(P0[1]),x2:xScale(P1[0]),y2:yScale(P1[1]),
+        stroke:'var(--terracotta)','stroke-width':2,'stroke-dasharray':'6 5'}));
+      // solid segment across the data range (interpolation zone)
+      const solidXlo = Math.max(P0[0], dataXmin), solidXhi = Math.min(P1[0], dataXmax);
+      if(solidXlo < solidXhi){
+        svg.appendChild(el('line',{x1:xScale(solidXlo),y1:yScale(yAt(solidXlo)),x2:xScale(solidXhi),y2:yScale(yAt(solidXhi)),
+          stroke:'var(--teal-dark)','stroke-width':3}));
+      }
+      // mean point
+      const mx=xScale(calcResult.xbar), my=yScale(calcResult.ybar);
+      svg.appendChild(el('line',{x1:mx,y1:MARGIN.top,x2:mx,y2:MARGIN.top+plotH,stroke:'var(--amber)','stroke-width':1,'stroke-dasharray':'2 4',opacity:0.5}));
+      svg.appendChild(el('line',{x1:MARGIN.left,y1:my,x2:MARGIN.left+plotW,y2:my,stroke:'var(--amber)','stroke-width':1,'stroke-dasharray':'2 4',opacity:0.5}));
+      const diamond = el('path',{d:`M ${mx} ${my-7} L ${mx+7} ${my} L ${mx} ${my+7} L ${mx-7} ${my} Z`, fill:'var(--amber)', stroke:'var(--ink)','stroke-width':1});
+      svg.appendChild(diamond);
+      const mlabel = el('text',{x:mx+10,y:my-8,'font-family':'Caveat','font-size':15,fill:'var(--amber)'});
+      mlabel.textContent = `(x̄, ȳ)`;
+      svg.appendChild(mlabel);
+    }
+  }
+
+  // scatter points
+  pts.forEach(p=>{
+    const c = el('circle',{cx:xScale(p.x), cy:yScale(p.y), r:5.5, fill:'var(--teal)', stroke:'var(--ink)','stroke-width':1.3});
+    svg.appendChild(c);
+  });
+
+  // click-to-read layer
+  const clickRect = el('rect',{x:MARGIN.left,y:MARGIN.top,width:plotW,height:plotH,fill:'transparent',style:'cursor:crosshair'});
+  clickRect.addEventListener('click', (evt)=>{
+    if(!calcResult || !lastLineGeom){
+      setReading('Calculate the best fit line first, then click on the graph to read a predicted value.', null);
+      return;
+    }
+    const box = svg.getBoundingClientRect();
+    const scaleX = VB_W/box.width, scaleY = VB_H/box.height;
+    const svgX = (evt.clientX-box.left)*scaleX;
+    let xVal = axX.min + (svgX-MARGIN.left)/plotW * (axX.max-axX.min);
+    const lo=Math.min(lastLineGeom.xLo,lastLineGeom.xHi), hi=Math.max(lastLineGeom.xLo,lastLineGeom.xHi);
+    xVal = Math.max(lo, Math.min(hi, xVal));
+    const yVal = lastLineGeom.a + lastLineGeom.b*xVal;
+
+    // marker
+    const mx=xScale(xVal), my=yScale(yVal);
+    const guideX = el('line',{x1:mx,y1:my,x2:mx,y2:MARGIN.top+plotH,stroke:'var(--terracotta)','stroke-width':1.5,'stroke-dasharray':'3 3'});
+    const guideY = el('line',{x1:MARGIN.left,y1:my,x2:mx,y2:my,stroke:'var(--terracotta)','stroke-width':1.5,'stroke-dasharray':'3 3'});
+    const mk = el('circle',{cx:mx,cy:my,r:6,fill:'var(--terracotta)',stroke:'var(--ink)','stroke-width':1.5});
+    svg.appendChild(guideX); svg.appendChild(guideY); svg.appendChild(mk);
+
+    const isInterp = xVal >= dataXmin-1e-9 && xVal <= dataXmax+1e-9;
+    const ds2 = DATASETS[currentId];
+    const xU = ds2.xUnit? ' '+ds2.xUnit : '';
+    const yU = ds2.yUnit? ' '+ds2.yUnit : '';
+    if(isInterp){
+      setReading(`At x = ${fmt(xVal,2)}${xU}, the line predicts y ≈ ${fmt(yVal,2)}${yU}. This is <b>interpolation</b> — the x-value lies within the range of the data collected, so this is a reasonably safe estimate.`, 'interp');
+    } else {
+      setReading(`At x = ${fmt(xVal,2)}${xU}, the line predicts y ≈ ${fmt(yVal,2)}${yU}. This is <b>extrapolation</b> — the x-value lies outside the range of the data collected, so treat this prediction with caution.`, 'extrap');
+    }
+  });
+  svg.appendChild(clickRect);
+}
+
+function setReading(html, mode){
+  const box = document.getElementById('readingBox');
+  box.className = 'reading-box' + (mode? ' '+mode : '');
+  box.innerHTML = html;
+}
+function resetReading(){
+  setReading('Once the best fit line is drawn, click anywhere on the graph to read off a predicted value.', null);
+}
+
+/* ================= INIT ================= */
+buildTopBar();
+selectDataset('posStrong');
+</script>
+</body>
+</html>
