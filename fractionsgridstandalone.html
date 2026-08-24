@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adding Fractions on a Grid</title>
+<!--
+  Standalone offline build: no external font or network requests. Type
+  falls back to each device's own system fonts (a rounded sans for body
+  text, a handwriting-style font for the decorative accents) instead of
+  the Google-hosted Karla / Caveat used in the online version, so this
+  file renders identically with wifi off, on a school network, or on an
+  air-gapped iPad.
+-->
+<style>
+  :root{
+    --paper: #faf6ec;
+    --paper-card: #fffdf7;
+    --grid-line: rgba(58, 96, 156, 0.16);
+    --grid-line-strong: rgba(58, 96, 156, 0.30);
+    --margin-red: #c0433f;
+    --ink: #26313d;
+    --ink-soft: #5d6b78;
+    --ink-faint: #8b9aa6;
+    --stage-bg: #ffffff;
+    --stage-border: #e4dcc8;
+    --line-a: #2e5da6;
+    --line-a-soft: rgba(46, 93, 166, 0.14);
+    --line-c: #c2661c;
+    --line-c-soft: rgba(194, 102, 28, 0.14);
+    --highlight: #7c4dbf;
+    --highlight-soft: rgba(124, 77, 191, 0.14);
+    --shadow: 0 1px 2px rgba(38, 49, 61, 0.06), 0 8px 24px -12px rgba(38, 49, 61, 0.18);
+    --focus-ring: #2e5da6;
+  }
+
+  /* This page commits to a single look — a cream squared exercise book —
+     regardless of the viewer's device theme, by design. */
+
+  *{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: clamp(14px, 3vw, 36px);
+  }
+
+  .sheet{
+    max-width: 900px;
+    margin: 0 auto;
+    background:
+      repeating-linear-gradient(var(--grid-line) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 34px),
+      var(--paper-card);
+    border: 1px solid var(--stage-border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: clamp(18px, 4vw, 40px) clamp(18px, 5vw, 44px) clamp(24px, 4vw, 40px);
+    position: relative;
+    overflow: hidden;
+  }
+  .sheet::before{
+    content:"";
+    position:absolute; top:0; bottom:0; left: clamp(38px, 9vw, 58px);
+    width: 2px;
+    background: var(--margin-red);
+    opacity: 0.55;
+  }
+
+  header.intro{
+    position: relative;
+    padding-left: clamp(20px, 5vw, 34px);
+    margin-bottom: clamp(18px, 3vw, 28px);
+  }
+  h1{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.7rem, 3.6vw, 2.3rem);
+    line-height: 1.1;
+    margin: 0 0 6px;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .subtitle{
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: clamp(0.92rem, 1.6vw, 1.02rem);
+    max-width: 62ch;
+    line-height: 1.45;
+  }
+
+  main{
+    position: relative;
+    padding-left: clamp(20px, 5vw, 34px);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(18px, 3vw, 26px);
+  }
+
+  /* ---------- fraction builder ---------- */
+  .builder{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: clamp(10px, 2.4vw, 18px);
+  }
+  .fraction-card{
+    background: var(--stage-bg);
+    border: 1.5px solid var(--stage-border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow);
+  }
+  .fraction-card.card-a{ border-top: 4px solid var(--line-a); }
+  .fraction-card.card-c{ border-top: 4px solid var(--line-c); }
+
+  /* a fraction with a left/right arrow flanking its numerator, and another
+     pair flanking its denominator — the whole thing IS the control */
+  .frac-stepper{
+    display: grid;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    justify-items: center;
+    row-gap: 3px;
+    column-gap: 7px;
+  }
+  .frac-num, .frac-den{
+    min-width: 1.1ch;
+    text-align: center;
+    font-weight: 800;
+    font-size: 1.5rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-a .frac-num, .card-a .frac-den{ color: var(--line-a); }
+  .card-c .frac-num, .card-c .frac-den{ color: var(--line-c); }
+
+  .frac-bar-spacer{ width: 1px; height: 1px; }
+  .frac-bar{
+    width: 100%;
+    height: 3px;
+    border-radius: 2px;
+    align-self: center;
+  }
+  .card-a .frac-bar{ background: var(--line-a); }
+  .card-c .frac-bar{ background: var(--line-c); }
+
+  .step-btn{
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    border: 1.5px solid var(--stage-border);
+    background: var(--paper-card);
+    color: var(--ink);
+    font-size: 1rem;
+    line-height: 1;
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background .15s ease, transform .1s ease;
+    flex-shrink: 0;
+  }
+  .step-btn:hover{ background: var(--grid-line-strong); }
+  .step-btn:active{ transform: scale(0.92); }
+  .step-btn:disabled{ opacity: 0.35; cursor: default; }
+  .step-btn:disabled:active{ transform:none; }
+
+  .frac-display{
+    display:inline-flex; flex-direction:column; align-items:center; line-height:1.05;
+    font-weight:700; font-variant-numeric: tabular-nums;
+  }
+  .frac-display .num{ padding: 0 4px 3px; border-bottom: 2.5px solid currentColor; }
+  .frac-display .den{ padding: 3px 4px 0; }
+
+  .plus-sign, .eq-sign{
+    font-family: "Segoe Print", "Bradley Hand", "Noteworthy", "Comic Sans MS", cursive;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    padding: 0 2px;
+  }
+
+  .answer-card{
+    background: var(--highlight-soft);
+    border: 1.5px dashed var(--highlight);
+    border-radius: 12px;
+    padding: 10px 18px;
+    display:flex; align-items:center; gap:10px;
+    min-width: 108px;
+    justify-content:center;
+    box-shadow: var(--shadow);
+  }
+  .answer-card .frac-display{ color: var(--highlight); font-size: 1.15rem; }
+  .answer-card .placeholder{
+    font-family: "Segoe Print", "Bradley Hand", "Noteworthy", "Comic Sans MS", cursive;
+    font-size: 1.6rem;
+    color: var(--ink-faint);
+  }
+  .answer-card .mixed{
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-left: 4px;
+    font-weight: 500;
+  }
+
+  /* wraps the graph + numeric panel; a plain pass-through box on narrow /
+     portrait screens, becomes a two-column layout in the landscape rule below */
+  .workspace{ display: contents; }
+
+  /* ---------- stage (graph) ---------- */
+  .stage{
+    background: var(--stage-bg);
+    border: 1.5px solid var(--stage-border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: clamp(10px, 2.2vw, 18px);
+  }
+  .graph-wrap{
+    width: 100%;
+    max-height: 78vh;
+    margin: 0 auto;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--paper-card);
+    border: 1px solid var(--stage-border);
+  }
+  /* the wrapper's aspect-ratio is set per render (in JS) to match the
+     graph's true data extent, so the box is always exactly the right
+     shape for its content — no wasted letterboxing, no distortion — while
+     the SVG's own viewBox keeps the grid's units square. */
+  svg#graph{ width:100%; height:100%; display:block; }
+
+  #graph line, #graph path{ vector-effect: non-scaling-stroke; }
+  .gridline{ stroke: var(--grid-line); stroke-width: 1; }
+  .axis-line{ stroke: var(--ink-faint); stroke-width: 1.6; }
+  .tick-label{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: var(--ink-soft); font-weight:800; }
+  .axis-caption{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: var(--ink-soft); font-weight:800; letter-spacing: 0.02em; }
+
+  .guide-line{ stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 2 2.4; opacity: 0.6; }
+  .ray-solid{ stroke-width: 2.4; fill:none; }
+  .ray-dashed{ stroke-width: 2; fill:none; stroke-dasharray: 3 2.6; opacity: 0.85; }
+  .ray-a{ stroke: var(--line-a); }
+  .ray-c{ stroke: var(--line-c); }
+  .ray-sum{ stroke: var(--highlight); }
+
+  /* stroke-width is set per-circle in JS, proportional to its radius —
+     a fixed width would swamp the small markers and wash their fill out */
+  .pt{ stroke: var(--stage-bg); }
+  .pt-a{ fill: var(--line-a); }
+  .pt-c{ fill: var(--line-c); }
+  .pt-sum{ fill: var(--highlight); }
+
+  .pt-echo{ fill: var(--stage-bg); }
+  .pt-echo-a{ stroke: var(--line-a); }
+  .pt-echo-c{ stroke: var(--line-c); }
+
+  .bar-a{ fill: var(--line-a); opacity: 0.28; }
+  .bar-c{ fill: var(--line-c); opacity: 0.28; }
+  .bar-a-line{ stroke: var(--line-a); stroke-width: 2.2; }
+  .bar-c-line{ stroke: var(--line-c); stroke-width: 2.2; }
+
+  .lbl{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-weight: 800; }
+  .lbl-a{ fill: var(--line-a); }
+  .lbl-c{ fill: var(--line-c); }
+  .lbl-sum{ fill: var(--highlight); }
+  .lbl-soft{ fill: var(--ink-soft); font-weight:600; }
+
+  .back-arrow{ stroke: var(--highlight); stroke-width: 2.4; stroke-dasharray: 1 2.4; fill:none; }
+
+  .layer{ transition: opacity .35s ease; }
+  .layer.hidden{ opacity: 0; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce){ .layer{ transition:none; } }
+
+  .stage-controls{
+    display:flex; align-items:center; justify-content:center;
+    gap: 14px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .nav-btn{
+    background: var(--ink);
+    color: var(--paper-card);
+    border: none;
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    font-size: 0.92rem;
+    cursor: pointer;
+    touch-action: manipulation;
+    min-height: 44px;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .nav-btn:disabled{ opacity: 0.3; cursor:default; }
+  .nav-btn:active:not(:disabled){ transform: scale(0.97); }
+  .nav-btn.ghost{
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--stage-border);
+  }
+
+  .dots{ display:flex; gap:8px; align-items:center; }
+  .dot{
+    width: 28px; height: 28px; padding: 9px;
+    border-radius:50%;
+    background: var(--stage-border);
+    background-clip: content-box;
+    border: none; cursor:pointer; touch-action: manipulation;
+  }
+  .dot.active{ background: var(--highlight); }
+
+  /* ---------- numeric method panel ---------- */
+  .numeric-panel{
+    background: var(--stage-bg);
+    border: 1.5px solid var(--stage-border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: clamp(16px, 3vw, 24px) clamp(16px, 4vw, 28px);
+  }
+  .numeric-panel h2{
+    font-family: "Segoe Print", "Bradley Hand", "Noteworthy", "Comic Sans MS", cursive;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  .numeric-sub{
+    margin: 0 0 14px;
+    color: var(--ink-soft);
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+  ol.steps{
+    list-style: none;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  ol.steps li{
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 10px;
+    align-items: start;
+    opacity: 0.28;
+    transition: opacity .3s ease;
+  }
+  ol.steps li.revealed{ opacity: 1; }
+  @media (prefers-reduced-motion: reduce){ ol.steps li{ transition:none; } }
+  .badge{
+    width: 26px; height: 26px; border-radius: 50%;
+    display:flex; align-items:center; justify-content:center;
+    font-weight: 700; font-size: 0.82rem;
+    background: var(--grid-line-strong);
+    color: var(--ink-soft);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  li.revealed .badge{ background: var(--highlight); color: #fff; }
+  .step-body{ font-size: 0.94rem; line-height: 1.5; }
+  .step-title{ font-weight: 700; color: var(--ink); }
+  .step-eq{
+    display:block;
+    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+  }
+  .step-eq .hl-a{ color: var(--line-a); font-weight:700; }
+  .step-eq .hl-c{ color: var(--line-c); font-weight:700; }
+  .step-eq .hl-sum{ color: var(--highlight); font-weight:700; }
+  .step-tag{
+    display:inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    border: 1px solid var(--stage-border);
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin-top: 5px;
+  }
+
+  footer.note{
+    padding-left: clamp(20px, 5vw, 34px);
+    margin-top: clamp(14px, 2.5vw, 20px);
+    color: var(--ink-faint);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  :focus-visible{ outline: 2.5px solid var(--focus-ring); outline-offset: 2px; }
+
+  @media (min-width: 760px){
+    .builder{ justify-content: center; }
+  }
+
+  /* iPad in landscape (and similarly wide, short viewports): put the grid
+     and the numeric working side by side instead of stacking them, so the
+     whole tool reads on one screen without scrolling past the fraction
+     builder. */
+  @media (min-width: 880px) and (orientation: landscape){
+    body{ padding: clamp(6px, 1.2vw, 14px); }
+    .sheet{ max-width: 1360px; padding: clamp(10px, 1.6vh, 18px) clamp(18px, 2.6vw, 32px) clamp(8px, 1.2vh, 14px); }
+    header.intro{ margin-bottom: clamp(6px, 1vh, 10px); }
+    h1{ font-size: clamp(1.5rem, 2.6vh, 2.1rem); margin-bottom: 3px; }
+    header.intro .subtitle{ max-width: 100ch; font-size: clamp(0.82rem, 1.5vh, 0.94rem); line-height: 1.35; }
+    main{ gap: clamp(8px, 1.2vh, 12px); }
+    .builder{ gap: clamp(8px, 1.4vw, 16px); }
+    .fraction-card{ padding: 6px 12px; }
+    .frac-num, .frac-den{ font-size: 1.25rem; }
+    .step-btn{ width: 32px; height: 32px; }
+    .plus-sign, .eq-sign{ font-size: 1.8rem; }
+    .answer-card{ padding: 6px 16px; }
+
+    .workspace{
+      display: grid;
+      grid-template-columns: minmax(0, 1.28fr) minmax(0, 0.72fr);
+      align-items: stretch;
+      gap: clamp(12px, 1.8vw, 20px);
+    }
+    .stage{ padding: clamp(8px, 1.2vw, 12px); display: flex; flex-direction: column; justify-content: center; }
+    .graph-wrap{ max-height: 60vh; flex: 1 1 auto; min-height: 0; }
+    .stage-controls{ margin-top: 6px; }
+
+    .numeric-panel{
+      position: relative;
+      max-height: calc(42vh + 118px);
+      overflow-y: auto;
+      padding: clamp(10px, 1.4vw, 14px);
+    }
+    .numeric-panel::after{
+      content: "";
+      position: sticky;
+      display: block;
+      left: 0; right: 0; bottom: -1px; height: 22px; margin-top: -22px;
+      background: linear-gradient(to bottom, transparent, var(--stage-bg));
+      pointer-events: none;
+    }
+    .numeric-panel h2{ font-size: 1.2rem; margin-bottom: 1px; }
+    .numeric-sub{ margin-bottom: 6px; font-size: 0.79rem; line-height: 1.28; }
+    ol.steps{ gap: 5px; }
+    ol.steps li{ font-size: 0.9rem; }
+    .step-body{ font-size: 0.86rem; }
+    .step-tag{ margin-top: 3px; font-size: 0.64rem; padding: 0 7px; }
+
+    footer.note{ display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header class="intro">
+    <h1>Adding Fractions on a Grid</h1>
+    <p class="subtitle">Step through the method below, then compare it with the numeric working.</p>
+  </header>
+
+  <main>
+    <section class="builder" aria-label="Choose two fractions to add">
+      <div class="fraction-card card-a">
+        <div class="frac-stepper">
+          <button class="step-btn" data-action="dec-num-a" aria-label="Decrease first numerator">◀</button>
+          <span class="frac-num" id="show-num-a">1</span>
+          <button class="step-btn" data-action="inc-num-a" aria-label="Increase first numerator">▶</button>
+
+          <span class="frac-bar-spacer" aria-hidden="true"></span>
+          <span class="frac-bar" aria-hidden="true"></span>
+          <span class="frac-bar-spacer" aria-hidden="true"></span>
+
+          <button class="step-btn" data-action="dec-den-a" aria-label="Decrease first denominator">◀</button>
+          <span class="frac-den" id="show-den-a">4</span>
+          <button class="step-btn" data-action="inc-den-a" aria-label="Increase first denominator">▶</button>
+        </div>
+      </div>
+
+      <span class="plus-sign" aria-hidden="true">+</span>
+
+      <div class="fraction-card card-c">
+        <div class="frac-stepper">
+          <button class="step-btn" data-action="dec-num-c" aria-label="Decrease second numerator">◀</button>
+          <span class="frac-num" id="show-num-c">1</span>
+          <button class="step-btn" data-action="inc-num-c" aria-label="Increase second numerator">▶</button>
+
+          <span class="frac-bar-spacer" aria-hidden="true"></span>
+          <span class="frac-bar" aria-hidden="true"></span>
+          <span class="frac-bar-spacer" aria-hidden="true"></span>
+
+          <button class="step-btn" data-action="dec-den-c" aria-label="Decrease second denominator">◀</button>
+          <span class="frac-den" id="show-den-c">6</span>
+          <button class="step-btn" data-action="inc-den-c" aria-label="Increase second denominator">▶</button>
+        </div>
+      </div>
+
+      <span class="eq-sign" aria-hidden="true">=</span>
+
+      <div class="answer-card" id="answer-card">
+        <span class="placeholder" id="answer-placeholder">?</span>
+        <div class="frac-display" id="answer-frac" style="display:none">
+          <span class="num" id="answer-num"></span>
+          <span class="den" id="answer-den"></span>
+        </div>
+        <span class="mixed" id="answer-mixed"></span>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="stage" aria-label="Coordinate grid diagram">
+        <div class="graph-wrap">
+          <svg id="graph" viewBox="0 0 20 20" role="img" aria-label="Coordinate grid showing fraction addition"></svg>
+        </div>
+        <div class="stage-controls">
+          <button class="nav-btn ghost" id="btn-back" type="button">◀ Back</button>
+          <div class="dots" id="dots" role="tablist" aria-label="Step navigation"></div>
+          <button class="nav-btn" id="btn-next" type="button">Next ▶</button>
+        </div>
+      </section>
+
+      <section class="numeric-panel" aria-label="Numeric method">
+        <h2>The numeric method</h2>
+        <p class="numeric-sub">The same five moves, written as arithmetic. Each line lights up with its matching step on the grid above.</p>
+        <ol class="steps" id="numeric-steps"></ol>
+      </section>
+    </div>
+  </main>
+
+  <footer class="note">Denominators run 2–9, numerators are kept smaller than their denominator. Every point on a line through the origin is an equivalent fraction — that's the whole method in one sentence.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("graph");
+  const $ = (id) => document.getElementById(id);
+
+  const state = { a: 1, b: 4, c: 1, d: 6, step: 0 };
+  const MAX_STEP = 4;
+
+  function gcd(x, y){
+    x = Math.abs(x); y = Math.abs(y);
+    while (y){ const t = y; y = x % y; x = t; }
+    return x || 1;
+  }
+
+  function lcm(x, y){
+    return (x * y) / gcd(x, y);
+  }
+
+  function derive(){
+    const { a, b, c, d } = state;
+    // the shared denominator the lines are extended to is the lowest
+    // common denominator of b and d — not a naive b × d product, so it
+    // stays as close as possible to the fully-simplified answer
+    const P = lcm(b, d);
+    const kA = P / b;
+    const kC = P / d;
+    const adVal = a * kA;
+    const cbVal = c * kC;
+    const sumVal = adVal + cbVal;
+    const g = gcd(P, sumVal);
+    const simpDen = P / g;
+    const simpNum = sumVal / g;
+    return { a, b, c, d, P, kA, kC, adVal, cbVal, sumVal, g, simpDen, simpNum };
+  }
+
+  function niceStep(N){
+    if (N <= 16) return 1;
+    if (N <= 32) return 2;
+    if (N <= 64) return 4;
+    return 8;
+  }
+
+  function el(tag, attrs){
+    const e = document.createElementNS(svgNS, tag);
+    if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function worldText(parent, x, y, content, attrs){
+    const g = el("g", { transform: `translate(${x} ${y}) scale(1,-1)` });
+    const t = el("text", Object.assign({ x: 0, y: 0, "text-anchor": "middle" }, attrs || {}));
+    t.textContent = content;
+    g.appendChild(t);
+    parent.appendChild(g);
+    return g;
+  }
+
+  function worldTextRotated(parent, x, y, angleDeg, content, attrs){
+    // cancel the parent's y-flip first, then rotate, then position
+    const g = el("g", { transform: `translate(${x} ${y}) rotate(${angleDeg}) scale(1,-1)` });
+    const t = el("text", Object.assign({ x: 0, y: 0, "text-anchor": "middle" }, attrs || {}));
+    t.textContent = content;
+    g.appendChild(t);
+    parent.appendChild(g);
+    return g;
+  }
+
+  const STEP_META = [
+    { title: "Plot the fractions" },
+    { title: "Draw the equivalent-fraction lines" },
+    { title: "Meet at a shared denominator" },
+    { title: "Add the numerators" },
+    { title: "Simplify" }
+  ];
+
+  function renderGraph(n){
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    // The x-scale always runs just past the shared denominator that the
+    // method actually derives (n.P) — never a fresh, possibly-inflated
+    // recomputation from the raw input denominators — so P always sits
+    // near the right-hand edge of the grid. The y-scale is sized
+    // independently to whatever numerator value is tallest, so a large
+    // initial-answer numerator doesn't drag the x-scale out with it.
+    const xMax = n.P + 2;
+    const yMax = Math.max(n.a, n.c, n.adVal, n.cbVal, n.sumVal, n.simpNum) + 2;
+    const spanMax = Math.max(xMax, yMax);
+
+    // A fixed, legible 28px everywhere in the graph — independent of the
+    // viewBox's scale — rather than text that grows or shrinks with the
+    // fraction values. Measure how many CSS px one world-unit renders as
+    // (from the wrapper's real box width) and convert 28px back into that
+    // many world-units for the SVG's font-size attributes.
+    const wrapEl = svg.parentElement;
+    const roughW = xMax * 1.3; // padding is normally ~15% a side; close enough to size type
+    const pxPerUnit = (wrapEl.clientWidth || 300) / roughW;
+    const fs = 28 / pxPerUnit;
+    const pad = Math.max(3, fs * 5.2);
+    const W = xMax + pad * 2;
+    const H = yMax + pad * 2;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    // size the wrapping box to the graph's true shape so it always uses
+    // the full space available to it, with no wasted letterboxing
+    wrapEl.style.aspectRatio = `${W} / ${H}`;
+
+    const world = el("g", { transform: `translate(${pad} ${H - pad}) scale(1,-1)` });
+    svg.appendChild(world);
+
+    // grid
+    const gStepX = niceStep(xMax);
+    const gStepY = niceStep(yMax);
+    const grid = el("g");
+    for (let x = 0; x <= xMax + 0.001; x += gStepX){
+      grid.appendChild(el("line", { x1: x, y1: 0, x2: x, y2: yMax, class: "gridline", "vector-effect": "non-scaling-stroke" }));
+    }
+    for (let y = 0; y <= yMax + 0.001; y += gStepY){
+      grid.appendChild(el("line", { x1: 0, y1: y, x2: xMax, y2: y, class: "gridline", "vector-effect": "non-scaling-stroke" }));
+    }
+    world.appendChild(grid);
+
+    // axes
+    const axes = el("g");
+    axes.appendChild(el("line", { x1: -0.3, y1: 0, x2: xMax + 0.4, y2: 0, class: "axis-line", "vector-effect": "non-scaling-stroke" }));
+    axes.appendChild(el("line", { x1: 0, y1: -0.3, x2: 0, y2: yMax + 0.4, class: "axis-line", "vector-effect": "non-scaling-stroke" }));
+    world.appendChild(axes);
+
+    for (let x = gStepX; x <= xMax + 0.001; x += gStepX){
+      worldText(world, x, -fs * 1.5, String(x), { class: "tick-label", "font-size": fs });
+    }
+    for (let y = gStepY; y <= yMax + 0.001; y += gStepY){
+      worldText(world, -fs * 1.7, y, String(y), { class: "tick-label", "font-size": fs, "text-anchor": "end" });
+    }
+    worldText(world, xMax * 0.5, -fs * 3.6, "denominator (x)", { class: "axis-caption", "font-size": fs * 1.05 });
+    worldTextRotated(world, -fs * 4.4, yMax * 0.5, -90, "numerator (y)", { class: "axis-caption", "font-size": fs * 1.05 });
+
+    const r = Math.max(spanMax * 0.016, 0.22) * 0.5;
+    // a stroke this thin relative to r still separates a marker from
+    // whatever it sits on without swamping its fill colour
+    const strokeW = r * 0.35;
+
+    function rayEndpoint(px, py){
+      const t = Math.min(xMax / px, yMax / py);
+      return { x: t * px, y: t * py };
+    }
+
+    // ---- layer 0 : plot points ----
+    // marked the same way as every later equivalent-fraction point (small
+    // hollow rings, no text) so the graph reads as one consistent family
+    // of markers rather than a mix of "special" and "plain" dots
+    const layer0 = el("g", { class: "layer", "data-step": "0" });
+    layer0.appendChild(el("line", { x1: n.b, y1: 0, x2: n.b, y2: n.a, class: "guide-line" }));
+    layer0.appendChild(el("line", { x1: 0, y1: n.a, x2: n.b, y2: n.a, class: "guide-line" }));
+    layer0.appendChild(el("line", { x1: n.d, y1: 0, x2: n.d, y2: n.c, class: "guide-line" }));
+    layer0.appendChild(el("line", { x1: 0, y1: n.c, x2: n.d, y2: n.c, class: "guide-line" }));
+    const dotA = el("circle", { cx: n.b, cy: n.a, r: r * 0.62, "stroke-width": strokeW, class: "pt-echo pt-echo-a" });
+    dotA.appendChild(Object.assign(el("title"), { textContent: `${n.a}/${n.b}` }));
+    const dotC = el("circle", { cx: n.d, cy: n.c, r: r * 0.62, "stroke-width": strokeW, class: "pt-echo pt-echo-c" });
+    dotC.appendChild(Object.assign(el("title"), { textContent: `${n.c}/${n.d}` }));
+    layer0.appendChild(dotA);
+    layer0.appendChild(dotC);
+    world.appendChild(layer0);
+
+    // ---- layer 1 : rays through origin ----
+    const layer1 = el("g", { class: "layer", "data-step": "1" });
+    const endA = rayEndpoint(n.b, n.a);
+    const endC = rayEndpoint(n.d, n.c);
+    layer1.appendChild(el("line", { x1: 0, y1: 0, x2: n.b, y2: n.a, class: "ray-solid ray-a" }));
+    layer1.appendChild(el("line", { x1: n.b, y1: n.a, x2: endA.x, y2: endA.y, class: "ray-dashed ray-a" }));
+    layer1.appendChild(el("line", { x1: 0, y1: 0, x2: n.d, y2: n.c, class: "ray-solid ray-c" }));
+    layer1.appendChild(el("line", { x1: n.d, y1: n.c, x2: endC.x, y2: endC.y, class: "ray-dashed ray-c" }));
+
+    // mark every other lattice point on each line — each one is an
+    // equivalent fraction sitting within the visible scale of the axes
+    function markEquivalents(den, num, cls){
+      const maxK = Math.floor(Math.min(xMax / den, yMax / num) + 1e-9);
+      for (let k = 2; k <= maxK; k++){
+        const dot = el("circle", { cx: k * den, cy: k * num, r: r * 0.62, "stroke-width": strokeW, class: `pt-echo ${cls}` });
+        const title = el("title");
+        title.textContent = `${k * num}/${k * den} = ${num}/${den}`;
+        dot.appendChild(title);
+        layer1.appendChild(dot);
+      }
+    }
+    markEquivalents(n.b, n.a, "pt-echo-a");
+    markEquivalents(n.d, n.c, "pt-echo-c");
+
+    world.appendChild(layer1);
+
+    // ---- layer 2 : shared denominator ----
+    // (no "P = " or multiplication text here — the vertical guide line and
+    // the new points at that line say the same thing without the clutter)
+    const layer2 = el("g", { class: "layer", "data-step": "2" });
+    layer2.appendChild(el("line", { x1: n.P, y1: 0, x2: n.P, y2: Math.max(n.adVal, n.cbVal), class: "guide-line" }));
+    world.appendChild(layer2);
+
+    // the two points marking where each line reaches P are only useful for
+    // this one step — once the column diagram appears in step 4 they'd sit
+    // right on top of it, so this group fades out as soon as step 4 starts
+    // (unlike every other layer, which stays once revealed)
+    const layer2Points = el("g", { class: "layer", "data-step": "2", "data-fade-at": "3" });
+    // a fraction that already sits at the shared denominator (k = 1) needs
+    // no new point here — it would just duplicate the one from step 1, so
+    // only draw the ones that actually moved
+    if (n.kA > 1){
+      layer2Points.appendChild(el("circle", { cx: n.P, cy: n.adVal, r: r, "stroke-width": strokeW, class: "pt pt-a" }));
+    }
+    if (n.kC > 1){
+      layer2Points.appendChild(el("circle", { cx: n.P, cy: n.cbVal, r: r, "stroke-width": strokeW, class: "pt pt-c" }));
+    }
+    world.appendChild(layer2Points);
+
+    // ---- layer 3 : stacked sum ----
+    const layer3 = el("g", { class: "layer", "data-step": "3" });
+    const barW = Math.max(spanMax * 0.018, 0.16);
+    layer3.appendChild(el("rect", { x: n.P - barW / 2, y: 0, width: barW, height: n.adVal, class: "bar-a" }));
+    layer3.appendChild(el("rect", { x: n.P - barW / 2, y: n.adVal, width: barW, height: n.cbVal, class: "bar-c" }));
+    layer3.appendChild(el("line", { x1: n.P - barW * 1.6, y1: n.adVal, x2: n.P + barW * 1.6, y2: n.adVal, class: "bar-a-line" }));
+    layer3.appendChild(el("circle", { cx: n.P, cy: n.sumVal, r: r * 1.3, "stroke-width": strokeW, class: "pt pt-sum" }));
+    worldText(layer3, n.P - fs * 0.3, n.sumVal + fs * 1.9, `${n.adVal} + ${n.cbVal} = ${n.sumVal}`, { class: "lbl lbl-sum", "font-size": fs * 0.95, "text-anchor": "end" });
+    worldText(layer3, n.P - fs * 0.3, n.sumVal + fs * 3.5, `initial answer: ${n.sumVal}/${n.P}`, { class: "lbl lbl-soft", "font-size": fs * 0.86, "text-anchor": "end" });
+    world.appendChild(layer3);
+
+    // ---- layer 4 : simplify ----
+    const layer4 = el("g", { class: "layer", "data-step": "4" });
+    const endS = rayEndpoint(n.P, n.sumVal);
+    layer4.appendChild(el("line", { x1: 0, y1: 0, x2: n.P, y2: n.sumVal, class: "ray-solid ray-sum" }));
+    layer4.appendChild(el("line", { x1: n.P, y1: n.sumVal, x2: endS.x, y2: endS.y, class: "ray-dashed ray-sum" }));
+    if (n.g > 1){
+      layer4.appendChild(el("path", {
+        d: `M ${n.P} ${n.sumVal} L ${n.simpDen} ${n.simpNum}`,
+        class: "back-arrow"
+      }));
+    }
+    layer4.appendChild(el("circle", { cx: n.simpDen, cy: n.simpNum, r: r * 1.3, "stroke-width": strokeW, class: "pt", style: `fill:var(--highlight)` }));
+    worldText(layer4, n.simpDen, n.simpNum - fs * 2.0, `${n.simpNum}/${n.simpDen}`, { class: "lbl lbl-sum", "font-size": fs * 1.05, "font-weight": "700" });
+    world.appendChild(layer4);
+
+    applyStepVisibility();
+  }
+
+  function applyStepVisibility(){
+    document.querySelectorAll("#graph .layer").forEach((layer) => {
+      const s = parseInt(layer.getAttribute("data-step"), 10);
+      const fadeAt = layer.getAttribute("data-fade-at");
+      const faded = fadeAt !== null && state.step >= parseInt(fadeAt, 10);
+      layer.classList.toggle("hidden", s > state.step || faded);
+    });
+    document.querySelectorAll("#numeric-steps li").forEach((li) => {
+      const s = parseInt(li.getAttribute("data-step"), 10);
+      li.classList.toggle("revealed", s <= state.step);
+    });
+    document.querySelectorAll(".dot").forEach((dot) => {
+      dot.classList.toggle("active", parseInt(dot.getAttribute("data-step"), 10) === state.step);
+    });
+    $("btn-back").disabled = state.step === 0;
+    $("btn-next").disabled = state.step === MAX_STEP;
+    if (currentDerived) updateAnswerBox(currentDerived);
+  }
+
+  function renderNumericSteps(n){
+    const wrap = $("numeric-steps");
+    wrap.innerHTML = "";
+    const rows = [
+      {
+        title: "Identify the fractions",
+        body: `We want <span class="hl-a">${n.a}/${n.b}</span> + <span class="hl-c">${n.c}/${n.d}</span>.`,
+        tag: "Graph step 1 — plotting the points"
+      },
+      {
+        title: "These are families of equivalent fractions",
+        body: `<span class="hl-a">${n.a}/${n.b}</span> = ${n.a * 2}/${n.b * 2} = ${n.a * 3}/${n.b * 3} = …  and  <span class="hl-c">${n.c}/${n.d}</span> = ${n.c * 2}/${n.d * 2} = …`,
+        tag: "Graph step 2 — the lines through the origin"
+      },
+      {
+        title: "Identify a common denominator",
+        body: `The lowest common denominator of ${n.b} and ${n.d} is <strong>${n.P}</strong>, so <span class="hl-a">${n.a}/${n.b} = ${n.adVal}/${n.P}</span> and <span class="hl-c">${n.c}/${n.d} = ${n.cbVal}/${n.P}</span>.`,
+        tag: "Graph step 3 — where both lines share a denominator"
+      },
+      {
+        title: "Add the numerators",
+        body: `<span class="hl-a">${n.adVal}</span> + <span class="hl-c">${n.cbVal}</span> = <span class="hl-sum">${n.sumVal}</span>, giving an initial answer of <span class="hl-sum">${n.sumVal}/${n.P}</span>.`,
+        tag: "Graph step 4 — stacking the two heights"
+      },
+      {
+        title: n.g > 1 ? "Simplify" : "Already simplest",
+        body: n.g > 1
+          ? `<span class="hl-sum">${n.sumVal}/${n.P} = ${n.simpNum}/${n.simpDen}</span>.`
+          : `gcd(${n.sumVal}, ${n.P}) = 1, so <span class="hl-sum">${n.sumVal}/${n.P}</span> can't be reduced further.`,
+        tag: "Graph step 5 — walking the line back to the origin"
+      }
+    ];
+    rows.forEach((row, i) => {
+      const li = document.createElement("li");
+      li.setAttribute("data-step", String(i));
+      li.innerHTML = `<span class="badge">${i + 1}</span><span class="step-body"><span class="step-title">${row.title}.</span> <span class="step-eq">${row.body}</span><span class="step-tag">${row.tag}</span></span>`;
+      wrap.appendChild(li);
+    });
+  }
+
+  function renderDots(){
+    const wrap = $("dots");
+    wrap.innerHTML = "";
+    for (let i = 0; i <= MAX_STEP; i++){
+      const b = document.createElement("button");
+      b.className = "dot";
+      b.setAttribute("data-step", String(i));
+      b.setAttribute("aria-label", `Go to step ${i + 1}: ${STEP_META[i].title}`);
+      b.addEventListener("click", () => { state.step = i; applyStepVisibility(); });
+      wrap.appendChild(b);
+    }
+  }
+
+  function updateFractionCards(n){
+    $("show-num-a").textContent = n.a;
+    $("show-den-a").textContent = n.b;
+    $("show-num-c").textContent = n.c;
+    $("show-den-c").textContent = n.d;
+  }
+
+  function updateAnswerBox(n){
+    const placeholder = $("answer-placeholder");
+    const frac = $("answer-frac");
+    const mixed = $("answer-mixed");
+    if (state.step < MAX_STEP){
+      placeholder.style.display = "";
+      frac.style.display = "none";
+      mixed.textContent = "";
+    } else {
+      placeholder.style.display = "none";
+      frac.style.display = "";
+      $("answer-num").textContent = n.simpNum;
+      $("answer-den").textContent = n.simpDen;
+      if (n.simpNum >= n.simpDen){
+        const whole = Math.floor(n.simpNum / n.simpDen);
+        const rem = n.simpNum % n.simpDen;
+        mixed.textContent = rem === 0 ? `= ${whole}` : `= ${whole} ${rem}/${n.simpDen}`;
+      } else {
+        mixed.textContent = "";
+      }
+    }
+  }
+
+  let currentDerived = null;
+
+  function fullRender(){
+    const n = derive();
+    currentDerived = n;
+    updateFractionCards(n);
+    renderGraph(n);
+    renderNumericSteps(n);
+    renderDots();
+    applyStepVisibility();
+  }
+
+  function clamp(){
+    state.a = Math.max(1, Math.min(state.a, state.b - 1));
+    state.c = Math.max(1, Math.min(state.c, state.d - 1));
+  }
+
+  function onFractionChange(){
+    clamp();
+    state.step = 0;
+    fullRender();
+  }
+
+  document.querySelectorAll(".step-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = btn.getAttribute("data-action");
+      if (action === "inc-num-a") state.a = Math.min(state.b - 1, state.a + 1);
+      else if (action === "dec-num-a") state.a = Math.max(1, state.a - 1);
+      else if (action === "inc-den-a") { state.b = Math.min(9, state.b + 1); }
+      else if (action === "dec-den-a") { state.b = Math.max(2, state.b - 1); }
+      else if (action === "inc-num-c") state.c = Math.min(state.d - 1, state.c + 1);
+      else if (action === "dec-num-c") state.c = Math.max(1, state.c - 1);
+      else if (action === "inc-den-c") { state.d = Math.min(9, state.d + 1); }
+      else if (action === "dec-den-c") { state.d = Math.max(2, state.d - 1); }
+      onFractionChange();
+    });
+  });
+
+  $("btn-next").addEventListener("click", () => {
+    if (state.step < MAX_STEP){ state.step++; applyStepVisibility(); }
+  });
+  $("btn-back").addEventListener("click", () => {
+    if (state.step > 0){ state.step--; applyStepVisibility(); }
+  });
+
+  // re-measure the graph's fixed 14px text if the wrapper's on-screen
+  // size changes (rotation, resize, breakpoint switch)
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => renderGraph(derive()), 150);
+  });
+
+  fullRender();
+})();
+</script>
+</body>
+</html>
