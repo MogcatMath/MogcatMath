@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sieve of Eratosthenes</title>
+<style>
+  :root {
+    --paper:       #F4F7FB;
+    --grid-line:   #DCE7F2;
+    --ink:         #1E3A5F;
+    --pencil:      #4A6FA5;
+    --pencil-soft: #8FAACB;
+    --panel:       #2b3a50;
+    --panel-btn:   #354761;
+    --border:      #5a7799;
+    --hl6-bg:      #fdf0c0;
+    --hl6-ink:     #5a3f00;
+    --hl6-border:  #b8860b;
+    --hlP-bg:      #fff0f0;
+    --hlP-ink:     #8b1a1a;
+    --hlP-border:  #c0392b;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', cursive;
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 26px 26px;
+    color: var(--ink);
+    display: flex;
+    align-items: stretch;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  /* LEFT COLUMN — controls */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  h1 {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Bradley Hand', cursive;
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .subtitle {
+    font-size: 0.78rem;
+    color: var(--pencil);
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  hr { border: none; border-top: 1.5px solid var(--grid-line); }
+
+  .controls {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+  .sec {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pencil-soft);
+    margin-bottom: 4px;
+  }
+  .btn-group { display: flex; flex-direction: column; gap: 5px; }
+
+  button {
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    background: var(--panel-btn);
+    color: #cde;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  button:active:not(:disabled) { background: #44607f; border-color: #8FAACB; }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  button.active { background: #44607f; border-color: #a8c4de; color: #e8f2ff; }
+  button.reset { font-style: italic; margin-top: 4px; }
+
+  .status {
+    font-size: 0.75rem;
+    color: var(--pencil-soft);
+    font-style: italic;
+    line-height: 1.35;
+  }
+
+  /* RIGHT COLUMN — grid */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .grid-wrap {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--grid-line);
+    padding: 10px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+    width: 100%;
+  }
+  .cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: clamp(0.75rem, 1.8vw, 1.1rem);
+    border: 1px solid var(--grid-line);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    transition: background 0.2s, color 0.2s, opacity 0.2s;
+    user-select: none;
+  }
+  .cell.one     { background: #e8edf5; color: var(--pencil-soft); }
+  .cell.removed { background: #e8edf5; color: #aab; text-decoration: line-through; opacity: 0.5; }
+  .cell.hl6     { background: var(--hl6-bg); color: var(--hl6-ink); border-color: var(--hl6-border); }
+  .cell.hlP     { background: var(--hlP-bg); color: var(--hlP-ink); border-color: var(--hlP-border); }
+  .cell.removed.hl6 { background: var(--hl6-bg); opacity: 0.45; }
+  .cell.removed.hlP { background: var(--hlP-bg); opacity: 0.45; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.78rem;
+    color: var(--pencil);
+    min-height: 1.2em;
+  }
+  .leg-item { display: flex; align-items: center; gap: 5px; }
+  .leg-sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div>
+    <h1>Sieve of Eratosthenes</h1>
+    <p class="subtitle">An ancient algorithm for finding all prime numbers up to 100.</p>
+  </div>
+  <hr>
+  <div class="controls">
+    <div>
+      <p class="sec">Filters — remove composites</p>
+      <div class="btn-group" id="filter-btns">
+        <button onclick="removeMultiples(2,this)">Remove multiples of 2</button>
+        <button onclick="removeMultiples(3,this)">Remove multiples of 3</button>
+        <button onclick="removeMultiples(5,this)">Remove multiples of 5</button>
+        <button onclick="removeMultiples(7,this)">Remove multiples of 7</button>
+        <button onclick="removeSquares(this)">Remove squares</button>
+        <button onclick="removeCubes(this)">Remove cubes</button>
+      </div>
+    </div>
+    <div>
+      <p class="sec">Highlights</p>
+      <div class="btn-group">
+        <button id="btn6" onclick="toggleSix(this)">Highlight multiples of 6</button>
+        <button id="btnP" onclick="togglePrimes(this)">Highlight primes</button>
+        <button class="reset" onclick="resetGrid()">↺ Reset</button>
+      </div>
+    </div>
+    <div class="status" id="status">Use the filters to sieve the grid.</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="grid-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<script>
+  const removed = new Set();
+  let showSix = false, showPrimes = false;
+
+  function isPrime(n) {
+    if (n < 2) return false;
+    for (let i = 2; i <= Math.sqrt(n); i++) if (n % i === 0) return false;
+    return true;
+  }
+
+  function buildGrid() {
+    const g = document.getElementById('grid');
+    g.innerHTML = '';
+    for (let n = 1; n <= 100; n++) {
+      const d = document.createElement('div');
+      d.id = 'c' + n; d.textContent = n;
+      g.appendChild(d);
+    }
+    updateGrid();
+  }
+
+  function updateGrid() {
+    for (let n = 1; n <= 100; n++) {
+      const el = document.getElementById('c' + n);
+      if (!el) continue;
+      let cls = 'cell';
+      if (n === 1) cls = 'cell one';
+      else if (removed.has(n)) cls = 'cell removed';
+      else if (showPrimes && isPrime(n)) cls += ' hlP';
+      if (showSix && n % 6 === 0) cls += ' hl6';
+      el.className = cls;
+    }
+    const remaining = Array.from({length:100}, (_, i) => i + 1).filter(n => isPrime(n) && !removed.has(n));
+    document.getElementById('status').textContent = removed.size === 0
+      ? 'Use the filters to sieve the grid.'
+      : `${removed.size} removed. Primes left: ${remaining.join(', ')}.`;
+    updateLegend();
+  }
+
+  function updateLegend() {
+    const l = document.getElementById('legend');
+    l.innerHTML = '';
+    if (showSix)
+      l.innerHTML += `<span class="leg-item"><span class="leg-sw" style="background:#fdf0c0;border-color:#b8860b"></span> Multiple of 6</span>`;
+    if (showPrimes)
+      l.innerHTML += `<span class="leg-item"><span class="leg-sw" style="background:#fff0f0;border-color:#c0392b"></span> Prime</span>`;
+    if ((showSix || showPrimes) && removed.size > 0)
+      l.innerHTML += `<span class="leg-item"><span class="leg-sw" style="background:#e8edf5;border-color:#dce7f2"></span> Removed</span>`;
+  }
+
+  function removeMultiples(p, btn) {
+    for (let n = p * 2; n <= 100; n += p) removed.add(n);
+    btn.disabled = true; updateGrid();
+  }
+  function removeSquares(btn) {
+    for (let i = 2; i * i <= 100; i++) removed.add(i * i);
+    btn.disabled = true; updateGrid();
+  }
+  function removeCubes(btn) {
+    for (let i = 2; i * i * i <= 100; i++) removed.add(i * i * i);
+    btn.disabled = true; updateGrid();
+  }
+  function toggleSix(btn) {
+    showSix = !showSix;
+    btn.textContent = showSix ? 'Clear multiples of 6' : 'Highlight multiples of 6';
+    btn.classList.toggle('active', showSix); updateGrid();
+  }
+  function togglePrimes(btn) {
+    showPrimes = !showPrimes;
+    btn.textContent = showPrimes ? 'Clear prime highlight' : 'Highlight primes';
+    btn.classList.toggle('active', showPrimes); updateGrid();
+  }
+  function resetGrid() {
+    removed.clear(); showSix = false; showPrimes = false;
+    document.querySelectorAll('#filter-btns button').forEach(b => b.disabled = false);
+    document.getElementById('btn6').textContent = 'Highlight multiples of 6';
+    document.getElementById('btnP').textContent = 'Highlight primes';
+    document.getElementById('btn6').classList.remove('active');
+    document.getElementById('btnP').classList.remove('active');
+    updateGrid();
+  }
+
+  buildGrid();
+</script>
+</body>
+</html>

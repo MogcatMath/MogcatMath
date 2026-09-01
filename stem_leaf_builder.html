@@ -2,35 +2,54 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="screen-orientation" content="landscape">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
 <title>Stem and Leaf Diagram Builder</title>
 <style>
   :root{
-    --bg:#1b1b1d;
-    --panel:#26262a;
-    --panel-raised:#2f2f34;
-    --border:#3a3a40;
-    --text:#eaeaec;
-    --text-dim:#9a9aa2;
-    --accent:#4fc3f7;
-    --accent-dim:#2b6b82;
-    --stem:#ffb74d;
-    --leaf:#81c784;
-    --go:#4caf50;
-    --go-dim:#2e6b31;
-    --disabled:#3a3a40;
+    --paper:#fbf7ee;
+    --line:#a9c2d6;
+    --bg:#fbf7ee;
+    --panel:#fffdf6;
+    --panel-raised:#f2ecda;
+    --border:#b7c9d9;
+    --ink:#1f2d50;
+    --text:#1f2d50;
+    --text-dim:#6b7593;
+    --teal:#2f8f8a;
+    --terracotta:#c1613f;
+    --amber:#a6660f;
+    --accent:#2f8f8a;
+    --accent-dim:#1f6b66;
+    --stem:#a6660f;
+    --leaf:#c1613f;
+    --go:#c1613f;
+    --go-dim:#9c4c31;
+    --disabled:#dfe3e0;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
   html,body{
-    margin:0; height:100%; width:100%; overflow:hidden;
-    background:var(--bg); color:var(--text);
-    font-family:-apple-system, "Helvetica Neue", Arial, sans-serif;
+    margin:0; height:100vh; height:100dvh; width:100vw; overflow:hidden;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:26px 26px;
+    color:var(--text);
+    font-family:"Patrick Hand", "Comic Sans MS", -apple-system, "Helvetica Neue", Arial, sans-serif;
     touch-action:manipulation;
   }
   #app{
     display:flex; flex-direction:column;
-    height:100vh; width:100vw;
-    padding:14px; gap:12px;
+    height:100vh; height:100dvh; width:100vw;
+    padding:14px; padding:max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    gap:12px;
   }
 
   /* ---------- TOP BAR: data + controls ---------- */
@@ -41,8 +60,9 @@
 
   .databox-wrap{
     flex:1; display:flex; flex-direction:column;
-    background:var(--panel); border:1px solid var(--border);
-    border-radius:14px; padding:10px 12px; min-width:0;
+    background:var(--panel); border:1.5px solid var(--border);
+    border-radius:10px; padding:10px 12px; min-width:0;
+    box-shadow:0 2px 6px rgba(31,45,80,0.10);
   }
   .databox-header{
     display:flex; align-items:center; justify-content:space-between;
@@ -57,7 +77,7 @@
     color:var(--accent); font-size:0.78rem; font-weight:700;
     border-radius:8px; padding:6px 10px; min-height:32px;
   }
-  .add-second-btn:active{ background:var(--accent-dim); color:var(--text); }
+  .add-second-btn:active{ background:var(--accent); color:var(--panel); }
   .databox-panels{
     flex:1; min-height:0; display:flex; flex-direction:column; gap:6px;
   }
@@ -72,7 +92,7 @@
     text-transform:uppercase; margin-bottom:3px; flex-shrink:0;
     display:none;
   }
-  .databox-panel[data-set="A"] .databox-panel-tag{ color:var(--stem); }
+  .databox-panel[data-set="A"] .databox-panel-tag{ color:var(--accent); }
   .databox-panel[data-set="B"] .databox-panel-tag{ color:var(--leaf); }
   .databox-panels.has-second .databox-panel-tag{ display:block; }
   .databox{
@@ -80,13 +100,15 @@
     align-content:flex-start; gap:6px;
   }
   .data-chip{
-    background:var(--panel-raised); border:1px solid var(--border);
+    background:var(--panel-raised); border:1.5px solid var(--border);
     padding:6px 10px; border-radius:8px;
-    font-size:1.15rem; font-variant-numeric:tabular-nums;
+    font-size:1.2rem; font-variant-numeric:tabular-nums;
+    font-family:"Caveat","Patrick Hand",cursive; font-weight:700; color:var(--text);
     transition:opacity 0.35s ease, background 0.35s ease, transform 0.35s ease;
   }
   .data-chip.used{
-    opacity:0.22; background:transparent; transform:scale(0.94);
+    opacity:0.45; background:transparent; transform:scale(0.96);
+    text-decoration:line-through; text-decoration-color:var(--terracotta); text-decoration-thickness:2px;
   }
   .databox-empty{ color:var(--text-dim); font-size:1rem; padding:6px 2px; }
 
@@ -108,9 +130,10 @@
   }
 
   .controls{
-    width:360px; flex-shrink:0; display:flex; flex-direction:column; gap:4px;
-    background:var(--panel); border:1px solid var(--border);
-    border-radius:14px; padding:7px 10px; overflow:hidden;
+    width:clamp(300px, 27vw, 380px); flex-shrink:0; display:flex; flex-direction:column; gap:4px;
+    background:var(--panel); border:1.5px solid var(--border);
+    border-radius:10px; padding:7px 10px; overflow:hidden;
+    box-shadow:0 2px 6px rgba(31,45,80,0.10);
   }
   .ctrl-label{
     font-size:0.68rem; color:var(--text-dim); letter-spacing:0.04em;
@@ -142,7 +165,7 @@
   .size-row input[type="number"]::-webkit-inner-spin-button{ opacity:1; }
 
   #populateBtn{
-    background:var(--go); border:none; color:#0d1f0e;
+    background:var(--go); border:none; color:var(--panel);
     font-size:1rem; font-weight:700; border-radius:8px;
     min-height:38px; margin-top:1px;
   }
@@ -151,12 +174,13 @@
   /* ---------- STEP ROW ---------- */
   .steprow{ display:flex; gap:12px; flex-shrink:0; }
   .step-btn{
-    flex:1; min-height:56px; font-size:1.15rem; font-weight:700;
-    border-radius:12px; border:1px solid var(--border);
+    flex:1; min-height:56px; font-size:1.2rem; font-weight:700;
+    border-radius:10px; border:1.5px solid var(--border);
     background:var(--panel-raised); color:var(--text);
     display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:0 2px 5px rgba(31,45,80,0.08);
   }
-  .step-btn:not(:disabled):active{ background:var(--accent-dim); }
+  .step-btn:not(:disabled):active{ background:var(--accent); color:var(--panel); }
   .step-btn:disabled{ opacity:0.35; color:var(--text-dim); }
   .step-btn .num{
     display:inline-flex; align-items:center; justify-content:center;
@@ -169,8 +193,9 @@
   /* ---------- DIAGRAM AREA ---------- */
   .diagram-wrap{
     flex:1; min-height:0; display:flex; flex-direction:column;
-    background:var(--panel); border:1px solid var(--border);
-    border-radius:14px; padding:14px 18px; overflow:hidden;
+    background:var(--panel); border:1.5px solid var(--border);
+    border-radius:10px; padding:14px 18px; overflow:hidden;
+    box-shadow:0 2px 6px rgba(31,45,80,0.10);
   }
   .diagram-header{
     display:flex; justify-content:space-between; align-items:baseline;
@@ -191,29 +216,30 @@
   }
 
   .sl-headerline{
-    display:flex; width:100%; max-width:820px; margin:0 auto 6px;
+    display:flex; width:100%; max-width:min(90%, 980px); margin:0 auto 6px;
     font-size:1rem; color:var(--text-dim);
   }
   .sl-headerline .sl-stem{ width:64px; text-align:right; padding-right:16px; }
   .sl-headerline .sl-leaves{ flex:1; }
 
   .sl-row{
-    display:flex; align-items:flex-start; width:100%; max-width:820px;
+    display:flex; align-items:flex-start; width:100%; max-width:min(90%, 980px);
     margin:0 auto; padding:5px 0;
     font-size:1.55rem; font-variant-numeric:tabular-nums;
-    border-bottom:1px solid #2f2f34;
+    border-bottom:1.5px solid var(--line);
   }
   .sl-stem{
     width:64px; text-align:right; padding-right:16px;
     color:var(--stem); font-weight:700; flex-shrink:0;
+    font-family:"Caveat","Patrick Hand",cursive; font-size:1.15em;
   }
   .sl-divider{
-    width:3px; align-self:stretch; background:#4a4a52; margin-right:16px; border-radius:2px;
+    width:2px; align-self:stretch; background:var(--line); margin-right:16px; border-radius:2px;
   }
   .sl-leaves{
     flex:1; display:flex; flex-wrap:wrap; gap:0 10px; padding-top:2px;
   }
-  .leaf{ color:var(--leaf); font-weight:600; }
+  .leaf{ color:var(--leaf); font-weight:700; font-family:"Caveat","Patrick Hand",cursive; font-size:1.15em; }
   .leaf.new{ animation:pop 0.42s ease; }
   .leaf.leaf-a{ color:var(--accent); }
   .leaf.leaf-b{ color:var(--leaf); }
@@ -225,7 +251,7 @@
 
   /* ---------- BACK-TO-BACK DIAGRAM ---------- */
   .sl-headerline-bb{
-    display:flex; width:100%; max-width:920px; margin:0 auto 6px;
+    display:flex; width:100%; max-width:min(94%, 1100px); margin:0 auto 6px;
     font-size:1rem; color:var(--text-dim);
   }
   .sl-headerline-bb .hl-left{ flex:1; text-align:right; padding-right:27px; color:var(--accent); }
@@ -233,10 +259,10 @@
   .sl-headerline-bb .hl-right{ flex:1; text-align:left; padding-left:27px; color:var(--leaf); }
 
   .sl-row-bb{
-    display:flex; align-items:flex-start; width:100%; max-width:920px;
+    display:flex; align-items:flex-start; width:100%; max-width:min(94%, 1100px);
     margin:0 auto; padding:5px 0;
     font-size:1.55rem; font-variant-numeric:tabular-nums;
-    border-bottom:1px solid #2f2f34;
+    border-bottom:1.5px solid var(--line);
   }
   .sl-leaves-left{
     flex:1; display:flex; flex-wrap:wrap; justify-content:flex-end;
@@ -249,16 +275,46 @@
   .sl-stem-center{
     width:56px; text-align:center; flex-shrink:0;
     color:var(--stem); font-weight:700;
+    font-family:"Caveat","Patrick Hand",cursive; font-size:1.15em;
   }
   .sl-divider-bb{
-    width:3px; align-self:stretch; background:#4a4a52; border-radius:2px; margin:0 12px;
+    width:2px; align-self:stretch; background:var(--line); border-radius:2px; margin:0 12px;
   }
   ::-webkit-scrollbar{ width:10px; }
-  ::-webkit-scrollbar-thumb{ background:#45454c; border-radius:6px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:6px; }
   ::-webkit-scrollbar-track{ background:transparent; }
+
+  /* ---------- PORTRAIT ROTATE PROMPT ---------- */
+  .rotate-prompt{
+    display:none; position:fixed; inset:0; z-index:9999;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:26px 26px;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:24px;
+  }
+  .rotate-icon{ font-size:4.5rem; margin-bottom:14px; }
+  .rotate-title{
+    font-family:"Caveat","Patrick Hand",cursive; font-weight:700;
+    font-size:2.2rem; color:var(--ink); margin-bottom:6px;
+  }
+  .rotate-text{
+    font-size:1.15rem; color:var(--text-dim); max-width:380px;
+  }
+  @media (orientation: portrait){
+    .rotate-prompt{ display:flex; }
+    #app{ display:none; }
+  }
 </style>
 </head>
 <body>
+<div class="rotate-prompt">
+  <div class="rotate-icon">&#8635;</div>
+  <div class="rotate-title">Rotate your iPad</div>
+  <div class="rotate-text">This tool is designed for landscape mode &mdash; turn your iPad sideways to continue.</div>
+</div>
 <div id="app">
 
   <div class="topbar">

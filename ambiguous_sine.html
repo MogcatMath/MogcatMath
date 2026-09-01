@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ambiguous Case – Sine Rule</title>
+<style>
+  /*
+   * OFFLINE VERSION — no external dependencies.
+   * Font: uses system handwriting fonts available on iPad (Chalkboard SE)
+   * and Windows (Comic Sans MS) as fallbacks.
+   *
+   * To use Patrick Hand instead, download PatrickHand-Regular.woff2 from
+   * https://fonts.gstatic.com and place it alongside this file, then
+   * uncomment the @font-face block below.
+   *
+   * @font-face {
+   *   font-family: 'Patrick Hand';
+   *   src: url('PatrickHand-Regular.woff2') format('woff2');
+   *   font-weight: normal;
+   *   font-style: normal;
+   * }
+   */
+
+  :root {
+    --hand: 'Chalkboard SE', 'Comic Sans MS', 'Bradley Hand', cursive;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--hand);
+    background: #e8e0cc;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px 12px 8px;
+    overflow: hidden;
+  }
+
+  /* Squared paper background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(100,140,200,0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100,140,200,0.18) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 980px;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+    height: calc(100vh - 20px);
+  }
+
+  .title-row {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2px 0 4px;
+    border-bottom: 2px solid #1a2a4a;
+  }
+  .title-row h1 { font-size: 1.1rem; color: #5a4a2a; letter-spacing: 0.04em; }
+  .title-row h2 { font-size: 1.7rem; color: #1a2a4a; letter-spacing: 0.02em; }
+
+  .canvas-wrap {
+    grid-column: 1;
+    grid-row: 2;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 2px solid #1a2a4a;
+    border-radius: 4px;
+    background: transparent;
+  }
+
+  .panel {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.55);
+    border: 1.5px solid #1a2a4a;
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .card-title {
+    font-size: 0.78rem;
+    color: #5a4a2a;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid #1a2a4a;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+  }
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+    font-size: 1.05rem;
+    color: #1a2a4a;
+  }
+  .card-row .val { font-size: 1.15rem; font-weight: bold; }
+  .val-blue   { color: #1a5a9a; }
+  .val-orange { color: #c05010; }
+  .val-green  { color: #1a7a3a; }
+  .val-amber  { color: #a06010; }
+  .val-red    { color: #a02020; }
+
+  .status-box {
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 6px;
+    margin-top: 4px;
+  }
+
+  .controls { display: flex; flex-direction: column; gap: 8px; }
+  .ctrl-row { display: flex; align-items: center; gap: 8px; font-size: 1rem; color: #1a2a4a; }
+  .ctrl-row label { min-width: 90px; }
+  input[type=range] { flex: 1; accent-color: #1a2a4a; height: 4px; cursor: pointer; }
+  .ctrl-val { min-width: 48px; text-align: right; font-size: 1.05rem; font-weight: bold; color: #1a2a4a; }
+
+  input[type=number] {
+    width: 58px; padding: 3px 6px;
+    font-family: var(--hand);
+    font-size: 1rem;
+    background: rgba(255,255,255,0.7);
+    border: 1.5px solid #1a2a4a;
+    border-radius: 3px;
+    color: #1a2a4a;
+    text-align: center;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-family: var(--hand);
+    font-size: 0.95rem;
+    background: #1a2a4a;
+    color: #f0e8d0;
+    border: none; border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #2a4a7a; }
+  .btn-row { display: flex; gap: 8px; }
+
+  .legend { display: flex; flex-direction: column; gap: 5px; font-size: 0.95rem; color: #1a2a4a; }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .swatch { width: 28px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="title-row">
+    <h1>The Sine Rule</h1>
+    <h2>The Ambiguous Case (SSA)</h2>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="c"></canvas>
+  </div>
+
+  <div class="panel">
+
+    <div class="card">
+      <div class="card-title">Angles</div>
+      <div class="card-row"><span>A</span><span class="val" id="aDisp">35°</span></div>
+      <div class="card-row"><span>B₁ (blue)</span><span class="val val-blue" id="b1lbl">—</span></div>
+      <div class="card-row"><span>B₂ (orange)</span><span class="val val-orange" id="b2lbl">—</span></div>
+      <div class="card-row"><span>C₁ (blue)</span><span class="val val-blue" id="c1lbl">—</span></div>
+      <div class="card-row"><span>C₂ (orange)</span><span class="val val-orange" id="c2lbl">—</span></div>
+      <div class="status-box" id="status">—</div>
+    </div>
+
+    <div class="card controls">
+      <div class="card-title">Controls</div>
+      <div class="ctrl-row">
+        <label>Angle A</label>
+        <input type="range" id="slider" min="1" max="89" step="1" value="35">
+        <span class="ctrl-val" id="angleLbl">35°</span>
+      </div>
+      <div class="ctrl-row">
+        <label>a (opp A)</label>
+        <input type="number" id="inputA" value="7" min="1" max="30" step="0.5">
+      </div>
+      <div class="ctrl-row">
+        <label>b (adj A)</label>
+        <input type="number" id="inputB" value="10" min="1" max="30" step="0.5">
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="scaleBtn">⤢ Fit</button>
+        <button class="btn" id="stepBtn">Step: 1°</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Legend</div>
+      <div class="legend">
+        <span><div class="swatch" style="background:#1a2a4a;height:2px"></div> Shared sides</span>
+        <span><div class="swatch" style="background:#1a5a9a"></div> Triangle 1 (B₁)</span>
+        <span><div class="swatch" style="background:#c05010"></div> Triangle 2 (B₂)</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const slider = document.getElementById('slider');
+const angleLbl = document.getElementById('angleLbl');
+const aDisp = document.getElementById('aDisp');
+const b1El = document.getElementById('b1lbl');
+const b2El = document.getElementById('b2lbl');
+const c1El = document.getElementById('c1lbl');
+const c2El = document.getElementById('c2lbl');
+const statusEl = document.getElementById('status');
+const inputA = document.getElementById('inputA');
+const inputB = document.getElementById('inputB');
+const scaleBtn = document.getElementById('scaleBtn');
+const stepBtn = document.getElementById('stepBtn');
+
+const PAD = 48;
+let fixedScale = 38;
+let stepSize = 1;
+
+const NAVY   = '#1a2a4a';
+const BLUE   = '#1a5a9a';
+const ORANGE = '#c05010';
+const GOLD   = '#8a6010';
+const HAND   = "'Chalkboard SE', 'Comic Sans MS', cursive";
+
+function deg(r) { return r * 180 / Math.PI; }
+function rad(d) { return d * Math.PI / 180; }
+
+function angleBetween(ox, oy, ax, ay, bx, by) {
+  const vax=ax-ox, vay=ay-oy, vbx=bx-ox, vby=by-oy;
+  const cos=(vax*vbx+vay*vby)/(Math.hypot(vax,vay)*Math.hypot(vbx,vby));
+  return deg(Math.acos(Math.max(-1,Math.min(1,cos))));
+}
+
+function midLabel(x1,y1,x2,y2,txt,color,offset,size=23) {
+  const mx=(x1+x2)/2, my=(y1+y2)/2;
+  const nx=-(y2-y1), ny=x2-x1, nl=Math.hypot(nx,ny)||1;
+  ctx.save();
+  ctx.fillStyle=color;
+  ctx.font=`bold ${size}px ${HAND}`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(txt, mx+nx/nl*offset, my+ny/nl*offset);
+  ctx.restore();
+}
+
+function midLabelToward(x1,y1,x2,y2,rx,ry,txt,color,offset,size=23) {
+  const mx=(x1+x2)/2, my=(y1+y2)/2;
+  const nx=-(y2-y1), ny=x2-x1, nl=Math.hypot(nx,ny)||1;
+  const dot=nx*(rx-mx)+ny*(ry-my);
+  const sign=(dot>=0?1:-1)*Math.sign(offset);
+  ctx.save();
+  ctx.fillStyle=color;
+  ctx.font=`bold ${size}px ${HAND}`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(txt, mx+nx/nl*Math.abs(offset)*sign, my+ny/nl*Math.abs(offset)*sign);
+  ctx.restore();
+}
+
+function drawArcAngle(ox,oy,ax,ay,bx,by,txt,color,arcR) {
+  const a1=Math.atan2(ay-oy,ax-ox), a2=Math.atan2(by-oy,bx-ox);
+  let diff=a2-a1;
+  while(diff>Math.PI) diff-=2*Math.PI;
+  while(diff<-Math.PI) diff+=2*Math.PI;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  if(diff>=0) ctx.arc(ox,oy,arcR,a1,a1+diff);
+  else        ctx.arc(ox,oy,arcR,a1+diff,a1);
+  ctx.stroke();
+  const mid=a1+diff/2;
+  ctx.fillStyle=color;
+  ctx.font=`bold 21px ${HAND}`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(txt, ox+(arcR+22)*Math.cos(mid), oy+(arcR+22)*Math.sin(mid));
+  ctx.restore();
+}
+
+function computeGeometry() {
+  const angleA_deg=+slider.value;
+  const a=parseFloat(inputA.value)||7;
+  const b=parseFloat(inputB.value)||10;
+  const A=rad(angleA_deg);
+  const dx=Math.cos(A), dy=-Math.sin(A);
+  const ex=-b, qb2=ex*dx, qc=ex*ex-a*a, disc=qb2*qb2-qc;
+  let B1u=null, B2u=null;
+  if(disc>=0) {
+    const t1=-qb2+Math.sqrt(disc), t2=-qb2-Math.sqrt(disc);
+    if(t1>1e-6) B1u={x:t1*dx,y:t1*dy};
+    if(t2>1e-6&&Math.abs(t2-t1)>1e-4) B2u={x:t2*dx,y:t2*dy};
+  }
+  return {angleA_deg,a,b,A,dx,dy,B1u,B2u};
+}
+
+function bestFitScale() {
+  const {b,B1u,B2u}=computeGeometry();
+  const pts=[{x:0,y:0},{x:b,y:0}];
+  if(B1u) pts.push(B1u);
+  if(B2u) pts.push(B2u);
+  const minX=Math.min(...pts.map(p=>p.x)), maxX=Math.max(...pts.map(p=>p.x));
+  const minY=Math.min(...pts.map(p=>p.y)), maxY=Math.max(...pts.map(p=>p.y));
+  const sx=(canvas.width-2*PAD)/((maxX-minX)||1);
+  const sy=(canvas.height-2*PAD)/((maxY-minY)||1);
+  return Math.min(sx,sy);
+}
+
+function resizeCanvas() {
+  const w=canvas.parentElement;
+  canvas.width=w.clientWidth;
+  canvas.height=w.clientHeight;
+}
+
+function draw() {
+  resizeCanvas();
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const {angleA_deg,a,b,A,B1u,B2u}=computeGeometry();
+  const scale=fixedScale;
+  const Ax=PAD+20, Ay=H-PAD;
+  const tx=x=>Ax+x*scale, ty=y=>Ay+y*scale;
+  const Cx=tx(b), Cy=Ay;
+  const B1=B1u?{x:tx(B1u.x),y:ty(B1u.y)}:null;
+  const B2=B2u?{x:tx(B2u.x),y:ty(B2u.y)}:null;
+
+  // Triangle 2 — orange
+  if(B2) {
+    ctx.save();
+    ctx.strokeStyle=ORANGE; ctx.fillStyle='rgba(192,80,16,0.07)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(Ax,Ay); ctx.lineTo(B2.x,B2.y); ctx.lineTo(Cx,Cy);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    const ab2len=Math.hypot(B2u.x,B2u.y);
+    midLabelToward(Ax,Ay,B2.x,B2.y,Cx,Cy,ab2len.toFixed(1),ORANGE,-28);
+
+    const lx=Cx-B2.x, ly=Cy-B2.y, nx=-ly, ny=lx, nl=Math.hypot(nx,ny)||1;
+    const mx2=(B2.x+Cx)/2, my2=(B2.y+Cy)/2;
+    const dot=nx*(Ax-mx2)+ny*(Ay-my2), sign=dot>0?-1:1;
+    ctx.save();
+    ctx.fillStyle=ORANGE; ctx.font=`bold 23px ${HAND}`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('a = '+a.toFixed(1), mx2+nx/nl*16*sign, my2+ny/nl*16*sign);
+    ctx.restore();
+
+    const angleB2val=180-angleBetween(B1.x,B1.y,Ax,Ay,Cx,Cy);
+    const arcA2=Math.atan2(Ay-B2.y,Ax-B2.x), arcC2=Math.atan2(Cy-B2.y,Cx-B2.x);
+    let d2=arcC2-arcA2;
+    while(d2>Math.PI) d2-=2*Math.PI;
+    while(d2<-Math.PI) d2+=2*Math.PI;
+    ctx.save();
+    ctx.strokeStyle=ORANGE; ctx.lineWidth=1.5;
+    ctx.beginPath();
+    if(d2>=0) ctx.arc(B2.x,B2.y,22,arcA2,arcA2+d2);
+    else      ctx.arc(B2.x,B2.y,22,arcA2+d2,arcA2);
+    ctx.stroke();
+    ctx.fillStyle=ORANGE;
+    ctx.font=`bold 27px ${HAND}`; ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText('B₂', B2.x-28, B2.y-20);
+    ctx.font=`bold 21px ${HAND}`;
+    ctx.fillText(angleB2val.toFixed(1)+'°', B2.x-28, B2.y+6);
+    ctx.restore();
+  }
+
+  // Triangle 1 — blue
+  if(B1) {
+    ctx.save();
+    ctx.strokeStyle=BLUE; ctx.fillStyle='rgba(26,90,154,0.09)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(Ax,Ay); ctx.lineTo(B1.x,B1.y); ctx.lineTo(Cx,Cy);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    if(B2) {
+      const b2b1len=Math.hypot(B1u.x-B2u.x,B1u.y-B2u.y);
+      midLabelToward(B2.x,B2.y,B1.x,B1.y,Cx,Cy,b2b1len.toFixed(1),BLUE,-28);
+    }
+
+    midLabel(B1.x,B1.y,Cx,Cy,'a = '+a.toFixed(1),BLUE,-38);
+
+    const angleB1val=angleBetween(B1.x,B1.y,Ax,Ay,Cx,Cy);
+    drawArcAngle(B1.x,B1.y,Ax,Ay,Cx,Cy,angleB1val.toFixed(1)+'°',BLUE,28);
+
+    ctx.save();
+    ctx.fillStyle=BLUE; ctx.font=`bold 27px ${HAND}`;
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('B₁', B1.x+8, B1.y-20);
+    ctx.restore();
+  }
+
+  // Shared side AC
+  ctx.save();
+  ctx.strokeStyle=NAVY; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(Ax,Ay); ctx.lineTo(Cx,Cy); ctx.stroke();
+  ctx.restore();
+  midLabel(Ax,Ay,Cx,Cy,'b = '+b.toFixed(1),NAVY,20);
+
+  // Angle arc at A
+  ctx.save();
+  ctx.strokeStyle=GOLD; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(Ax,Ay,30,-A,0); ctx.stroke();
+  ctx.fillStyle=GOLD; ctx.font=`bold 24px ${HAND}`; ctx.textAlign='left';
+  ctx.fillText(angleA_deg+'°', Ax+36, Ay-12);
+  ctx.restore();
+
+  // Vertex labels
+  ctx.save();
+  ctx.font=`bold 30px ${HAND}`; ctx.fillStyle=NAVY;
+  ctx.textAlign='right'; ctx.fillText('A', Ax-8, Ay+4);
+  ctx.textAlign='left';  ctx.fillText('C', Cx+8, Cy+4);
+  ctx.restore();
+
+  // Info panel
+  let angB1=null,angB2=null,angC1=null,angC2=null;
+  if(B1u) { angB1=angleBetween(B1u.x,B1u.y,0,0,b,0); angC1=180-+slider.value-angB1; }
+  if(B2u&&B1u) { angB2=180-angB1; angC2=180-+slider.value-angB2; }
+
+  aDisp.textContent=(+slider.value)+'°';
+
+  if(B1&&B2) {
+    b1El.textContent=angB1.toFixed(1)+'°'; b2El.textContent=angB2.toFixed(1)+'°';
+    c1El.textContent=angC1.toFixed(1)+'°'; c2El.textContent=angC2.toFixed(1)+'°';
+    statusEl.textContent='✓ Two triangles'; statusEl.className='status-box val-green';
+  } else if(B1) {
+    b1El.textContent=angB1?angB1.toFixed(1)+'°':'—'; b2El.textContent='—';
+    c1El.textContent=angC1?angC1.toFixed(1)+'°':'—'; c2El.textContent='—';
+    statusEl.textContent='△ One triangle'; statusEl.className='status-box val-amber';
+  } else {
+    b1El.textContent='—'; b2El.textContent='—';
+    c1El.textContent='—'; c2El.textContent='—';
+    statusEl.textContent='✗ No triangle'; statusEl.className='status-box val-red';
+  }
+}
+
+scaleBtn.addEventListener('click',()=>{fixedScale=bestFitScale();draw();});
+stepBtn.addEventListener('click',()=>{
+  stepSize=stepSize===1?0.1:1;
+  slider.step=stepSize;
+  stepBtn.textContent='Step: '+stepSize+'°';
+  draw();
+});
+slider.addEventListener('input',()=>{angleLbl.textContent=slider.value+'°';draw();});
+inputA.addEventListener('input',draw);
+inputB.addEventListener('input',draw);
+window.addEventListener('resize',draw);
+
+draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>A-Level Mechanics: Equilibrium of Forces</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#f8f7f2;font-family:sans-serif;width:100%;height:100%;overflow:hidden}
+#layout{display:flex;flex-direction:row;width:100%;height:100vh;align-items:stretch}
+#left{flex:0 0 62%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px}
+#right{flex:0 0 38%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 20px;border-left:1px solid #ddd;overflow-y:auto}
+h1{font-size:18px;color:#444;text-align:center;margin-bottom:10px}
+#cv{display:block;width:100%}
+#controls{display:flex;justify-content:center;gap:20px;margin-top:10px}
+.ctrl{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ctrl label{font-size:13px;color:#888}
+.ctrl input{width:80px;text-align:center;font-size:18px;font-weight:600;padding:6px 4px;border:1.5px solid #ccc;border-radius:8px;background:#fff}
+#toolbar{margin-top:10px}
+#showF{font-size:16px;padding:7px 22px;border:1.5px solid #ccc;border-radius:8px;background:#fff;cursor:pointer}
+#showF.on{background:#eee}
+#info{font-size:13px;color:#555;text-align:center;margin-top:8px;line-height:1.6;min-height:32px}
+.warn{color:#c00}
+#fpwrap{width:100%;margin-top:8px;opacity:0;transition:opacity 0.4s ease;display:none}
+#fpwrap.visible{display:block;opacity:1}
+#fp{display:block;width:100%}
+#fplabels{font-size:12px;color:#888;text-align:center;margin-top:6px;line-height:1.8}
+</style>
+</head>
+<body>
+<div id="layout">
+  <div id="left">
+    <h1>Equilibrium of Forces</h1>
+    <canvas id="cv"></canvas>
+    <div id="controls">
+      <div class="ctrl"><label>Left (g)</label><input id="wL" type="number" min="1" value="150"></div>
+      <div class="ctrl"><label>Centre (g)</label><input id="wC" type="number" min="1" value="200"></div>
+      <div class="ctrl"><label>Right (g)</label><input id="wR" type="number" min="1" value="150"></div>
+    </div>
+    <div id="toolbar"><button id="showF">Show forces</button></div>
+    <div id="info"></div>
+  </div>
+  <div id="right">
+    <div id="fpwrap"><canvas id="fp"></canvas><div id="fplabels"></div></div>
+    <div id="rplaceholder" style="color:#bbb;font-size:14px;margin-top:40px;text-align:center">Press <em>Show forces</em><br>to see the force diagram</div>
+  </div>
+</div>
+
+<script>
+var cv=document.getElementById('cv');
+var gc=cv.getContext('2d');
+var fp=document.getElementById('fp');
+var gp=fp.getContext('2d');
+var infoEl=document.getElementById('info');
+var fplabels=document.getElementById('fplabels');
+var DPR=window.devicePixelRatio||1;
+var W,H,PLx,PRx,PYy;
+var PRAD=11,BW=80,BH=52,WW=91,WH=59;
+var SL=null,SR=null;
+
+function gToN(g){return (g*0.00981).toFixed(3)+' N';}
+
+// Draw T with subscript on any canvas context
+function drawTsub(ctx,x,y,sub,suffix,col,size){
+  ctx.save();
+  ctx.fillStyle=col;
+  ctx.textBaseline='middle';
+  var ms=size||17, ss=Math.round(ms*0.65), gap=1;
+  ctx.font='bold '+ms+'px sans-serif';
+  var tW=ctx.measureText('T').width;
+  ctx.font='bold '+ss+'px sans-serif';
+  ctx.font='bold '+ms+'px sans-serif';
+  ctx.textAlign='left';
+  ctx.fillText('T',x,y);
+  ctx.font='bold '+ss+'px sans-serif';
+  ctx.fillText(sub,x+tW+gap,y+Math.round(ms*0.25));
+  if(suffix){
+    ctx.font='bold '+ms+'px sans-serif';
+    var sW=ctx.measureText(sub).width;
+    ctx.fillText(suffix,x+tW+gap+sW+gap,y);
+  }
+  ctx.restore();
+}
+
+function resize(){
+  var wrap=document.getElementById('left');
+  W=wrap.clientWidth-24;
+  H=Math.round(W*0.72);
+  cv.width=W*DPR;cv.height=H*DPR;
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  gc.setTransform(DPR,0,0,DPR,0,0);
+  PLx=Math.round(W*0.18);PRx=Math.round(W*0.82);PYy=Math.round(H*0.13);
+}
+
+function solveEq(wL,wC,wR){
+  if(wC>=wL+wR-0.01)return null;
+  var lo0=wL>wR?Math.acos(wR/wL)+1e-9:1e-9;
+  var hi0=Math.PI/2-1e-9;
+  function f(a){var cr=(wL/wR)*Math.cos(a);if(cr>1)return 0;return wL*Math.sin(a)+wR*Math.sin(Math.acos(cr));}
+  var flo=f(lo0),fhi=f(hi0);
+  if(wC<flo-0.5||wC>fhi+0.5)return null;
+  var rising=fhi>=flo,lo=lo0,hi=hi0;
+  for(var i=0;i<200;i++){var mid=(lo+hi)/2;if(rising?f(mid)<wC:f(mid)>wC)lo=mid;else hi=mid;}
+  var aL=(lo+hi)/2,cr=(wL/wR)*Math.cos(aL);
+  return{aL:aL,aR:cr<=1?Math.acos(cr):0};
+}
+
+function attachPt(aL,aR){
+  var sinR=Math.max(Math.sin(aR),1e-9);
+  var t=(PRx-PLx)/(Math.cos(aL)+Math.sin(aL)*Math.cos(aR)/sinR);
+  return{x:PLx+t*Math.cos(aL),y:PYy+t*Math.sin(aL)};
+}
+function diagsFrom(aL,aR){
+  var p=attachPt(aL,aR);
+  return{dL:Math.hypot(p.x-PLx,p.y-PYy),dR:Math.hypot(p.x-PRx,p.y-PYy)};
+}
+function weightYs(aL,aR){
+  var d=diagsFrom(aL,aR);
+  var vL=(SL||0)-d.dL,vR=(SR||0)-d.dR;
+  return{yL:PYy+PRAD+Math.max(vL,0),yR:PYy+PRAD+Math.max(vR,0),cL:vL<0,cR:vR<0};
+}
+
+var cur={aL:0.5,aR:0.5,x:0,y:0};
+var frm={aL:0.5,aR:0.5,x:0,y:0};
+var tar={aL:0.5,aR:0.5,x:0,y:0};
+var animId=null,t0=null,DUR=700;
+function ease(t){return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
+
+function animTick(ts){
+  if(!t0)t0=ts;
+  var t=ease(Math.min((ts-t0)/DUR,1));
+  cur={aL:frm.aL+(tar.aL-frm.aL)*t,aR:frm.aR+(tar.aR-frm.aR)*t,
+       x:frm.x+(tar.x-frm.x)*t,y:frm.y+(tar.y-frm.y)*t};
+  drawMain();
+  if(t<1){animId=requestAnimationFrame(animTick);}
+  else{drawMain();showInfo();if(document.getElementById('showF').classList.contains('on'))renderForcePanel();}
+}
+function animTo(aL,aR){
+  var p=attachPt(aL,aR);
+  frm={aL:cur.aL,aR:cur.aR,x:cur.x,y:cur.y};
+  tar={aL:aL,aR:aR,x:p.x,y:p.y};
+  t0=null;if(animId)cancelAnimationFrame(animId);
+  animId=requestAnimationFrame(animTick);
+}
+
+function rrect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+
+function arw(ctx,x1,y1,x2,y2,col,lbl,side){
+  var dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);if(len<4)return;
+  var ux=dx/len,uy=dy/len,s=14;
+  ctx.save();ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=4;ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-ux*s+uy*s*0.4,y2-uy*s-ux*s*0.4);
+  ctx.lineTo(x2-ux*s-uy*s*0.4,y2-uy*s+ux*s*0.4);
+  ctx.closePath();ctx.fill();
+  if(lbl){
+    ctx.font='bold 17px sans-serif';ctx.textBaseline='middle';
+    if(side==='l'){ctx.textAlign='right';ctx.fillText(lbl,x2-10,y2);}
+    else if(side==='r'){ctx.textAlign='left';ctx.fillText(lbl,x2+10,y2);}
+    else{ctx.textAlign='center';ctx.fillText(lbl,x2+uy*14,y2-ux*14);}
+  }
+  ctx.restore();
+}
+
+function drawMain(){
+  gc.clearRect(0,0,W,H);
+  var wLv=parseFloat(document.getElementById('wL').value)||0;
+  var wCv=parseFloat(document.getElementById('wC').value)||0;
+  var wRv=parseFloat(document.getElementById('wR').value)||0;
+  var ax=cur.x,ay=cur.y,wy=weightYs(cur.aL,cur.aR);
+
+  gc.fillStyle='#aaa';
+  gc.fillRect(PLx-28,PYy-PRAD-13,56,9);
+  gc.fillRect(PRx-28,PYy-PRAD-13,56,9);
+
+  gc.strokeStyle='#777';gc.lineWidth=1.8;gc.setLineDash([]);
+  [[PLx,PYy,ax,ay],[PRx,PYy,ax,ay],[PLx,PYy+PRAD,PLx,wy.yL],[PRx,PYy+PRAD,PRx,wy.yR]]
+    .forEach(function(s){gc.beginPath();gc.moveTo(s[0],s[1]);gc.lineTo(s[2],s[3]);gc.stroke();});
+
+  [PLx,PRx].forEach(function(px){
+    gc.beginPath();gc.arc(px,PYy,PRAD,0,Math.PI*2);gc.fillStyle='#f0efea';gc.fill();
+    gc.strokeStyle='#888';gc.lineWidth=1.5;gc.stroke();
+    gc.beginPath();gc.arc(px,PYy,PRAD*0.3,0,Math.PI*2);gc.fillStyle='#888';gc.fill();
+  });
+
+  [[PLx,wy.yL,wLv?wLv+'g':'?g',wy.cL],[PRx,wy.yR,wRv?wRv+'g':'?g',wy.cR]].forEach(function(e){
+    rrect(gc,e[0]-WW/2,e[1],WW,WH,5);
+    gc.fillStyle=e[3]?'#fde':'#e1f5ee';gc.fill();
+    gc.strokeStyle=e[3]?'#c00':'#0f6e56';gc.lineWidth=1.5;gc.stroke();
+    gc.fillStyle=e[3]?'#c00':'#085041';
+    gc.font='bold 17px sans-serif';gc.textAlign='center';gc.textBaseline='middle';
+    gc.fillText(e[2],e[0],e[1]+WH/2);
+  });
+
+  rrect(gc,ax-BW/2,ay,BW,BH,6);
+  gc.fillStyle='#eeedfe';gc.fill();gc.strokeStyle='#534ab7';gc.lineWidth=1.5;gc.stroke();
+  gc.fillStyle='#534ab7';gc.font='bold 20px sans-serif';gc.textAlign='center';gc.textBaseline='middle';
+  gc.fillText(wCv?wCv+'g':'?g',ax,ay+BH/2);
+
+  if(wLv&&wCv&&wRv){
+    var sc=Math.min(50/Math.max(wLv,wCv,wRv),0.4);
+    var dxL=PLx-ax,dyL=PYy-ay,lL=Math.hypot(dxL,dyL);
+    var dxR=PRx-ax,dyR=PYy-ay,lR=Math.hypot(dxR,dyR);
+    var tLx2=ax+dxL/lL*wLv*sc, tLy2=ay+dyL/lL*wLv*sc;
+    var tRx2=ax+dxR/lR*wRv*sc, tRy2=ay+dyR/lR*wRv*sc;
+    arw(gc,ax,ay,tLx2,tLy2,'#d85a30','','');
+    arw(gc,ax,ay,tRx2,tRy2,'#d85a30','','');
+    arw(gc,ax,ay+BH,ax,ay+BH+wCv*sc,'#1d9e75','W','');
+    drawTsub(gc,tLx2-42,tLy2,'L','','#d85a30',17);
+    drawTsub(gc,tRx2+10,tRy2,'R','','#d85a30',17);
+  }
+}
+
+function showInfo(){
+  var wLv=parseFloat(document.getElementById('wL').value)||0;
+  var wCv=parseFloat(document.getElementById('wC').value)||0;
+  var wRv=parseFloat(document.getElementById('wR').value)||0;
+  if(!wLv||!wCv||!wRv){infoEl.innerHTML='Enter all three weights to see equilibrium.';return;}
+  var wy=weightYs(cur.aL,cur.aR);
+  var aLd=(cur.aL*180/Math.PI).toFixed(1),aRd=(cur.aR*180/Math.PI).toFixed(1);
+  var msg='Left: '+aLd+'° | Right: '+aRd+'° above horizontal<br>'
+        +'T<sub>L</sub>='+gToN(wLv)+'&nbsp;&nbsp;T<sub>R</sub>='+gToN(wRv)+'&nbsp;&nbsp;W='+gToN(wCv);
+  if(wy.cL||wy.cR){
+    var s=(wy.cL&&wy.cR)?'Both weights have':(wy.cL?'Left weight has':'Right weight has');
+    msg+="<br><span class='warn'>⚠ "+s+" risen to the pulley.</span>";
+  }
+  infoEl.innerHTML=msg;
+}
+
+function renderForcePanel(){
+  var wLv=parseFloat(document.getElementById('wL').value)||0;
+  var wCv=parseFloat(document.getElementById('wC').value)||0;
+  var wRv=parseFloat(document.getElementById('wR').value)||0;
+  if(!wLv||!wCv||!wRv)return;
+  var aL=cur.aL,aR=cur.aR;
+  if(!isFinite(aL)||!isFinite(aR))return;
+
+  var PW=fp.offsetWidth||360;
+  var PH=Math.round(PW*0.85);
+  fp.width=PW*DPR;fp.height=PH*DPR;fp.style.height=PH+'px';
+  gp.setTransform(DPR,0,0,DPR,0,0);gp.clearRect(0,0,PW,PH);
+
+  var pcx=PW/2,pcy=PH*0.46;
+  var bw=130,bh=68;
+  var sc=Math.min(90/Math.max(wLv,wCv,wRv),0.65);
+  var ax=pcx,ay=pcy-bh/2;
+
+  rrect(gp,pcx-bw/2,pcy-bh/2,bw,bh,6);
+  gp.fillStyle='#eeedfe';gp.fill();gp.strokeStyle='#534ab7';gp.lineWidth=1.5;gp.stroke();
+  gp.fillStyle='#534ab7';gp.font='bold 21px sans-serif';gp.textAlign='center';gp.textBaseline='middle';
+  gp.fillText(wCv+'g',pcx,pcy);
+
+  function pa(x1,y1,x2,y2,col){
+    var dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);if(len<4)return;
+    var ux=dx/len,uy=dy/len,s=16;
+    gp.save();gp.strokeStyle=col;gp.fillStyle=col;gp.lineWidth=5;gp.setLineDash([]);
+    gp.beginPath();gp.moveTo(x1,y1);gp.lineTo(x2,y2);gp.stroke();
+    gp.beginPath();gp.moveTo(x2,y2);
+    gp.lineTo(x2-ux*s+uy*s*0.4,y2-uy*s-ux*s*0.4);
+    gp.lineTo(x2-ux*s-uy*s*0.4,y2-uy*s+ux*s*0.4);
+    gp.closePath();gp.fill();
+    gp.restore();
+  }
+
+  var nL=(wLv*0.00981).toFixed(3),nR=(wRv*0.00981).toFixed(3),nC=(wCv*0.00981).toFixed(3);
+  var tLx2=ax-Math.cos(aL)*wLv*sc, tLy2=ay-Math.sin(aL)*wLv*sc;
+  var tRx2=ax+Math.cos(aR)*wRv*sc, tRy2=ay-Math.sin(aR)*wRv*sc;
+
+  pa(ax,ay,tLx2,tLy2,'#d85a30');
+  pa(ax,ay,tRx2,tRy2,'#d85a30');
+  pa(ax,pcy+bh/2,ax,pcy+bh/2+wCv*sc,'#1d9e75');
+
+  // T_L label: right-aligned to arrowhead
+  gp.save();
+  gp.font='bold 18px sans-serif';
+  var tW=gp.measureText('T').width;
+  gp.font='bold '+Math.round(18*0.65)+'px sans-serif';
+  var sW=gp.measureText('L').width;
+  gp.font='bold 18px sans-serif';
+  var sufW=gp.measureText(' = '+nL+' N').width;
+  gp.restore();
+  var totalW=tW+1+sW+1+sufW;
+  drawTsub(gp,tLx2-totalW-8,tLy2,'L',' = '+nL+' N','#d85a30',18);
+
+  // T_R label: left-aligned from arrowhead
+  drawTsub(gp,tRx2+8,tRy2,'R',' = '+nR+' N','#d85a30',18);
+
+  // W label
+  gp.save();gp.fillStyle='#1d9e75';gp.font='bold 18px sans-serif';
+  gp.textAlign='left';gp.textBaseline='middle';
+  gp.fillText('W = '+nC+' N',ax+10,pcy+bh/2+wCv*sc);
+  gp.restore();
+
+  // horizontal reference line
+  gp.save();gp.strokeStyle='#378add';gp.lineWidth=1;gp.setLineDash([4,3]);
+  gp.beginPath();gp.moveTo(ax-110,ay);gp.lineTo(ax+110,ay);gp.stroke();
+  gp.setLineDash([]);
+
+  var arcR=40;
+  var leftStrAng=-(Math.PI-aL),rightStrAng=-aR;
+  gp.beginPath();gp.arc(ax,ay,arcR,-Math.PI,leftStrAng,false);
+  gp.strokeStyle='#378add';gp.lineWidth=1.5;gp.stroke();
+  gp.beginPath();gp.arc(ax,ay,arcR,rightStrAng,0,false);gp.stroke();
+  gp.restore();
+
+  var aLd=(aL*180/Math.PI).toFixed(1),aRd=(aR*180/Math.PI).toFixed(1);
+  gp.fillStyle='#185fa5';gp.font='bold 18px sans-serif';gp.textAlign='center';gp.textBaseline='middle';
+  var midL=(-Math.PI+leftStrAng)/2,midR=rightStrAng/2;
+  gp.fillText(aLd+'°',ax+Math.cos(midL)*(arcR+24),ay+Math.sin(midL)*(arcR+24)-6);
+  gp.fillText(aRd+'°',ax+Math.cos(midR)*(arcR+24),ay+Math.sin(midR)*(arcR+24)-6);
+
+  fplabels.innerHTML=
+    '<b>Vertical:</b> T<sub>L</sub> sinθ = '+(wLv*Math.sin(aL)*0.00981).toFixed(3)
+    +' N &nbsp;+&nbsp; T<sub>R</sub> sinθ = '+(wRv*Math.sin(aR)*0.00981).toFixed(3)
+    +' N &nbsp;=&nbsp; '+nC+' N<br>'
+    +'<b>Horizontal:</b> T<sub>L</sub> cosθ = '+(wLv*Math.cos(aL)*0.00981).toFixed(3)
+    +' N &nbsp;=&nbsp; T<sub>R</sub> cosθ = '+(wRv*Math.cos(aR)*0.00981).toFixed(3)+' N';
+}
+
+function update(){
+  var wLv=parseFloat(document.getElementById('wL').value)||0;
+  var wCv=parseFloat(document.getElementById('wC').value)||0;
+  var wRv=parseFloat(document.getElementById('wR').value)||0;
+  if(!wLv||!wCv||!wRv){drawMain();infoEl.textContent='Enter all three weights to see equilibrium.';return;}
+  var sol=solveEq(wLv,wCv,wRv);
+  if(!sol){
+    var lo0=wLv>wRv?Math.acos(wRv/wLv):0;
+    var cr=(wLv/wRv)*Math.cos(lo0);
+    var minF=wLv*Math.sin(lo0)+wRv*(cr<=1?Math.sin(Math.acos(cr)):0);
+    drawMain();
+    infoEl.textContent=wCv<minF-0.5
+      ?'No equilibrium — minimum upward force is '+(minF*0.00981).toFixed(3)+' N; increase centre weight to at least '+Math.ceil(minF)+' g.'
+      :'No equilibrium — centre weight must be less than '+(wLv+wRv)+' g.';
+    return;
+  }
+  animTo(sol.aL,sol.aR);
+}
+
+function init(){
+  resize();
+  var wLv=parseFloat(document.getElementById('wL').value)||150;
+  var wCv=parseFloat(document.getElementById('wC').value)||200;
+  var wRv=parseFloat(document.getElementById('wR').value)||150;
+  var sol=solveEq(wLv,wCv,wRv)||{aL:0.5,aR:0.5};
+  var p=attachPt(sol.aL,sol.aR);
+  cur={aL:sol.aL,aR:sol.aR,x:p.x,y:p.y};
+  frm={aL:cur.aL,aR:cur.aR,x:cur.x,y:cur.y};
+  tar={aL:cur.aL,aR:cur.aR,x:cur.x,y:cur.y};
+  var d=diagsFrom(sol.aL,sol.aR);
+  SL=d.dL+(H*0.62-PYy-PRAD);SR=d.dR+(H*0.62-PYy-PRAD);
+  drawMain();showInfo();
+}
+
+window.addEventListener('load',function(){setTimeout(init,50);});
+window.addEventListener('resize',function(){
+  var d=diagsFrom(cur.aL,cur.aR);
+  var vL=SL-d.dL,vR=SR-d.dR;
+  resize();
+  var p=attachPt(cur.aL,cur.aR);
+  cur.x=p.x;cur.y=p.y;
+  frm={aL:cur.aL,aR:cur.aR,x:cur.x,y:cur.y};
+  tar={aL:cur.aL,aR:cur.aR,x:cur.x,y:cur.y};
+  var d2=diagsFrom(cur.aL,cur.aR);SL=d2.dL+vL;SR=d2.dR+vR;
+  drawMain();
+  if(document.getElementById('showF').classList.contains('on'))renderForcePanel();
+});
+
+document.getElementById('showF').addEventListener('click',function(){
+  this.classList.toggle('on');
+  var wrap=document.getElementById('fpwrap');
+  var ph=document.getElementById('rplaceholder');
+  if(this.classList.contains('on')){
+    wrap.classList.add('visible');ph.style.display='none';renderForcePanel();
+  } else {
+    wrap.classList.remove('visible');ph.style.display='block';
+  }
+});
+
+['wL','wC','wR'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',update);
+});
+</script>
+</body>
+</html>
