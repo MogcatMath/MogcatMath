@@ -1,0 +1,4160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cartographer's Table — Fantasy Town Map Builder</title>
+<style>
+  :root{
+    --parchment:#ece0c4;
+    --parchment-dark:#dccfa8;
+    --ink:#3a2c1a;
+    --ink-soft:#5c4a30;
+    --panel-bg:#2a2015;
+    --panel-bg2:#382a1a;
+    --panel-text:#e8dcc0;
+    --accent:#a9713a;
+    --accent-bright:#d9a24b;
+    --danger:#8a3324;
+    --ok:#4a6a3a;
+    font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:#161009;overflow:hidden;}
+  body{display:flex;flex-direction:column;height:100vh;color:var(--panel-text);}
+
+  header{
+    background:linear-gradient(180deg,var(--panel-bg2),var(--panel-bg));
+    padding:8px 16px;display:flex;align-items:center;gap:18px;
+    border-bottom:2px solid #000;flex:0 0 auto;
+  }
+  header h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.03em;color:var(--accent-bright);white-space:nowrap;}
+  header .sub{font-size:11px;color:#b7a980;letter-spacing:.05em;}
+
+  .style-toggle{display:flex;gap:4px;margin-left:auto;background:#1c150d;padding:3px;border-radius:6px;border:1px solid #000;}
+  .style-toggle button{
+    background:transparent;border:none;color:#b7a980;padding:6px 12px;font-size:12px;
+    border-radius:4px;cursor:pointer;font-family:inherit;letter-spacing:.03em;
+  }
+  .style-toggle button.active{background:var(--accent);color:#1c150d;font-weight:700;}
+  .style-toggle button:hover:not(.active){color:var(--accent-bright);}
+
+  .layout{flex:1;display:flex;min-height:0;}
+
+  .toolbar{
+    width:190px;flex:0 0 auto;background:var(--panel-bg);border-right:2px solid #000;
+    overflow-y:auto;padding:10px 0;
+  }
+  .stage-block{margin-bottom:4px;}
+  .stage-head{
+    padding:8px 12px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    color:#8d7a58;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;
+  }
+  .stage-head .num{
+    width:18px;height:18px;border-radius:50%;background:#3a2c1a;color:#b7a980;
+    display:inline-flex;align-items:center;justify-content:center;font-size:10px;flex:0 0 auto;
+  }
+  .stage-head.current{color:var(--accent-bright);}
+  .stage-head.current .num{background:var(--accent);color:#1c150d;}
+  .tool-btn{
+    display:flex;align-items:center;gap:8px;width:calc(100% - 16px);margin:2px 8px;
+    padding:7px 10px;background:transparent;border:1px solid transparent;border-radius:5px;
+    color:var(--panel-text);font-size:12.5px;text-align:left;cursor:pointer;font-family:inherit;
+  }
+  .tool-btn:hover{background:#3a2c1a;}
+  .tool-btn.active{background:var(--accent);color:#1c150d;font-weight:700;border-color:var(--accent-bright);}
+  .tool-btn .swatch{width:14px;height:14px;border-radius:2px;flex:0 0 auto;border:1px solid #0006;}
+
+  .canvas-wrap{
+    flex:1;position:relative;overflow:auto;background:#0e0a06;
+    display:flex;align-items:flex-start;justify-content:center;padding:24px;
+  }
+  #mapShell{position:relative;box-shadow:0 10px 40px #000a;border:10px solid #1c150d;border-radius:2px;
+    width:100%;max-width:1500px;}
+  svg#map{display:block;width:100%;height:auto;aspect-ratio:1.6;background:var(--parchment);cursor:crosshair;}
+  .zoom-indicator{
+    position:absolute;bottom:8px;right:8px;background:#1c150dcc;color:#e8dcc0;
+    font-size:11px;padding:4px 9px;border-radius:4px;pointer-events:none;letter-spacing:.02em;
+  }
+
+  .right-panel{
+    width:250px;flex:0 0 auto;background:var(--panel-bg);border-left:2px solid #000;
+    overflow-y:auto;padding:14px 14px 40px;
+  }
+  .right-panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:#8d7a58;margin:14px 0 8px;}
+  .right-panel h2:first-child{margin-top:0;}
+  .layer-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;color:var(--panel-text);}
+  .layer-row input{accent-color:var(--accent);}
+  .hint{font-size:11.5px;color:#9a8a68;line-height:1.5;background:#1c150d;padding:8px 10px;border-radius:5px;margin-top:6px;}
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:11px;color:#b7a980;margin-bottom:3px;letter-spacing:.03em;}
+  select, input[type=range]{width:100%;}
+  select{background:#1c150d;color:var(--panel-text);border:1px solid #3a2c1a;padding:6px;border-radius:4px;font-family:inherit;font-size:12.5px;}
+  .btn{
+    display:block;width:100%;padding:9px 10px;margin-top:6px;background:var(--accent);color:#1c150d;
+    border:none;border-radius:5px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;letter-spacing:.02em;
+  }
+  .btn:hover{background:var(--accent-bright);}
+  .btn.secondary{background:#3a2c1a;color:var(--panel-text);}
+  .btn.secondary:hover{background:#4a3a24;}
+  .btn.danger{background:var(--danger);color:#f3ded6;}
+  .btn.danger:hover{background:#a54430;}
+  .zone-list{display:flex;flex-direction:column;gap:4px;}
+  .zone-item{
+    display:flex;justify-content:space-between;align-items:center;font-size:11.5px;
+    padding:6px 8px;background:#1c150d;border-radius:4px;cursor:pointer;border:1px solid transparent;
+  }
+  .zone-item.sel{border-color:var(--accent-bright);}
+  .zone-item span.tag{color:#9a8a68;}
+  footer{
+    flex:0 0 auto;background:var(--panel-bg2);padding:5px 16px;font-size:11px;color:#8d7a58;
+    border-top:1px solid #000;display:flex;justify-content:space-between;
+  }
+  .kbd{background:#1c150d;padding:1px 5px;border-radius:3px;border:1px solid #3a2c1a;font-size:10.5px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cartographer's Table</h1>
+  <span class="sub">fantasy town map builder</span>
+  <div class="style-toggle" id="styleToggle">
+    <button data-style="medieval">Medieval</button>
+    <button data-style="renaissance">Renaissance</button>
+    <button data-style="victorian">Victorian</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="toolbar" id="toolbar"></div>
+
+  <div class="canvas-wrap">
+    <div id="mapShell">
+      <svg id="map" width="3200" height="2000" viewBox="0 0 3200 2000" xmlns="http://www.w3.org/2000/svg">
+        <defs id="mapDefs"></defs>
+        <g id="layer-background"></g>
+        <g id="layer-natural"></g>
+        <g id="layer-infrastructure"></g>
+        <g id="layer-walls"></g>
+        <g id="layer-zones"></g>
+        <g id="layer-buildings"></g>
+        <g id="layer-decoration"></g>
+        <g id="layer-drawing"></g>
+        <g id="layer-handles"></g>
+      </svg>
+      <div class="zoom-indicator" id="zoomIndicator">100%</div>
+    </div>
+  </div>
+
+  <div class="right-panel" id="rightPanel"></div>
+</div>
+<input type="file" id="loadFileInput" accept=".json,application/json" style="display:none">
+
+<footer>
+  <span>Click to place points &middot; <span class="kbd">Enter</span> or double-click to close/finish &middot; <span class="kbd">Esc</span> cancel &middot; <span class="kbd">Backspace</span> undo last point &middot; <span class="kbd">Ctrl+Z</span> undo last action &middot; scroll to zoom &middot; middle-drag to pan</span>
+  <span id="statusMsg"></span>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------------- state */
+const state = {
+  style: 'medieval',
+  stage: 1,
+  tool: null,
+  layers: {natural:true, infrastructure:true, walls:true, zones:true, buildings:true},
+  rivers: [], parks: [], hills: [],
+  roads: [],
+  walls: [], // city/boundary walls — can have more than one
+  zoneWalls: [], // per-zone estate walls (mansion zones) — {id, points, sourceZoneId}
+  zones: [],
+  selectedZoneId: null,
+  nextId: 1,
+  drawing: null, // {kind:'river'|'park'|'hill'|'road:thoroughfare'|...|'wall'|'zone', points:[[x,y]...], closed:bool}
+  selection: null,          // {type, obj} — currently selected shape for the Select & Edit tool
+  selectedVertexIndex: null,
+  draggingVertex: false
+};
+
+/* ---------------------------------------------------------------- undo */
+/* Keeps up to 5 snapshots of the document (everything actually drawn on the
+   map — not transient UI state like the current tool or selection). Every
+   mutating action pushes a snapshot of how things looked *before* it runs;
+   Ctrl+Z pops the most recent one and restores it. */
+const UNDO_DOC_KEYS = ['rivers','parks','hills','roads','walls','zoneWalls','zones','nextId'];
+const MAX_UNDO = 5;
+const undoStack = [];
+// "Clear entire map" uses an in-UI two-click confirm rather than the native
+// confirm() dialog — confirm() is silently blocked in some sandboxed/embedded
+// preview contexts, which made the button appear to do nothing at all.
+let clearMapArmed = false;
+let clearMapArmTimer = null;
+function snapshotDoc(){
+  const snap = {};
+  UNDO_DOC_KEYS.forEach(k => { snap[k] = JSON.parse(JSON.stringify(state[k])); });
+  return snap;
+}
+function pushUndo(){
+  undoStack.push(snapshotDoc());
+  if(undoStack.length > MAX_UNDO) undoStack.shift();
+}
+function performUndo(){
+  if(undoStack.length === 0){ setStatus('Nothing to undo.'); return; }
+  const snap = undoStack.pop();
+  UNDO_DOC_KEYS.forEach(k => { state[k] = snap[k]; });
+  // The underlying objects just got replaced wholesale, so any reference to
+  // one of them (an active selection, a mid-drag vertex, a drawing in
+  // progress) is now stale and needs clearing rather than left dangling.
+  state.selection = null;
+  state.selectedVertexIndex = null;
+  state.draggingVertex = false;
+  state.drawing = null;
+  state.tool = null;
+  if(state.selectedZoneId && !state.zones.find(z=>z.id===state.selectedZoneId)) state.selectedZoneId = null;
+  setStatus('Undid last action.'+(undoStack.length ? '' : ' (nothing further to undo)'));
+  renderAll();
+}
+
+const HOUSE_SPECS = {
+  hovel:     {w:13, h:13, label:'Hovel'},
+  rowhouse:  {w:17, h:29, label:'Rowhouse'},
+  townhouse: {w:25, h:32, label:'Townhouse'},
+  mansion:   {w:56, h:46, label:'Mansion'},
+  industry:  {w:17, h:29, label:'Industry'} // small buildings are rowhouse-sized; occasional large ones are computed in autofillZoneIndustry
+};
+const DENSITY_GAP = {high:2, medium:9, low:22};
+
+const STAGES = [
+  {n:1, key:'natural', label:'Natural Features', tools:[
+    {id:'river', label:'River / stream', kind:'open', swatch:'#5f7f8c'},
+    {id:'park', label:'Park / green', kind:'closed', swatch:'#6f8f5a'},
+    {id:'hill', label:'Hill contour', kind:'closed', swatch:'#a08a5a'}
+  ]},
+  {n:2, key:'infrastructure', label:'Infrastructure', tools:[
+    {id:'road:thoroughfare', label:'Thoroughfare', kind:'open', swatch:'#4a3a24'},
+    {id:'road:street', label:'Street', kind:'open', swatch:'#6a5638'},
+    {id:'road:alley', label:'Alley', kind:'open', swatch:'#8a795c'},
+    {id:'road:canal', label:'Canal', kind:'open', swatch:'#4a6a78'}
+  ]},
+  {n:3, key:'walls', label:'Walls & Boundary', tools:[
+    {id:'wall', label:'Wall / boundary', kind:'closed', swatch:'#3a2c1a'}
+  ]},
+  {n:4, key:'zones', label:'Zoning', tools:[
+    {id:'zone', label:'Draw zone', kind:'closed', swatch:'#b98a4a'},
+    {id:'autozone', label:'Click enclosed area', kind:'click', swatch:'#7a9ab9'}
+  ]},
+  {n:5, key:'autofill', label:'Autofill', tools:[]}
+];
+
+/* --------------------------------------------------------------- seeded rng */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function seedFor(id, salt){
+  let h = 0, s = (id+':'+salt);
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) | 0; }
+  return h;
+}
+
+/* --------------------------------------------------------------- geometry */
+function centroid(pts){
+  let x=0,y=0; pts.forEach(p=>{x+=p[0];y+=p[1];});
+  return [x/pts.length, y/pts.length];
+}
+function pointInPoly(pt, poly){
+  let x=pt[0], y=pt[1], inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
+    const intersect = ((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/((yj-yi)||1e-9) + xi);
+    if(intersect) inside = !inside;
+  }
+  return inside;
+}
+function rotatePoint(p, c, ang){
+  const s=Math.sin(ang), co=Math.cos(ang);
+  const dx=p[0]-c[0], dy=p[1]-c[1];
+  return [c[0] + dx*co - dy*s, c[1] + dx*s + dy*co];
+}
+function dist(a,b){ return Math.hypot(a[0]-b[0], a[1]-b[1]); }
+function bbox(pts){
+  let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
+  pts.forEach(p=>{ if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0]; if(p[1]<miny)miny=p[1]; if(p[1]>maxy)maxy=p[1]; });
+  return {minx,miny,maxx,maxy};
+}
+
+/* nearest road angle to a zone centroid, for building/grid orientation */
+function nearestRoadAngle(zone){
+  const c = centroid(zone.points);
+  let best = null, bestD = Infinity;
+  state.roads.forEach(r=>{
+    for(let i=0;i<r.points.length-1;i++){
+      const a=r.points[i], b=r.points[i+1];
+      const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
+      const d = dist(c,[mx,my]);
+      if(d<bestD){ bestD=d; best=Math.atan2(b[1]-a[1], b[0]-a[0]); }
+    }
+  });
+  return best === null ? 0 : best;
+}
+/* Direction of a polygon's longest edge — used to orient a single building
+   (like a manor house) parallel to the most prominent straight side of its
+   zone, rather than to a nearby road. */
+function longestEdgeAngle(points){
+  let bestLen = -1, bestAngle = 0;
+  const n = points.length;
+  for(let i=0;i<n;i++){
+    const a = points[i], b = points[(i+1)%n];
+    const len = dist(a,b);
+    if(len > bestLen){ bestLen = len; bestAngle = Math.atan2(b[1]-a[1], b[0]-a[0]); }
+  }
+  return bestAngle;
+}
+
+/* closest point on a polyline to pt, plus distance and the segment used */
+function distToPolyline(pt, points){
+  let best=Infinity, bestPoint=points[0], bestSeg=[points[0],points[1]||points[0]];
+  for(let i=0;i<points.length-1;i++){
+    const a=points[i], b=points[i+1];
+    const abx=b[0]-a[0], aby=b[1]-a[1];
+    const len2 = abx*abx+aby*aby || 1e-9;
+    let t = ((pt[0]-a[0])*abx + (pt[1]-a[1])*aby)/len2;
+    t = Math.max(0, Math.min(1, t));
+    const px=a[0]+abx*t, py=a[1]+aby*t;
+    const d = Math.hypot(pt[0]-px, pt[1]-py);
+    if(d<best){ best=d; bestPoint=[px,py]; bestSeg=[a,b]; }
+  }
+  return {dist:best, point:bestPoint, seg:bestSeg};
+}
+
+/* corners of a w x h rectangle centred at `center`, rotated by `angle` */
+function rectCorners(center, w, h, angle){
+  const [cx,cy]=center;
+  return [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]
+    .map(p=>rotatePoint([cx+p[0], cy+p[1]], center, angle));
+}
+/* corners + edge midpoints + centre — used for containment/clearance testing.
+   Corners alone can miss a road or river that cuts straight through the
+   middle of a candidate building without passing near any corner. */
+function rectSamplePoints(center, w, h, angle){
+  const local = [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2],
+                 [0,-h/2],[0,h/2],[-w/2,0],[w/2,0],[0,0]];
+  const [cx,cy]=center;
+  return local.map(p=>rotatePoint([cx+p[0], cy+p[1]], center, angle));
+}
+/* half-extent of an oriented w x h box, projected onto world direction `dir` */
+function projectedHalfExtent(w, h, angle, dir){
+  const ux=[Math.cos(angle), Math.sin(angle)];
+  const uy=[-Math.sin(angle), Math.cos(angle)];
+  const dx=Math.abs(dir[0]*ux[0]+dir[1]*ux[1]);
+  const dy=Math.abs(dir[0]*uy[0]+dir[1]*uy[1]);
+  return dx*(w/2) + dy*(h/2);
+}
+
+/* hand-drawn wobble: turns a polyline into a slightly irregular smooth path.
+   Jitter is derived from each point's own (quantised) coordinates rather than
+   from the shape's id, so two shapes that share an endpoint — e.g. two roads
+   meeting at a junction — end up wobbling to the *same* place and read as
+   connected instead of drifting apart. */
+function jitterKey(p){ return Math.round(p[0]*4)+','+Math.round(p[1]*4); }
+function pointJitter(p, amplitude){
+  if(amplitude<=0) return [p[0], p[1]];
+  const rnd = mulberry32(seedFor(jitterKey(p), 'ptjit'));
+  return [p[0] + (rnd()-0.5)*amplitude, p[1] + (rnd()-0.5)*amplitude];
+}
+function wobblePath(points, amplitude, closed){
+  if(points.length < 2) return '';
+  const pts = points.map(p=>pointJitter(p, amplitude));
+  if(closed) pts.push(pts[0]);
+  let d = 'M '+pts[0][0].toFixed(1)+' '+pts[0][1].toFixed(1)+' ';
+  for(let i=1;i<pts.length;i++){
+    const p0 = pts[i-1], p1 = pts[i];
+    const mx = (p0[0]+p1[0])/2, my=(p0[1]+p1[1])/2;
+    d += 'Q '+p0[0].toFixed(1)+' '+p0[1].toFixed(1)+' '+mx.toFixed(1)+' '+my.toFixed(1)+' ';
+  }
+  d += 'L '+pts[pts.length-1][0].toFixed(1)+' '+pts[pts.length-1][1].toFixed(1);
+  return d;
+}
+function straightPath(points, closed){
+  let d = 'M '+points.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L ');
+  if(closed) d += ' Z';
+  return d;
+}
+
+/* ---------------------------------------------------------------- style defs */
+const STYLE_PARAMS = {
+  // Modelled on a classic procedurally-generated fantasy city map: flat warm
+  // ground with a faint surveyor's grid, roof-shaded gradient buildings
+  // clustered tight, blank cream streets, and a solid wall studded with
+  // round towers and gatehouses.
+  medieval:   {parchment:'#f1dcc0', ink:'#241a10', inkSoft:'#5c4530', wobble:1.8, riverWobble:2.6, lineScale:1.1, hillMode:'bumps',
+               noiseOpacity:0, vignetteOpacity:0.06, blankBuildings:false, blankRoads:false,
+               gridOverlay:true, gradientBuildings:true, buildingOutline:'#6b2a1c',
+               roadFillColor:'#f4ecd8', roadHaloOpacity:0.06, roadTread:false, wallStyle:'towers'},
+  renaissance:{parchment:'#e8d7ae', ink:'#2e2015', inkSoft:'#5a3f26', wobble:2.8, riverWobble:3.5, lineScale:1.0, hillMode:'shaded',
+               noiseOpacity:0.4, vignetteOpacity:0.3, blankBuildings:false, blankRoads:false,
+               gridOverlay:false, gradientBuildings:false, buildingOutline:null,
+               roadFillColor:'#efe6cf', roadHaloOpacity:0.18, roadTread:true, wallStyle:'crenellation'},
+  // Modelled on genuine Ordnance Survey town plans: pale flat paper, thin near-
+  // black precise linework, buildings left blank (outline only, no colour or
+  // hatching), streets left blank with thin "cased" double-line edges.
+  victorian:  {parchment:'#e8e2d1', ink:'#201c14', inkSoft:'#4a4436', wobble:0.5, riverWobble:0.8, lineScale:0.55, hillMode:'hachure',
+               noiseOpacity:0.12, vignetteOpacity:0.08, blankBuildings:true, blankRoads:true, buildingBlankFill:'#f1ecdd',
+               gridOverlay:false, gradientBuildings:false, buildingOutline:null,
+               roadFillColor:'#c9b98c', roadHaloOpacity:0.18, roadTread:true, wallStyle:'crenellation'}
+};
+function sp(){ return STYLE_PARAMS[state.style]; }
+
+/* ---------------------------------------------------------------- SVG setup */
+const svg = document.getElementById('map');
+const gNatural = document.getElementById('layer-natural');
+const gInfra = document.getElementById('layer-infrastructure');
+const gWalls = document.getElementById('layer-walls');
+const gZones = document.getElementById('layer-zones');
+const gBuildings = document.getElementById('layer-buildings');
+const gBackground = document.getElementById('layer-background');
+const gFrame = document.getElementById('layer-decoration');
+const gDrawing = document.getElementById('layer-drawing');
+const gHandles = document.getElementById('layer-handles');
+const zoomIndicator = document.getElementById('zoomIndicator');
+const defs = document.getElementById('mapDefs');
+const NS = 'http://www.w3.org/2000/svg';
+
+function el(tag, attrs){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+
+function svgPoint(evt){
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const ctm = svg.getScreenCTM().inverse();
+  const p = pt.matrixTransform(ctm);
+  return [Math.round(p.x), Math.round(p.y)];
+}
+
+/* ---------------------------------------------------------------- camera (zoom/pan) */
+const MAP_W = 3200, MAP_H = 2000;
+const camera = {x:0, y:0, w:MAP_W, h:MAP_H};
+const CAMERA_MIN_W = 160;   // most zoomed in (~20x on this canvas) — kept fixed in absolute terms since it's calibrated to comfortably inspect individual buildings, not to the overall canvas size
+const CAMERA_MAX_W = MAP_W; // most zoomed out (whole map)
+function applyCamera(){
+  svg.setAttribute('viewBox', `${camera.x.toFixed(1)} ${camera.y.toFixed(1)} ${camera.w.toFixed(1)} ${camera.h.toFixed(1)}`);
+  zoomIndicator.textContent = Math.round((MAP_W/camera.w)*100)+'%';
+}
+svg.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  const rect = svg.getBoundingClientRect();
+  const fracX = (e.clientX-rect.left)/rect.width;
+  const fracY = (e.clientY-rect.top)/rect.height;
+  const worldX = camera.x + fracX*camera.w;
+  const worldY = camera.y + fracY*camera.h;
+  const factor = Math.pow(1.0016, e.deltaY);
+  let newW = camera.w * factor;
+  newW = Math.min(CAMERA_MAX_W, Math.max(CAMERA_MIN_W, newW));
+  const newH = newW / (MAP_W/MAP_H);
+  camera.x = worldX - fracX*newW;
+  camera.y = worldY - fracY*newH;
+  camera.w = newW; camera.h = newH;
+  applyCamera();
+}, {passive:false});
+
+let panState = null;
+svg.addEventListener('mousedown', (e)=>{
+  if(e.button===1){
+    e.preventDefault();
+    panState = {startX:e.clientX, startY:e.clientY, camX:camera.x, camY:camera.y};
+  }
+});
+window.addEventListener('mousemove', (e)=>{
+  if(!panState) return;
+  const rect = svg.getBoundingClientRect();
+  const scaleX = camera.w/rect.width, scaleY = camera.h/rect.height;
+  camera.x = panState.camX - (e.clientX-panState.startX)*scaleX;
+  camera.y = panState.camY - (e.clientY-panState.startY)*scaleY;
+  applyCamera();
+});
+window.addEventListener('mouseup', (e)=>{
+  if(e.button===1) panState = null;
+});
+svg.addEventListener('auxclick', (e)=>{ if(e.button===1) e.preventDefault(); });
+applyCamera();
+
+/* ---------------------------------------------------------------- defs (patterns, filters) */
+function buildDefs(){
+  clear(defs);
+  const s = sp();
+
+  // parchment noise filter
+  const noiseFilter = el('filter', {id:'parchmentNoise', x:'-5%', y:'-5%', width:'110%', height:'110%'});
+  noiseFilter.appendChild(el('feTurbulence', {type:'fractalNoise', baseFrequency:'0.012 0.018', numOctaves:'3', seed:'7', result:'noise'}));
+  const cm = el('feColorMatrix', {in:'noise', type:'matrix', values:'0 0 0 0 0.35  0 0 0 0 0.28  0 0 0 0 0.15  0 0 0 0.06 0'});
+  noiseFilter.appendChild(cm);
+  const composite = el('feComposite', {in2:'SourceGraphic', operator:'over'});
+  noiseFilter.appendChild(composite);
+  defs.appendChild(noiseFilter);
+
+  // vignette
+  const vign = el('radialGradient', {id:'vignette', cx:'50%', cy:'45%', r:'75%'});
+  vign.appendChild(el('stop', {offset:'60%', 'stop-color':'#000', 'stop-opacity':'0'}));
+  vign.appendChild(el('stop', {offset:'100%', 'stop-color':'#2a1c0e', 'stop-opacity':String(s.vignetteOpacity)}));
+  defs.appendChild(vign);
+
+  // roof hatch patterns (two ridge orientations) — transparent background, lines only,
+  // so they can be layered over a solid building-colour fill underneath.
+  ['a','b'].forEach((variant, vi)=>{
+    const pat = el('pattern', {id:'hatch-'+variant, patternUnits:'userSpaceOnUse', width:'6', height:'6',
+      patternTransform: vi===0? 'rotate(45)':'rotate(-45)'});
+    pat.appendChild(el('line', {x1:'0', y1:'0', x2:'0', y2:'6', stroke:s.ink, 'stroke-width': (s.lineScale*0.7).toFixed(2), opacity:'0.6'}));
+    defs.appendChild(pat);
+  });
+
+  // water fill — renaissance reads a deeper, richer blue; every other style
+  // keeps the existing softer blue-grey
+  const waterColors = state.style==='renaissance' ? ['#4a7a9e', '#2f5a7a'] : ['#93aeb8', '#7a97a3'];
+  const waterGrad = el('linearGradient', {id:'waterFill', x1:'0', y1:'0', x2:'1', y2:'1'});
+  waterGrad.appendChild(el('stop', {offset:'0%', 'stop-color':waterColors[0]}));
+  waterGrad.appendChild(el('stop', {offset:'100%', 'stop-color':waterColors[1]}));
+  defs.appendChild(waterGrad);
+
+  // faint surveyor's grid (medieval-style flat ground)
+  const gridPat = el('pattern', {id:'mapGrid', patternUnits:'userSpaceOnUse', width:'42', height:'42'});
+  gridPat.appendChild(el('path', {d:'M 42 0 L 0 0 0 42', fill:'none', stroke:s.ink, 'stroke-opacity':'0.08', 'stroke-width':'1'}));
+  defs.appendChild(gridPat);
+
+  // roof-light gradient for gradient-shaded buildings (medieval style): sunlit
+  // top-left corner fading to a shadowed bottom-right, like a lit pitched roof
+  const bGrad = el('linearGradient', {id:'buildingGrad', x1:'0%', y1:'0%', x2:'100%', y2:'100%'});
+  bGrad.appendChild(el('stop', {offset:'0%', 'stop-color':'#ecb489'}));
+  bGrad.appendChild(el('stop', {offset:'100%', 'stop-color':'#a83a26'}));
+  defs.appendChild(bGrad);
+
+  // same lit-roof shading, but light-to-mid grey — mansions are stone/slate,
+  // not the warm brick/thatch tone used for everything else
+  const bGradMansion = el('linearGradient', {id:'buildingGradMansion', x1:'0%', y1:'0%', x2:'100%', y2:'100%'});
+  bGradMansion.appendChild(el('stop', {offset:'0%', 'stop-color':'#d9d9d9'}));
+  bGradMansion.appendChild(el('stop', {offset:'100%', 'stop-color':'#8a8a8a'}));
+  defs.appendChild(bGradMansion);
+
+  // heavier mid-to-dark grey for industrial buildings — noticeably darker
+  // than the mansion gradient so the two don't read as the same colour
+  const bGradIndustry = el('linearGradient', {id:'buildingGradIndustry', x1:'0%', y1:'0%', x2:'100%', y2:'100%'});
+  bGradIndustry.appendChild(el('stop', {offset:'0%', 'stop-color':'#8a8a8a'}));
+  bGradIndustry.appendChild(el('stop', {offset:'100%', 'stop-color':'#4a4a4a'}));
+  defs.appendChild(bGradIndustry);
+}
+
+/* ---------------------------------------------------------------- render: background/frame */
+function renderFrame(){
+  clear(gBackground);
+  clear(gFrame);
+  const w=MAP_W,h=MAP_H;
+  const s = sp();
+
+  // --- bottom layer: opaque background, must sit under every drawn shape ---
+  const bg = el('rect', {x:0,y:0,width:w,height:h, fill:s.parchment});
+  gBackground.appendChild(bg);
+  if(s.gridOverlay){
+    gBackground.appendChild(el('rect', {x:0,y:0,width:w,height:h, fill:'url(#mapGrid)'}));
+  } else {
+    gBackground.appendChild(el('rect', {x:0,y:0,width:w,height:h, filter:'url(#parchmentNoise)', opacity:String(s.noiseOpacity)}));
+  }
+
+  // --- top layer: decorations drawn over the finished map ---
+  const vig = el('rect', {x:0,y:0,width:w,height:h, fill:'url(#vignette)', 'pointer-events':'none'});
+  gFrame.appendChild(vig);
+
+  // decorative border
+  const margin = 22;
+  const border = el('rect', {x:margin,y:margin,width:w-margin*2,height:h-margin*2, fill:'none',
+    stroke:s.ink, 'stroke-width': state.style==='renaissance' ? 2.6 : 1.4});
+  gFrame.appendChild(border);
+  if(state.style==='renaissance'){
+    const border2 = el('rect', {x:margin+7,y:margin+7,width:w-(margin+7)*2,height:h-(margin+7)*2, fill:'none',
+      stroke:s.ink, 'stroke-width':1, 'stroke-dasharray':'1 3'});
+    gFrame.appendChild(border2);
+  }
+
+  // compass rose
+  drawCompass(w-100, h-100, s);
+
+  // scale bar (every style — the medieval reference carries one too)
+  {
+    const bx=margin+20, by=h-margin-24;
+    gFrame.appendChild(el('line',{x1:bx,y1:by,x2:bx+120,y2:by, stroke:s.ink,'stroke-width':1.4}));
+    for(let i=0;i<=4;i++){
+      gFrame.appendChild(el('line',{x1:bx+i*30,y1:by-5,x2:bx+i*30,y2:by+5, stroke:s.ink,'stroke-width':1}));
+    }
+    const t = el('text', {x:bx, y:by+18, 'font-size':'10', fill:s.ink, 'font-family':'Georgia,serif'});
+    t.textContent = state.style==='medieval' ? '0     50     100 m' : '0            120 rods';
+    gFrame.appendChild(t);
+  }
+
+  // title cartouche
+  const t2 = el('text', {x:w/2, y:60, 'text-anchor':'middle', 'font-size': state.style==='medieval'?30:22,
+    fill:s.ink, 'font-family': state.style==='victorian' ? 'Georgia,serif' : 'Palatino,Georgia,serif',
+    'font-style': state.style==='renaissance'?'italic':'normal', 'letter-spacing':'2'});
+  if(state.style==='medieval'){
+    // gold-on-dark embossed look, like painted lettering on a fantasy map
+    t2.setAttribute('fill', '#f2dfa8');
+    t2.setAttribute('stroke', s.ink);
+    t2.setAttribute('stroke-width', '1.4');
+    t2.setAttribute('paint-order', 'stroke fill');
+    t2.setAttribute('font-weight', '700');
+  }
+  t2.textContent = state.style==='medieval' ? 'Ye Towne, Herein Depicted' :
+                    state.style==='renaissance' ? 'A True Prospect of the Towne' :
+                    'Ordnance Plan of the Town';
+  gFrame.appendChild(t2);
+}
+
+function drawCompass(cx, cy, s){
+  const r = 34;
+  const g = el('g', {});
+  g.appendChild(el('circle', {cx,cy,r, fill:'none', stroke:s.ink, 'stroke-width':1}));
+  const dirs = [[0,-1,'N'],[1,0,'E'],[0,1,'S'],[-1,0,'W']];
+  dirs.forEach(([dx,dy,label])=>{
+    g.appendChild(el('line', {x1:cx, y1:cy, x2:cx+dx*r*0.9, y2:cy+dy*r*0.9, stroke:s.ink, 'stroke-width': label==='N'?1.6:1}));
+    const t = el('text', {x:cx+dx*(r+12), y:cy+dy*(r+12)+4, 'text-anchor':'middle', 'font-size':11, fill:s.ink});
+    t.textContent = label;
+    g.appendChild(t);
+  });
+  if(state.style !== 'victorian'){
+    const star = el('polygon', {points:`${cx},${cy-8} ${cx+3},${cy-2} ${cx+8},${cy} ${cx+3},${cy+2} ${cx},${cy+8} ${cx-3},${cy+2} ${cx-8},${cy} ${cx-3},${cy-2}`,
+      fill:s.ink});
+    g.appendChild(star);
+  }
+  gFrame.appendChild(g);
+}
+
+/* ---------------------------------------------------------------- render: natural */
+function renderNatural(){
+  clear(gNatural);
+  gNatural.style.display = state.layers.natural ? '' : 'none';
+  const s = sp();
+
+  state.parks.forEach(shape=>{
+    const d = wobblePath(shape.points, s.wobble, true);
+    gNatural.appendChild(el('path', {d, fill:'#7c9a63', 'fill-opacity':'0.55', stroke:s.inkSoft, 'stroke-width':1.1*s.lineScale}));
+    // scattered tree glyphs
+    const rnd = mulberry32(seedFor(shape.id,'trees'));
+    const bb = bbox(shape.points);
+    const area = (bb.maxx-bb.minx)*(bb.maxy-bb.miny);
+    const n = Math.min(60, Math.max(4, Math.floor(area/900)));
+    for(let i=0;i<n;i++){
+      const p=[bb.minx+rnd()*(bb.maxx-bb.minx), bb.miny+rnd()*(bb.maxy-bb.miny)];
+      if(!pointInPoly(p, shape.points)) continue;
+      gNatural.appendChild(el('circle', {cx:p[0], cy:p[1], r: 2.2+rnd()*1.8, fill:'#4f6a3d', opacity:0.75}));
+    }
+  });
+
+  state.hills.forEach(shape=>{
+    if(s.hillMode==='hachure'){
+      // Victorian hachures: short strokes perpendicular to contour, denser toward centre
+      const c = centroid(shape.points);
+      const d = wobblePath(shape.points, s.wobble*0.6, true);
+      gNatural.appendChild(el('path', {d, fill:'none', stroke:s.ink, 'stroke-width':0.9}));
+      const rnd = mulberry32(seedFor(shape.id,'hach'));
+      for(let i=0;i<shape.points.length;i++){
+        const a = shape.points[i], b = shape.points[(i+1)%shape.points.length];
+        const steps = Math.max(2, Math.floor(dist(a,b)/10));
+        for(let k=0;k<steps;k++){
+          const t = k/steps;
+          const px = a[0]+(b[0]-a[0])*t, py = a[1]+(b[1]-a[1])*t;
+          const dirx = (c[0]-px), diry=(c[1]-py);
+          const len = Math.hypot(dirx,diry)||1;
+          const len2 = 6+rnd()*4;
+          gNatural.appendChild(el('line', {x1:px, y1:py, x2:px+dirx/len*len2, y2:py+diry/len*len2,
+            stroke:s.ink, 'stroke-width':0.7, opacity:0.75}));
+        }
+      }
+    } else if(s.hillMode==='shaded'){
+      const c = centroid(shape.points);
+      [1,0.6,0.3].forEach((scale,i)=>{
+        const pts = shape.points.map(p=>[c[0]+(p[0]-c[0])*scale, c[1]+(p[1]-c[1])*scale]);
+        const d = wobblePath(pts, s.wobble*0.7, true);
+        gNatural.appendChild(el('path', {d, fill: i===2?'#8a7548':'none', 'fill-opacity':0.4,
+          stroke:s.inkSoft, 'stroke-width':0.9}));
+      });
+    } else {
+      // medieval: little bump clusters (molehill convention)
+      const rnd = mulberry32(seedFor(shape.id,'bumps'));
+      shape.points.forEach((p,i)=>{
+        const next = shape.points[(i+1)%shape.points.length];
+        const steps = Math.max(1, Math.floor(dist(p,next)/16));
+        for(let k=0;k<steps;k++){
+          const t=k/steps;
+          const bx = p[0]+(next[0]-p[0])*t + (rnd()-0.5)*6;
+          const by = p[1]+(next[1]-p[1])*t + (rnd()-0.5)*6;
+          const r = 5+rnd()*4;
+          gNatural.appendChild(el('path', {d:`M ${bx-r} ${by} Q ${bx} ${by-r*1.3} ${bx+r} ${by}`,
+            fill:'none', stroke:s.ink, 'stroke-width':1.1}));
+        }
+      });
+    }
+  });
+
+  // Drawn in shared passes across every river, same approach used for road
+  // junctions: the bank-line outline is fully opaque rather than semi-
+  // transparent, so where two rivers cross their overlapping strokes don't
+  // stack into a visibly darker blob — the later one just paints cleanly
+  // over the earlier one, and the join reads as a single continuous shape.
+  const riverPaths = state.rivers.map(shape => ({
+    shape, d: wobblePath(shape.points, s.riverWobble, false), w: shape.width || 14
+  }));
+  riverPaths.forEach(({shape, d, w})=>{
+    gNatural.appendChild(el('path', {d, fill:'none', stroke:'url(#waterFill)', 'stroke-width':w, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+  });
+  riverPaths.forEach(({d})=>{
+    gNatural.appendChild(el('path', {d, fill:'none', stroke:s.inkSoft, 'stroke-width':1, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+  });
+  if(state.style!=='victorian'){
+    riverPaths.forEach(({shape})=>{
+      // ripple ticks
+      const rnd = mulberry32(seedFor(shape.id,'ripple'));
+      for(let i=0;i<shape.points.length-1;i++){
+        const a=shape.points[i], b=shape.points[i+1];
+        const steps = Math.max(1,Math.floor(dist(a,b)/20));
+        for(let k=0;k<steps;k++){
+          const t=(k+0.5)/steps;
+          const px=a[0]+(b[0]-a[0])*t, py=a[1]+(b[1]-a[1])*t;
+          gNatural.appendChild(el('path', {d:`M ${px-5} ${py+(rnd()-0.5)*3} q 5 -3 10 0`, fill:'none', stroke:'#eef3f4', 'stroke-width':0.8, opacity:0.5}));
+        }
+      }
+    });
+  }
+}
+
+/* ---------------------------------------------------------------- render: infrastructure */
+const ROAD_STYLE = {
+  thoroughfare: {w:16, dash:null},
+  street: {w:9, dash:null},
+  alley: {w:4, dash:null},
+  canal: {w:12, dash:null}
+};
+/* A road's drawn width — normally the fixed per-type default, but canals may
+   carry their own custom width set from the drawing-time slider. */
+function roadWidth(r){ return r.width || ROAD_STYLE[r.type].w; }
+function renderInfra(){
+  clear(gInfra);
+  gInfra.style.display = state.layers.infrastructure ? '' : 'none';
+  const s = sp();
+  // Draw widest roads first so narrower roads blend *into* them at junctions
+  // rather than stacking a visibly different edge on top.
+  const order = {thoroughfare:0, canal:1, street:2, alley:3};
+  const sorted = [...state.roads].sort((a,b)=>order[a.type]-order[b.type]);
+  const pathFor = r => r.type==='alley' ? straightPath(r.points, false) : wobblePath(r.points, s.wobble, false);
+
+  if(s.blankRoads){
+    // Ordnance-Survey town-plan style: the street itself is left blank
+    // (paper colour) and only shown by a thin "cased" edge — a dark stroke
+    // with a slightly narrower paper-coloured stroke on top of it, which
+    // leaves just a hairline of ink visible on each side. Alleys are too
+    // thin at this scale for that double-line treatment to leave any room
+    // for the inner stroke, so they get a single solid mid-grey line instead.
+    sorted.forEach(r=>{
+      const d = pathFor(r);
+      const w = roadWidth(r)*s.lineScale;
+      if(r.type==='canal'){
+        gInfra.appendChild(el('path', {d, fill:'none', stroke:'url(#waterFill)', 'stroke-width':w, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+        gInfra.appendChild(el('path', {d, fill:'none', stroke:s.ink, 'stroke-width':1, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+        return;
+      }
+      if(r.type==='alley'){
+        gInfra.appendChild(el('path', {d, fill:'none', stroke:'#8a8a8a', 'stroke-width':w, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+        return;
+      }
+      gInfra.appendChild(el('path', {d, fill:'none', stroke:s.ink, 'stroke-width':w, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+      const innerW = w - 2.2;
+      if(innerW > 0.6){
+        gInfra.appendChild(el('path', {d, fill:'none', stroke:s.parchment, 'stroke-width':innerW, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+        // faint dashed tread line hinting at a pavement edge
+        gInfra.appendChild(el('path', {d, fill:'none', stroke:s.inkSoft, 'stroke-width':0.5, opacity:0.4, 'stroke-dasharray':'1.5 3'}));
+      }
+    });
+    return;
+  }
+
+  // pass 1 — soft halo (skip canals, water reads differently)
+  sorted.forEach(r=>{
+    if(r.type==='canal') return;
+    gInfra.appendChild(el('path', {d:pathFor(r), fill:'none', stroke:s.ink, opacity:s.roadHaloOpacity,
+      'stroke-width':(roadWidth(r)+3)*s.lineScale, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+  });
+  // pass 2 — solid fill, same colour per tier so junctions merge seamlessly
+  sorted.forEach(r=>{
+    const d = pathFor(r);
+    if(r.type==='canal'){
+      gInfra.appendChild(el('path', {d, fill:'none', stroke:'url(#waterFill)', 'stroke-width':roadWidth(r)*s.lineScale, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+      gInfra.appendChild(el('path', {d, fill:'none', stroke:s.ink, 'stroke-width':1, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+    } else {
+      gInfra.appendChild(el('path', {d, fill:'none', stroke:s.roadFillColor,
+        'stroke-width':roadWidth(r)*s.lineScale, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+    }
+  });
+  // pass 3 — fine edge/tread detail, subtle so it doesn't create seams across junctions
+  if(s.roadTread){
+    sorted.forEach(r=>{
+      if(r.type==='canal') return;
+      gInfra.appendChild(el('path', {d:pathFor(r), fill:'none', stroke:s.inkSoft, 'stroke-width':0.7,
+        'stroke-dasharray': r.type==='alley' ? '2 3' : 'none', opacity:0.35, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+    });
+  }
+}
+
+/* ---------------------------------------------------------------- render: walls */
+function renderWalls(){
+  clear(gWalls);
+  gWalls.style.display = state.layers.walls ? '' : 'none';
+  const s = sp();
+  state.walls.forEach(wall=>{
+  const pts = wall.points;
+  const d = straightPath(pts, true);
+  gWalls.appendChild(el('path', {d, fill:'none', stroke:s.ink, 'stroke-width':(s.wallStyle==='towers'?5.5:4.5)*s.lineScale,
+    'stroke-linecap':'round', 'stroke-linejoin':'miter'}));
+
+  if(s.wallStyle==='towers'){
+    // round towers spaced along the wall, fantasy-map style
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i], b=pts[(i+1)%pts.length];
+      const segLen = dist(a,b);
+      if(segLen < 1) continue;
+      const steps = Math.max(1, Math.round(segLen/48));
+      for(let k=0;k<steps;k++){
+        const t=k/steps;
+        const px=a[0]+(b[0]-a[0])*t, py=a[1]+(b[1]-a[1])*t;
+        gWalls.appendChild(el('circle', {cx:px, cy:py, r:5*s.lineScale, fill:s.ink}));
+      }
+    }
+  } else {
+    // crenellation ticks
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i], b=pts[(i+1)%pts.length];
+      const segLen = dist(a,b);
+      const steps = Math.max(1, Math.floor(segLen/14));
+      for(let k=0;k<steps;k++){
+        const t=(k+0.5)/steps;
+        const px=a[0]+(b[0]-a[0])*t, py=a[1]+(b[1]-a[1])*t;
+        const nx = -(b[1]-a[1])/segLen, ny=(b[0]-a[0])/segLen;
+        gWalls.appendChild(el('line', {x1:px, y1:py, x2:px+nx*5, y2:py+ny*5, stroke:s.ink, 'stroke-width':2}));
+      }
+    }
+  }
+
+  // gates: wherever a road crosses the wall line
+  findGates(pts).forEach(g=>{
+    if(s.wallStyle==='towers'){
+      gWalls.appendChild(el('circle', {cx:g[0], cy:g[1], r:8*s.lineScale, fill:s.ink}));
+      gWalls.appendChild(el('circle', {cx:g[0], cy:g[1], r:3*s.lineScale, fill:s.parchment}));
+    } else {
+      gWalls.appendChild(el('circle', {cx:g[0], cy:g[1], r:7, fill: sp().parchment, stroke:s.ink, 'stroke-width':2}));
+      gWalls.appendChild(el('circle', {cx:g[0], cy:g[1], r:2.5, fill:s.ink}));
+    }
+  });
+  });
+
+  state.zoneWalls.forEach(zw=>renderOneZoneWall(zw, s));
+}
+/* A mansion zone's estate wall: a plain boundary line with no towers or
+   crenellation ("without turrets"), plus a gate wherever a road crosses it —
+   the same gate treatment as the city wall/boundary tool, just simpler. */
+function renderOneZoneWall(zw, s){
+  const pts = zw.points;
+  const d = straightPath(pts, true);
+  gWalls.appendChild(el('path', {d, fill:'none', stroke:s.ink, 'stroke-width':3*s.lineScale,
+    'stroke-linecap':'round', 'stroke-linejoin':'miter'}));
+  findGates(pts).forEach(g=>{
+    gWalls.appendChild(el('circle', {cx:g[0], cy:g[1], r:6, fill: sp().parchment, stroke:s.ink, 'stroke-width':1.6}));
+    gWalls.appendChild(el('circle', {cx:g[0], cy:g[1], r:2, fill:s.ink}));
+  });
+}
+function segIntersect(p1,p2,p3,p4){
+  const d1x=p2[0]-p1[0], d1y=p2[1]-p1[1];
+  const d2x=p4[0]-p3[0], d2y=p4[1]-p3[1];
+  const denom = d1x*d2y - d1y*d2x;
+  if(Math.abs(denom) < 1e-9) return null;
+  const t = ((p3[0]-p1[0])*d2y - (p3[1]-p1[1])*d2x)/denom;
+  const u = ((p3[0]-p1[0])*d1y - (p3[1]-p1[1])*d1x)/denom;
+  if(t>=0 && t<=1 && u>=0 && u<=1){
+    return [p1[0]+d1x*t, p1[1]+d1y*t];
+  }
+  return null;
+}
+function findGates(wallPts){
+  const gates = [];
+  state.roads.forEach(r=>{
+    for(let i=0;i<r.points.length-1;i++){
+      for(let j=0;j<wallPts.length;j++){
+        const w1=wallPts[j], w2=wallPts[(j+1)%wallPts.length];
+        const hit = segIntersect(r.points[i], r.points[i+1], w1, w2);
+        if(hit) gates.push(hit);
+      }
+    }
+  });
+  return gates;
+}
+
+/* ---------------------------------------------------------------- render: zones */
+function renderZones(){
+  clear(gZones);
+  gZones.style.display = state.layers.zones ? '' : 'none';
+  const s = sp();
+  state.zones.forEach(z=>{
+    // Drawn straight (no hand-drawn wobble): autofill now tiles zones edge-to-
+    // edge with no gap or overlap, so the boundary must render exactly where
+    // the fill algorithm thinks it is, not jittered away from it.
+    const d = straightPath(z.points, true);
+    const isSel = z.id === state.selectedZoneId;
+    gZones.appendChild(el('path', {d, fill: isSel? '#d9a24b33' : '#00000006',
+      stroke: isSel ? '#d9a24b' : s.inkSoft, 'stroke-width': isSel?1.6:0.8,
+      'stroke-dasharray':'5 4'}));
+    const c = centroid(z.points);
+    const t = el('text', {x:c[0], y:c[1], 'text-anchor':'middle', 'font-size':10, fill:s.inkSoft, opacity:0.85});
+    t.textContent = (z.houseSize? HOUSE_SPECS[z.houseSize].label : 'zone') + (z.density ? ' · '+z.density : '');
+    gZones.appendChild(t);
+  });
+}
+
+/* ---------------------------------------------------------------- render: buildings (autofill) */
+function renderBuildings(){
+  clear(gBuildings);
+  gBuildings.style.display = state.layers.buildings ? '' : 'none';
+  const s = sp();
+  state.zones.forEach(z=>{
+    (z.buildings||[]).forEach(b=>{
+      const rnd = mulberry32(b.seed);
+      const jx = (rnd()-0.5)*1.4, jy=(rnd()-0.5)*1.4;
+      const jr = (rnd()-0.5)*(state.style==='victorian'?0.6:3);
+      const c = [b.cx+jx, b.cy+jy];
+      let corners;
+      if(b.isCircle){
+        const sides = 28;
+        corners = [];
+        for(let i=0;i<sides;i++){
+          const theta = (i/sides)*Math.PI*2;
+          corners.push([c[0]+Math.cos(theta)*b.radius, c[1]+Math.sin(theta)*b.radius]);
+        }
+      } else if(b.points){
+        // clipped irregular footprint — jitter by translation only, no rotation
+        corners = b.points.map(p=>[p[0]+jx, p[1]+jy]);
+      } else {
+        corners = rectCorners(c, b.w, b.h, b.angle + jr*Math.PI/180);
+      }
+      const d = straightPath(corners, true);
+      const g = el('g', {});
+
+      if(s.blankBuildings){
+        // Ordnance-Survey style: no colour, no roof hatching — just a thin
+        // outline on blank paper, as on a real town plan.
+        g.appendChild(el('path', {d, fill:s.buildingBlankFill, stroke:s.ink, 'stroke-width':0.7*s.lineScale}));
+        // A minority of footprints on real OS plans carry a small feature
+        // cross (roof light, stack, survey mark); echo that sparingly.
+        const markRnd = mulberry32(b.seed + 101);
+        if(markRnd() < 0.16){
+          const mr = Math.min(b.w,b.h)*0.16;
+          g.appendChild(el('line', {x1:c[0]-mr, y1:c[1]-mr, x2:c[0]+mr, y2:c[1]+mr, stroke:s.ink, 'stroke-width':0.6}));
+          g.appendChild(el('line', {x1:c[0]-mr, y1:c[1]+mr, x2:c[0]+mr, y2:c[1]-mr, stroke:s.ink, 'stroke-width':0.6}));
+        }
+      } else if(s.gradientBuildings){
+        // Fantasy-city-map style: a single sunlit-to-shadowed gradient per
+        // footprint, like a lit pitched roof — mansions get a grey (stone)
+        // version and industrial buildings a darker grey (heavy/utilitarian)
+        // instead of the warm brick tone used for everything else.
+        const gradId = b.houseSize==='mansion' ? 'buildingGradMansion' : b.houseSize==='industry' ? 'buildingGradIndustry' : 'buildingGrad';
+        g.appendChild(el('path', {d, fill:`url(#${gradId})`, stroke:s.buildingOutline, 'stroke-width':0.9*s.lineScale}));
+      } else {
+        const fillColor = b.houseSize==='mansion' ? '#a3a3a3' : b.houseSize==='townhouse' ? '#a8502f' : b.houseSize==='rowhouse' ? '#9a4527' : '#8c3f24';
+        const patId = b.hatchVariant===0 ? 'hatch-a' : 'hatch-b';
+        const base = el('path', {d, fill:fillColor, stroke:s.ink, 'stroke-width':0.9*s.lineScale});
+        g.appendChild(base);
+        const hatch = el('path', {d, fill:`url(#${patId})`, stroke:'none'});
+        g.appendChild(hatch);
+        if(b.houseSize==='mansion' && !b.points){
+          // small ridge line
+          g.appendChild(el('line', {x1:corners[0][0], y1:(corners[0][1]+corners[3][1])/2, x2:corners[1][0], y2:(corners[1][1]+corners[2][1])/2,
+            stroke:s.ink, 'stroke-width':0.7, opacity:0.5}));
+        }
+      }
+      gBuildings.appendChild(g);
+    });
+  });
+}
+
+/* ---------------------------------------------------------------- drawing (in-progress) */
+function renderDrawing(){
+  clear(gDrawing);
+  if(!state.drawing) return;
+  const s = sp();
+  const pts = state.drawing.points;
+  if(pts.length===0) return;
+  const d = straightPath(pts, false);
+  gDrawing.appendChild(el('path', {d, fill:'none', stroke:'#d9455033', 'stroke-width':2, 'stroke-dasharray':'4 3'}));
+  pts.forEach((p,i)=>{
+    gDrawing.appendChild(el('circle', {cx:p[0], cy:p[1], r:4, fill: i===0?'#4a6a3a':'#d94550', stroke:'#fff', 'stroke-width':1}));
+  });
+}
+
+/* ---------------------------------------------------------------- render: OS-plan annotations */
+/* Small authenticity touches unique to the Ordnance-Survey look: sparse lamp-
+   post circles along the kerb of thoroughfares/streets, and a scatter of
+   surveyed "spot height" figures (a dot + a decimal number) dropped onto
+   open ground, well clear of buildings, roads and water. Victorian style only. */
+function renderAnnotations(){
+  if(!sp().blankRoads) return;
+  const s = sp();
+
+  state.roads.forEach(r=>{
+    if(r.type==='alley' || r.type==='canal') return;
+    const rnd = mulberry32(seedFor(r.id,'lamps'));
+    for(let i=0;i<r.points.length-1;i++){
+      const a=r.points[i], b=r.points[i+1];
+      const segLen = dist(a,b);
+      if(segLen < 1) continue;
+      const steps = Math.max(1, Math.floor(segLen/70));
+      for(let k=0;k<steps;k++){
+        if(rnd() < 0.5) continue;
+        const t=(k+0.5)/steps;
+        const px=a[0]+(b[0]-a[0])*t, py=a[1]+(b[1]-a[1])*t;
+        const nx=-(b[1]-a[1])/segLen, ny=(b[0]-a[0])/segLen;
+        const off = (roadWidth(r)*s.lineScale)/2 + 5;
+        gFrame.appendChild(el('circle', {cx:px+nx*off, cy:py+ny*off, r:1.6, fill:'none', stroke:s.ink, 'stroke-width':0.6}));
+      }
+    }
+  });
+
+  const rnd2 = mulberry32(42);
+  let placed=0, attempts=0;
+  while(placed<10 && attempts<400){
+    attempts++;
+    const x = 60+rnd2()*(MAP_W-120), y=90+rnd2()*(MAP_H-180);
+    let bad = state.parks.some(p=>pointInPoly([x,y],p.points)) || state.zones.some(z=>pointInPoly([x,y],z.points));
+    if(!bad) for(const r of state.rivers){ if(distToPolyline([x,y], r.points).dist < (r.width||14)/2+18){ bad=true; break; } }
+    if(!bad) for(const r of state.roads){ if(distToPolyline([x,y], r.points).dist < (roadWidth(r)*s.lineScale)/2+14){ bad=true; break; } }
+    if(bad) continue;
+    placed++;
+    gFrame.appendChild(el('circle', {cx:x, cy:y, r:1.3, fill:s.ink}));
+    const t = el('text', {x:x+4, y:y+3, 'font-size':9, fill:s.ink, 'font-family':'Georgia,serif'});
+    t.textContent = (10+Math.floor(rnd2()*40)) + '\u00b7' + Math.floor(rnd2()*9);
+    gFrame.appendChild(t);
+  }
+}
+
+/* ---------------------------------------------------------------- full render */
+function renderAll(){
+  buildDefs();
+  renderFrame();
+  renderNatural();
+  renderInfra();
+  renderWalls();
+  renderZones();
+  renderBuildings();
+  renderAnnotations();
+  renderDrawing();
+  renderSelectionHandles();
+  renderToolbar();
+  renderRightPanel();
+}
+
+/* ---------------------------------------------------------------- interaction: drawing tools */
+const TOOL_KIND = {}; // tool id -> 'open'|'closed'
+STAGES.forEach(st => st.tools.forEach(t => TOOL_KIND[t.id] = t.kind));
+
+const SNAP_RADIUS = 13;
+function allExistingPoints(){
+  const pts = [];
+  state.rivers.forEach(s=>pts.push(...s.points));
+  state.parks.forEach(s=>pts.push(...s.points));
+  state.hills.forEach(s=>pts.push(...s.points));
+  state.roads.forEach(s=>pts.push(...s.points));
+  state.walls.forEach(w=>pts.push(...w.points));
+  state.zones.forEach(s=>pts.push(...s.points));
+  return pts;
+}
+// Snaps a freshly clicked point onto a nearby existing vertex (from any shape,
+// road-to-road most importantly) so new lines actually terminate at a shared
+// coordinate instead of merely passing near one — this is what makes junctions
+// read as connected once the hand-drawn wobble is applied.
+function snapPoint(p){
+  let best=null, bestD=SNAP_RADIUS;
+  allExistingPoints().forEach(q=>{
+    const d = dist(p,q);
+    if(d<bestD){ bestD=d; best=q; }
+  });
+  return best ? [best[0], best[1]] : p;
+}
+
+function startDrawing(toolId){
+  state.tool = toolId;
+  state.drawing = {kind:toolId, points:[]};
+  state.selection = null; state.selectedVertexIndex = null;
+  setStatus('Drawing '+toolId+'… click to add points.');
+  renderAll();
+}
+function cancelDrawing(){
+  state.drawing = null;
+  state.tool = null;
+  state.selection = null; state.selectedVertexIndex = null;
+  setStatus('');
+  renderAll();
+}
+function undoPoint(){
+  if(state.drawing && state.drawing.points.length){
+    state.drawing.points.pop();
+    renderAll();
+  }
+}
+function finishDrawing(){
+  if(!state.drawing || state.drawing.points.length < 2){ cancelDrawing(); return; }
+  pushUndo();
+  const kind = state.drawing.kind;
+  const pts = state.drawing.points.slice();
+  const id = 'shape'+(state.nextId++);
+  if(kind==='river') state.rivers.push({id, points:pts, width: state.drawing.width || 14});
+  else if(kind==='park') state.parks.push({id, points:pts});
+  else if(kind==='hill') state.hills.push({id, points:pts});
+  else if(kind==='wall') state.walls.push({id, points:pts});
+  else if(kind==='zone') state.zones.push({id, points:pts, houseSize:null, density:null, buildings:[]});
+  else if(kind.startsWith('road:')){
+    const roadType = kind.split(':')[1];
+    const road = {id, type:roadType, points:pts};
+    if(roadType==='canal' && state.drawing.width) road.width = state.drawing.width;
+    state.roads.push(road);
+  }
+  // Stay in the same tool with a fresh, empty drawing ready to go — most of
+  // the time people want to place several of the same thing in a row, and
+  // re-clicking the tool button for every single one gets old fast.
+  state.drawing = {kind, points:[]};
+  if(kind==='zone') state.selectedZoneId = id;
+  setStatus('Added '+kind+'. Ready to draw another — click to start, or pick a different tool.');
+  renderAll();
+}
+
+svg.addEventListener('click', (e)=>{
+  if(state.tool === 'autozone'){
+    handleAutoZoneClick(svgPoint(e));
+    return;
+  }
+  if(state.tool === 'select'){
+    handleSelectClick(svgPoint(e));
+    return;
+  }
+  if(!state.drawing){
+    // maybe clicking a zone to select it (stage 4/5)
+    if(state.stage===4 || state.stage===5){
+      const p = svgPoint(e);
+      const hit = [...state.zones].reverse().find(z=>pointInPoly(p, z.points));
+      if(hit){ state.selectedZoneId = hit.id; renderAll(); }
+    }
+    return;
+  }
+  let p = svgPoint(e);
+  // close polygon if clicking near first point
+  if(TOOL_KIND[state.drawing.kind]==='closed' && state.drawing.points.length>2 && dist(p, state.drawing.points[0]) < 10){
+    finishDrawing();
+    return;
+  }
+  p = snapPoint(p);
+  state.drawing.points.push(p);
+  renderAll();
+});
+svg.addEventListener('dblclick', (e)=>{
+  e.preventDefault();
+  if(state.drawing) finishDrawing();
+});
+window.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key==='z' || e.key==='Z')){
+    e.preventDefault();
+    performUndo();
+    return;
+  }
+  if(e.key==='Escape') cancelDrawing();
+  else if(e.key==='Enter') finishDrawing();
+  else if(e.key==='Backspace' && state.drawing){ e.preventDefault(); undoPoint(); }
+  else if((e.key==='Delete' || e.key==='Backspace') && state.tool==='select' && state.selection && state.selectedVertexIndex!==null){
+    e.preventDefault();
+    deleteSelectedVertex();
+  }
+});
+
+function setStatus(msg){ document.getElementById('statusMsg').textContent = msg; }
+
+/* ---------------------------------------------------------------- select & edit tool */
+/* Lets the person click any previously-drawn shape (natural feature, road,
+   wall or zone) and reshape it: drag its points, click its own edge again to
+   insert a new point, or press Delete to remove the focused point. */
+function allEditableShapeEntries(){
+  // ordered roughly bottom-to-top to match visual stacking, reversed at use time
+  const list = [];
+  state.rivers.forEach(o=>list.push({type:'river', obj:o}));
+  state.parks.forEach(o=>list.push({type:'park', obj:o}));
+  state.hills.forEach(o=>list.push({type:'hill', obj:o}));
+  state.roads.forEach(o=>list.push({type:'road', obj:o}));
+  state.walls.forEach(o=>list.push({type:'wall', obj:o}));
+  state.zones.forEach(o=>list.push({type:'zone', obj:o}));
+  return list;
+}
+function isClosedShapeType(type){ return type!=='river' && type!=='road'; }
+function distToClosedPolyline(p, points){
+  let best = distToPolyline(p, points).dist;
+  if(points.length>1){
+    const wrap = distToPolyline(p, [points[points.length-1], points[0]]).dist;
+    if(wrap<best) best = wrap;
+  }
+  return best;
+}
+/* Point containment test for a building footprint, whether it's a plain
+   rectangle (cx/cy/w/h/angle) or a custom polygon (points) from a manual
+   vertex edit. */
+function pointInBuilding(p, b){
+  if(b.points) return pointInPoly(p, b.points);
+  const dx=p[0]-b.cx, dy=p[1]-b.cy;
+  const ca=Math.cos(-b.angle), sa=Math.sin(-b.angle);
+  const lx=dx*ca-dy*sa, ly=dx*sa+dy*ca;
+  return Math.abs(lx)<=b.w/2 && Math.abs(ly)<=b.h/2;
+}
+function hitTestShapes(p){
+  // individual buildings sit on top of everything else visually
+  if(state.layers.buildings){
+    for(let zi=state.zones.length-1; zi>=0; zi--){
+      const z = state.zones[zi];
+      const blds = z.buildings || [];
+      for(let bi=blds.length-1; bi>=0; bi--){
+        if(pointInBuilding(p, blds[bi])) return {type:'building', obj:blds[bi], zone:z};
+      }
+    }
+  }
+  // test in top-to-bottom visual stacking order: zones, wall, roads, hills, parks, rivers
+  for(let i=state.zones.length-1;i>=0;i--){
+    if(pointInPoly(p, state.zones[i].points)) return {type:'zone', obj:state.zones[i]};
+  }
+  for(let i=state.walls.length-1;i>=0;i--){
+    if(distToClosedPolyline(p, state.walls[i].points) <= 9) return {type:'wall', obj:state.walls[i]};
+  }
+  for(let i=state.roads.length-1;i>=0;i--){
+    const r = state.roads[i];
+    const tol = Math.max(8, (roadWidth(r)*sp().lineScale)/2 + 4);
+    if(distToPolyline(p, r.points).dist <= tol) return {type:'road', obj:r};
+  }
+  for(let i=state.hills.length-1;i>=0;i--){
+    if(pointInPoly(p, state.hills[i].points)) return {type:'hill', obj:state.hills[i]};
+  }
+  for(let i=state.parks.length-1;i>=0;i--){
+    if(pointInPoly(p, state.parks[i].points)) return {type:'park', obj:state.parks[i]};
+  }
+  for(let i=state.rivers.length-1;i>=0;i--){
+    const r = state.rivers[i];
+    const tol = Math.max(8, (r.width||14)/2 + 4);
+    if(distToPolyline(p, r.points).dist <= tol) return {type:'river', obj:r};
+  }
+  return null;
+}
+function closestSegmentInsert(p, points, closed){
+  let best=Infinity, bestIdx=0, bestPoint=points[0];
+  const n = points.length;
+  const segCount = closed ? n : n-1;
+  for(let i=0;i<segCount;i++){
+    const a=points[i], b=points[(i+1)%n];
+    const {dist:d, point} = distToPolyline(p, [a,b]);
+    if(d<best){ best=d; bestIdx=i; bestPoint=point; }
+  }
+  return {index:bestIdx, point:bestPoint, dist:best};
+}
+function selectionStillValid(){
+  if(!state.selection) return false;
+  const {type, obj} = state.selection;
+  if(type==='river') return state.rivers.includes(obj);
+  if(type==='park') return state.parks.includes(obj);
+  if(type==='hill') return state.hills.includes(obj);
+  if(type==='road') return state.roads.includes(obj);
+  if(type==='wall') return state.walls.includes(obj);
+  if(type==='zone') return state.zones.includes(obj);
+  if(type==='building') return !!(state.selection.zone && state.selection.zone.buildings && state.selection.zone.buildings.includes(obj));
+  return false;
+}
+function removeSelectedShape(){
+  if(!state.selection) return;
+  pushUndo();
+  const {type, obj} = state.selection;
+  if(type==='river') state.rivers.splice(state.rivers.indexOf(obj),1);
+  else if(type==='park') state.parks.splice(state.parks.indexOf(obj),1);
+  else if(type==='hill') state.hills.splice(state.hills.indexOf(obj),1);
+  else if(type==='road') state.roads.splice(state.roads.indexOf(obj),1);
+  else if(type==='wall') state.walls.splice(state.walls.indexOf(obj),1);
+  else if(type==='zone'){
+    state.zones.splice(state.zones.indexOf(obj),1);
+    removeZoneAlleys(obj.id);
+    removeZoneWalls(obj.id);
+    if(state.selectedZoneId===obj.id) state.selectedZoneId = null;
+  }
+  else if(type==='building'){
+    const z = state.selection.zone;
+    if(z && z.buildings) z.buildings.splice(z.buildings.indexOf(obj),1);
+  }
+  state.selection = null; state.selectedVertexIndex = null;
+  renderAll();
+}
+function clearBuildingsIfZoneChanged(sel){
+  if(sel && sel.type==='zone' && sel.obj.buildings && sel.obj.buildings.length){
+    sel.obj.buildings = [];
+    setStatus('Zone shape changed — re-run autofill to regenerate its buildings.');
+    return true;
+  }
+  return false;
+}
+function deleteSelectedVertex(){
+  const pts = state.selection.obj.points;
+  const minPts = isClosedShapeType(state.selection.type) ? 3 : 2;
+  if(pts.length <= minPts){
+    setStatus('Cannot remove — this shape needs at least '+minPts+' points.');
+    return;
+  }
+  pushUndo();
+  pts.splice(state.selectedVertexIndex, 1);
+  state.selectedVertexIndex = null;
+  if(!clearBuildingsIfZoneChanged(state.selection)) setStatus('Point removed.');
+  renderAll();
+}
+function handleSelectClick(p){
+  const hit = hitTestShapes(p);
+  if(!hit){
+    state.selection = null; state.selectedVertexIndex = null;
+    setStatus('');
+  } else if(state.selection && state.selection.obj===hit.obj){
+    // clicking the already-selected shape again: insert a point on its edge
+    const closed = isClosedShapeType(hit.type);
+    const ins = closestSegmentInsert(p, hit.obj.points, closed);
+    if(ins.dist < 14){
+      pushUndo();
+      hit.obj.points.splice(ins.index+1, 0, ins.point);
+      state.selectedVertexIndex = ins.index+1;
+      clearBuildingsIfZoneChanged(state.selection);
+      setStatus('Point added.');
+    }
+  } else {
+    state.selection = hit;
+    state.selectedVertexIndex = null;
+    setStatus(hit.type.charAt(0).toUpperCase()+hit.type.slice(1)+' selected — drag a point to reshape it, click the edge to add a point.');
+  }
+  renderAll();
+}
+
+let handleDragScheduled = false;
+function scheduleHandleRender(){
+  if(handleDragScheduled) return;
+  handleDragScheduled = true;
+  requestAnimationFrame(()=>{ handleDragScheduled=false; renderAll(); });
+}
+window.addEventListener('mousemove', (e)=>{
+  if(!state.draggingVertex || !state.selection || state.selectedVertexIndex===null) return;
+  state.selection.obj.points[state.selectedVertexIndex] = svgPoint(e);
+  scheduleHandleRender();
+});
+window.addEventListener('mouseup', ()=>{
+  if(state.draggingVertex){
+    state.draggingVertex = false;
+    clearBuildingsIfZoneChanged(state.selection);
+    renderAll();
+  }
+});
+
+function renderSelectionHandles(){
+  clear(gHandles);
+  if(state.tool !== 'select') return;
+  if(!selectionStillValid()){ state.selection=null; state.selectedVertexIndex=null; return; }
+  if(!state.selection) return;
+  if(state.selection.type==='building' && !state.selection.obj.points){
+    state.selection.obj.points = rectCorners([state.selection.obj.cx, state.selection.obj.cy],
+      state.selection.obj.w, state.selection.obj.h, state.selection.obj.angle);
+  }
+  const pts = state.selection.obj.points;
+  const closed = isClosedShapeType(state.selection.type);
+  const d = straightPath(pts, closed);
+  gHandles.appendChild(el('path', {d, fill:'none', stroke:'#2a7fd4', 'stroke-width':2, 'stroke-dasharray':'6 4', opacity:0.85}));
+  pts.forEach((p,i)=>{
+    const focused = i===state.selectedVertexIndex;
+    const c = el('circle', {cx:p[0], cy:p[1], r:focused?7:5.5, fill:focused?'#ff6b4a':'#2a7fd4',
+      stroke:'#fff', 'stroke-width':1.5, style:'cursor:move'});
+    c.addEventListener('mousedown', (e)=>{
+      if(e.button!==0) return;
+      e.stopPropagation();
+      pushUndo();
+      state.selectedVertexIndex = i;
+      state.draggingVertex = true;
+      renderAll();
+    });
+    c.addEventListener('click', (e)=>{ e.stopPropagation(); });
+    gHandles.appendChild(c);
+  });
+}
+
+/* ---------------------------------------------------------------- click-to-auto-zone */
+/* Clicking with the "click enclosed area" tool rasterises every road, river,
+   canal and wall onto a fine grid, flood-fills outward from the clicked cell,
+   and — if that fill stays fully enclosed (never reaches the edge of the
+   map) — traces the outline of the filled region into a polygon and turns
+   it straight into a zone. */
+const AUTOZONE_CELL = 4; // px per grid cell
+
+function handleAutoZoneClick(clickPoint){
+  const result = detectEnclosedZone(clickPoint);
+  if(!result){
+    setStatus("That spot isn't fully enclosed by roads, rivers, canals or walls — close the gap in the boundary, or draw the zone by hand instead.");
+    return;
+  }
+  pushUndo();
+  const id = 'shape'+(state.nextId++);
+  state.zones.push({id, points:result, houseSize:null, density:null, buildings:[]});
+  state.selectedZoneId = id;
+  setStatus('Created a zone from the enclosed area.');
+  renderAll();
+}
+
+function detectEnclosedZone(clickPoint){
+  const CELL = AUTOZONE_CELL;
+  const W = MAP_W, H = MAP_H;
+  const cols = Math.ceil(W/CELL), rows = Math.ceil(H/CELL);
+  const idx = (cx,cy) => cy*cols + cx;
+  const blocked = new Uint8Array(cols*rows);
+
+  function rasterizeSegment(a, b, halfWidth){
+    const len = dist(a,b);
+    const steps = Math.max(1, Math.ceil(len / (CELL*0.75)));
+    const rCells = Math.ceil(halfWidth/CELL) + 1;
+    for(let s=0; s<=steps; s++){
+      const t = s/steps;
+      const px = a[0]+(b[0]-a[0])*t, py = a[1]+(b[1]-a[1])*t;
+      const cx0 = Math.floor(px/CELL), cy0 = Math.floor(py/CELL);
+      for(let dx=-rCells; dx<=rCells; dx++){
+        for(let dy=-rCells; dy<=rCells; dy++){
+          const cx=cx0+dx, cy=cy0+dy;
+          if(cx<0||cy<0||cx>=cols||cy>=rows) continue;
+          const cellCx=(cx+0.5)*CELL, cellCy=(cy+0.5)*CELL;
+          if(Math.hypot(cellCx-px, cellCy-py) <= halfWidth) blocked[idx(cx,cy)] = 1;
+        }
+      }
+    }
+  }
+  function rasterizePolyline(points, halfWidth, closed){
+    for(let i=0;i<points.length-1;i++) rasterizeSegment(points[i], points[i+1], halfWidth);
+    if(closed && points.length>1) rasterizeSegment(points[points.length-1], points[0], halfWidth);
+  }
+
+  const s = sp();
+  state.roads.forEach(r=>{
+    rasterizePolyline(r.points, (roadWidth(r)*s.lineScale)/2, false);
+  });
+  state.rivers.forEach(r=>{
+    rasterizePolyline(r.points, (r.width||14)/2, false);
+  });
+  state.walls.forEach(w=>rasterizePolyline(w.points, 3, true));
+
+  const startCx = Math.floor(clickPoint[0]/CELL), startCy = Math.floor(clickPoint[1]/CELL);
+  if(startCx<0||startCy<0||startCx>=cols||startCy>=rows) return null;
+  if(blocked[idx(startCx,startCy)]) return null; // clicked directly on a border feature
+
+  const visited = new Uint8Array(cols*rows);
+  const queue = [[startCx,startCy]];
+  visited[idx(startCx,startCy)] = 1;
+  let touchedEdge = false;
+  let head = 0;
+  while(head < queue.length){
+    const [cx,cy] = queue[head++];
+    if(cx===0||cy===0||cx===cols-1||cy===rows-1) touchedEdge = true;
+    const neighbors = [[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]];
+    for(const [nx,ny] of neighbors){
+      if(nx<0||ny<0||nx>=cols||ny>=rows) continue;
+      const ni = idx(nx,ny);
+      if(visited[ni] || blocked[ni]) continue;
+      visited[ni] = 1;
+      queue.push([nx,ny]);
+    }
+  }
+  if(touchedEdge) return null;          // leaks off the map — not enclosed
+  if(queue.length < 4) return null;     // too small to be a meaningful zone
+
+  const polygon = traceBoundary(visited, cols, rows, CELL);
+  if(!polygon || polygon.length < 3) return null;
+  const simplified = simplifyClosedPolygon(polygon, 6);
+  if(!simplified || simplified.length < 3) return null;
+
+  // No part of a click-to-fill zone should end up shorter than five
+  // townhouse-lengths, and no point of it should ever cross a road,
+  // thoroughfare, canal or river. These two passes can each undo the
+  // other's work in rare cases (a merge can pull an edge across an
+  // obstacle; the obstacle fix's own re-trace can reintroduce a short
+  // edge), so they run back and forth until stable — always finishing on
+  // the obstacle check, since "never cross infrastructure" is the harder
+  // requirement of the two.
+  const MIN_ZONE_EDGE = 5 * HOUSE_SPECS.townhouse.w;
+  const obstacles = buildObstacles();
+  let shaped = simplified;
+  for(let iter=0; iter<4; iter++){
+    const lengthAdjusted = enforceMinEdgeLength(shaped, MIN_ZONE_EDGE);
+    const beforeClearance = (lengthAdjusted && lengthAdjusted.length>=3) ? lengthAdjusted : shaped;
+    const cleared = enforceZoneObstacleClearance(beforeClearance, obstacles);
+    const stable = cleared.length===shaped.length &&
+      cleared.every((p,i)=> shaped[i] && Math.abs(p[0]-shaped[i][0])<0.5 && Math.abs(p[1]-shaped[i][1])<0.5);
+    shaped = cleared;
+    if(stable) break;
+  }
+  return shaped;
+}
+
+/* Perpendicular distance from a point to the line through a and b — used to
+   judge how much a vertex actually contributes to a polygon's outline. */
+function perpDistToLine(p, a, b){
+  const dx=b[0]-a[0], dy=b[1]-a[1];
+  const len = Math.hypot(dx,dy);
+  if(len<1e-9) return dist(p,a);
+  return Math.abs((p[0]-a[0])*dy - (p[1]-a[1])*dx)/len;
+}
+/* Repeatedly shortens the shortest edge of a polygon by dropping one of its
+   two endpoints — never by averaging them into a new point, which would pull
+   the boundary inward a little with every merge and, over enough merges,
+   noticeably shrink the shape away from the true enclosed area. Whichever
+   endpoint deviates least from the edge that would replace it (i.e.
+   contributes least to the outline) is the one dropped, so the remaining
+   boundary stays as close as possible to the original trace. Runs until
+   every edge is at least minLen long, or only a triangle is left. */
+function enforceMinEdgeLength(polyPoints, minLen){
+  let pts = polyPoints.map(p=>[p[0],p[1]]);
+  let guard = 0;
+  while(pts.length > 3 && guard++ < 2000){
+    let shortestIdx = -1, shortestLen = Infinity;
+    for(let i=0;i<pts.length;i++){
+      const d = dist(pts[i], pts[(i+1)%pts.length]);
+      if(d < shortestLen){ shortestLen = d; shortestIdx = i; }
+    }
+    if(shortestLen >= minLen) break;
+    const n = pts.length;
+    const i = shortestIdx, j = (i+1) % n;
+    const prevI = pts[(i-1+n)%n], nextJ = pts[(j+1)%n];
+    // if we drop i, the new edge is prevI->j; if we drop j, it's i->nextJ —
+    // keep whichever point deviates less from the edge that replaces it
+    const costDropI = perpDistToLine(pts[i], prevI, pts[j]);
+    const costDropJ = perpDistToLine(pts[j], pts[i], nextJ);
+    if(costDropI <= costDropJ) pts.splice(i, 1);
+    else pts.splice(j, 1);
+  }
+  return pts;
+}
+
+/* Does any edge of this polygon pass within an obstacle's buffer? */
+function polygonCrossesObstacles(polyPoints, obstacles){
+  const n = polyPoints.length;
+  for(let i=0;i<n;i++){
+    const a=polyPoints[i], b=polyPoints[(i+1)%n];
+    const steps = Math.max(2, Math.ceil(dist(a,b)/6));
+    for(let k=0;k<=steps;k++){
+      const t=k/steps;
+      const pt=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
+      for(const ob of obstacles){
+        if(distToPolyline(pt, ob.points).dist < ob.halfWidth) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* Checks whether any edge of a zone polygon crosses a road, thoroughfare,
+   canal or river, and if so corrects it: re-rasterises the zone with those
+   obstacle corridors carved out, then re-traces and re-simplifies the
+   boundary. In effect this adds vertices exactly where the zone meets the
+   obstacle and drops whatever vertices had strayed across it, without
+   disturbing the rest of the shape. */
+function enforceZoneObstacleClearance(polyPoints, obstacles){
+  if(!obstacles.length) return polyPoints;
+  if(!polygonCrossesObstacles(polyPoints, obstacles)) return polyPoints;
+
+  const cellSize = 4;
+  const clearMargin = cellSize; // extra safety margin beyond the exact halfWidth, since the
+                                 // traced boundary follows cell edges, not cell centres
+  const bb = bbox(polyPoints);
+  const minx = Math.floor(bb.minx/cellSize)*cellSize - cellSize;
+  const miny = Math.floor(bb.miny/cellSize)*cellSize - cellSize;
+  const cols = Math.max(1, Math.ceil((bb.maxx-bb.minx)/cellSize)+3);
+  const rows = Math.max(1, Math.ceil((bb.maxy-bb.miny)/cellSize)+3);
+  if(cols*rows > 400000) return polyPoints; // safety cap — leave unchanged rather than risk a huge grid
+  const mask = new Uint8Array(cols*rows);
+  const idx=(x,y)=>y*cols+x;
+  for(let gy=0; gy<rows; gy++){
+    for(let gx=0; gx<cols; gx++){
+      const wx=minx+(gx+0.5)*cellSize, wy=miny+(gy+0.5)*cellSize;
+      if(!pointInPoly([wx,wy], polyPoints)) continue;
+      let blocked=false;
+      for(const ob of obstacles){
+        if(distToPolyline([wx,wy], ob.points).dist <= ob.halfWidth+clearMargin){ blocked=true; break; }
+      }
+      if(!blocked) mask[idx(gx,gy)] = 1;
+    }
+  }
+
+  // Seed from the polygon's centroid (spiralling outward if that exact cell
+  // got carved out) so the fill lands in the main body of the zone rather
+  // than a small stray sliver.
+  const cpt = centroid(polyPoints);
+  const cgx = Math.floor((cpt[0]-minx)/cellSize), cgy = Math.floor((cpt[1]-miny)/cellSize);
+  let seed = null;
+  if(cgx>=0 && cgy>=0 && cgx<cols && cgy<rows && mask[idx(cgx,cgy)]){
+    seed = [cgx,cgy];
+  } else {
+    const maxR = Math.max(cols,rows);
+    outerSeed:
+    for(let r=1; r<maxR; r++){
+      for(let dx=-r; dx<=r; dx++){
+        for(let dy=-r; dy<=r; dy++){
+          if(Math.max(Math.abs(dx),Math.abs(dy)) !== r) continue;
+          const gx=cgx+dx, gy=cgy+dy;
+          if(gx<0||gy<0||gx>=cols||gy>=rows) continue;
+          if(mask[idx(gx,gy)]){ seed=[gx,gy]; break outerSeed; }
+        }
+      }
+    }
+  }
+  if(!seed) return polyPoints; // no valid area left to seed from — leave unchanged
+
+  const visited = new Uint8Array(cols*rows);
+  const queue=[seed]; visited[idx(seed[0],seed[1])]=1;
+  let head=0;
+  while(head<queue.length){
+    const [cx,cy]=queue[head++];
+    const nbs=[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]];
+    for(const [nx,ny] of nbs){
+      if(nx<0||ny<0||nx>=cols||ny>=rows) continue;
+      const ni=idx(nx,ny);
+      if(visited[ni] || !mask[ni]) continue;
+      visited[ni]=1; queue.push([nx,ny]);
+    }
+  }
+  if(queue.length < 8) return polyPoints; // the fix would erase almost the whole zone — leave it be
+
+  const traced = traceBoundary(visited, cols, rows, cellSize, minx, miny);
+  if(!traced || traced.length<3) return polyPoints;
+
+  // Re-simplifying can occasionally straighten the very corner this pass
+  // just fixed, right back across the obstacle — so verify the simplified
+  // result, and fall back to the (guaranteed correct, if slightly more
+  // detailed) unsimplified trace if it doesn't hold up.
+  const resimplified = simplifyClosedPolygon(traced, 3);
+  if(resimplified && resimplified.length>=3 && !polygonCrossesObstacles(resimplified, obstacles)){
+    return resimplified;
+  }
+  return polygonCrossesObstacles(traced, obstacles) ? polyPoints : traced;
+}
+
+/* Traces the outer edge of a filled binary grid mask into an ordered ring of
+   grid-vertex points (in world coordinates). */
+function traceBoundary(mask, cols, rows, cellSize, offsetX, offsetY){
+  offsetX = offsetX || 0; offsetY = offsetY || 0;
+  const at = (cx,cy) => (cx<0||cy<0||cx>=cols||cy>=rows) ? 0 : mask[cy*cols+cx];
+  const adj = new Map(); // 'x,y' -> ['x,y', ...]
+  function addEdge(p1, p2){
+    const k1=p1[0]+','+p1[1], k2=p2[0]+','+p2[1];
+    if(!adj.has(k1)) adj.set(k1, []);
+    if(!adj.has(k2)) adj.set(k2, []);
+    adj.get(k1).push(k2);
+    adj.get(k2).push(k1);
+  }
+  for(let cy=0; cy<rows; cy++){
+    for(let cx=0; cx<cols; cx++){
+      if(!at(cx,cy)) continue;
+      if(!at(cx,cy-1)) addEdge([cx,cy],[cx+1,cy]);       // top
+      if(!at(cx,cy+1)) addEdge([cx,cy+1],[cx+1,cy+1]);   // bottom
+      if(!at(cx-1,cy)) addEdge([cx,cy],[cx,cy+1]);       // left
+      if(!at(cx+1,cy)) addEdge([cx+1,cy],[cx+1,cy+1]);   // right
+    }
+  }
+  if(adj.size===0) return null;
+
+  // start from the topmost-then-leftmost vertex — always part of the outer ring
+  let startKey=null, sx=Infinity, sy=Infinity;
+  adj.forEach((_,k)=>{
+    const [x,y]=k.split(',').map(Number);
+    if(y<sy || (y===sy && x<sx)){ sy=y; sx=x; startKey=k; }
+  });
+
+  const visitedEdges = new Set();
+  const path = [];
+  let current = startKey, prev = null;
+  const maxSteps = adj.size*2 + 10;
+  for(let steps=0; steps<maxSteps; steps++){
+    path.push(current.split(',').map(Number));
+    const neighbors = adj.get(current) || [];
+    let next = null;
+    for(const n of neighbors){
+      if(n===prev) continue;
+      if(visitedEdges.has(current+'|'+n) || visitedEdges.has(n+'|'+current)) continue;
+      next = n; break;
+    }
+    if(next===null){
+      for(const n of neighbors){
+        if(visitedEdges.has(current+'|'+n) || visitedEdges.has(n+'|'+current)) continue;
+        next = n; break;
+      }
+    }
+    if(next===null) break;
+    visitedEdges.add(current+'|'+next);
+    prev = current;
+    current = next;
+    if(current===startKey) break;
+  }
+  return path.map(([gx,gy]) => [offsetX+gx*cellSize, offsetY+gy*cellSize]);
+}
+
+/* Ramer–Douglas–Peucker simplification of an open point chain. */
+function rdp(points, tolerance){
+  if(points.length < 3) return points.slice();
+  const start=points[0], end=points[points.length-1];
+  let maxDist=0, index=0;
+  for(let i=1;i<points.length-1;i++){
+    const dx=end[0]-start[0], dy=end[1]-start[1];
+    const len=Math.hypot(dx,dy);
+    const d = len<1e-9 ? dist(points[i],start) : Math.abs((points[i][0]-start[0])*dy - (points[i][1]-start[1])*dx)/len;
+    if(d>maxDist){ maxDist=d; index=i; }
+  }
+  if(maxDist > tolerance){
+    const left = rdp(points.slice(0,index+1), tolerance);
+    const right = rdp(points.slice(index), tolerance);
+    return left.slice(0,-1).concat(right);
+  }
+  return [start, end];
+}
+/* Simplifies a closed ring (grid-staircase boundary) into a clean polygon by
+   splitting it into two open chains at its two most distant points, running
+   RDP on each, then rejoining. Returns an open ring (no duplicated first/last
+   point), matching how zone.points are stored elsewhere. */
+function simplifyClosedPolygon(points, tolerance){
+  let pts = points.slice();
+  if(pts.length>1 && dist(pts[0], pts[pts.length-1]) < 1e-6) pts = pts.slice(0,-1);
+  const m = pts.length;
+  if(m <= 4) return pts;
+  let bestJ = Math.floor(m/2), bestD = -1;
+  for(let j=Math.max(1,Math.floor(m*0.3)); j<Math.min(m,Math.ceil(m*0.7)); j++){
+    const d = dist(pts[0], pts[j]);
+    if(d>bestD){ bestD=d; bestJ=j; }
+  }
+  const chain1 = pts.slice(0, bestJ+1);
+  const chain2 = pts.slice(bestJ).concat([pts[0]]);
+  const s1 = rdp(chain1, tolerance);
+  const s2 = rdp(chain2, tolerance);
+  return s1.slice(0,-1).concat(s2.slice(0,-1));
+}
+
+/* ---------------------------------------------------------------- autofill */
+/* Obstacles buildings must never overlap: every road/street/alley/thoroughfare/
+   canal, plus rivers. Each carries a half-width "no-build" buffer. */
+function buildObstacles(){
+  const s = sp();
+  const list = [];
+  state.roads.forEach(r=>{
+    list.push({points:r.points, halfWidth:(roadWidth(r)*s.lineScale)/2});
+  });
+  state.rivers.forEach(r=>{
+    list.push({points:r.points, halfWidth:(r.width||14)/2});
+  });
+  return list;
+}
+/* smallest (distance-to-edge minus buffer) over all obstacles & all corners of
+   a candidate building — negative means it overlaps something it shouldn't */
+function minMarginForCorners(corners, obstacles){
+  let minMargin = Infinity;
+  obstacles.forEach(ob=>{
+    corners.forEach(c=>{
+      const {dist:d} = distToPolyline(c, ob.points);
+      const m = d - ob.halfWidth;
+      if(m < minMargin) minMargin = m;
+    });
+  });
+  return minMargin===Infinity ? 999 : minMargin;
+}
+/* If a building sits close to a road/river, slide it so its near edge sits
+   flush against that feature's edge (at `clearance` gap) instead of floating
+   at whatever offset the grid happened to leave. */
+function tryFlushAlign(center, w, h, angle, obstacles, clearance){
+  let best=null, bestDist=Infinity;
+  obstacles.forEach(ob=>{
+    const {dist:d, point} = distToPolyline(center, ob.points);
+    if(d<bestDist){ bestDist=d; best={point, halfWidth:ob.halfWidth}; }
+  });
+  if(!best) return null;
+  const maxDim = Math.max(w,h);
+  if(bestDist - best.halfWidth > maxDim*1.3) return null; // not a frontage row, leave alone
+  let dir = [center[0]-best.point[0], center[1]-best.point[1]];
+  const dlen = Math.hypot(dir[0],dir[1]) || 1;
+  dir = [dir[0]/dlen, dir[1]/dlen];
+  const halfExtent = projectedHalfExtent(w,h,angle,dir);
+  const targetDist = best.halfWidth + clearance + halfExtent;
+  return [best.point[0]+dir[0]*targetDist, best.point[1]+dir[1]*targetDist];
+}
+
+/* Actively seeks the nearest real road (thoroughfare/street/canal, not an
+   alley) to a candidate position and computes where a w x h building should
+   sit to front it directly — parallel to the road, clear of it by
+   `clearance`, on whichever side the candidate started on. Unlike
+   tryFlushAlign above (which only nudges a position that's already close),
+   this looks for a road actively and returns null if none exists at all,
+   rather than requiring the caller to already be near one. */
+function frontOntoRoad(candidateCenter, w, h, clearance){
+  let bestRoad = null, bestDist = Infinity, bestPoint = null, bestSeg = null, bestHalfWidth = 0;
+  state.roads.forEach(r=>{
+    if(r.type==='alley') return;
+    const hit = distToPolyline(candidateCenter, r.points);
+    if(hit.dist < bestDist){
+      bestDist = hit.dist; bestPoint = hit.point; bestSeg = hit.seg; bestRoad = r;
+      bestHalfWidth = (roadWidth(r)*sp().lineScale)/2;
+    }
+  });
+  if(!bestRoad) return null;
+  const roadAngle = Math.atan2(bestSeg[1][1]-bestSeg[0][1], bestSeg[1][0]-bestSeg[0][0]);
+  let dir = [candidateCenter[0]-bestPoint[0], candidateCenter[1]-bestPoint[1]];
+  const dlen = Math.hypot(dir[0],dir[1]) || 1;
+  dir = [dir[0]/dlen, dir[1]/dlen];
+  const halfExtent = projectedHalfExtent(w,h,roadAngle,dir);
+  const targetDist = bestHalfWidth + clearance + halfExtent;
+  const center = [bestPoint[0]+dir[0]*targetDist, bestPoint[1]+dir[1]*targetDist];
+  return {center, angle: roadAngle, roadPoint: bestPoint, roadDist: bestDist};
+}
+
+/* Same idea as frontOntoRoad, but generalised to front onto whichever
+   obstacle in a given list is nearest — alleys included — rather than only
+   real roads. Used for the industry-low second pass, which is explicitly
+   meant to front onto alleyways or any other nearby infrastructure once the
+   first pass's own alleys already exist as options. */
+function frontOntoAnyBoundary(candidateCenter, w, h, clearance, obstacles){
+  let best = null, bestDist = Infinity;
+  obstacles.forEach(ob=>{
+    const hit = distToPolyline(candidateCenter, ob.points);
+    if(hit.dist < bestDist){ bestDist = hit.dist; best = {point:hit.point, seg:hit.seg, halfWidth:ob.halfWidth}; }
+  });
+  if(!best) return null;
+  const boundaryAngle = Math.atan2(best.seg[1][1]-best.seg[0][1], best.seg[1][0]-best.seg[0][0]);
+  let dir = [candidateCenter[0]-best.point[0], candidateCenter[1]-best.point[1]];
+  const dlen = Math.hypot(dir[0],dir[1]) || 1;
+  dir = [dir[0]/dlen, dir[1]/dlen];
+  const halfExtent = projectedHalfExtent(w,h,boundaryAngle,dir);
+  const targetDist = best.halfWidth + clearance + halfExtent;
+  const center = [best.point[0]+dir[0]*targetDist, best.point[1]+dir[1]*targetDist];
+  return {center, angle: boundaryAngle, boundaryPoint: best.point, boundaryDist: bestDist};
+}
+
+function polygonArea(pts){
+  let a=0;
+  for(let i=0;i<pts.length;i++){
+    const p1=pts[i], p2=pts[(i+1)%pts.length];
+    a += p1[0]*p2[1]-p2[0]*p1[1];
+  }
+  return Math.abs(a)/2;
+}
+
+/* Finds a plain rectangular footprint that fits whatever space is actually
+   free — inside the zone polygon and clear of every obstacle — by
+   rasterising a small local grid (aligned to the candidate's own angle) and
+   greedily growing the largest all-clear rectangle out from its centre.
+   Used whenever the full-size rectangle doesn't fit, so boundary plots still
+   get a real, genuinely rectangular building — smaller than ideal, not an
+   irregular jagged shape — rather than being skipped or left with a
+   staircase edge from the raster grid. */
+function clipRectFootprint(center, w, h, angle, zonePoints, obstacles, cellSize){
+  cellSize = cellSize || 2;
+  const cosA = Math.cos(angle), sinA = Math.sin(angle); // local (u,v) -> world
+  const halfW = w/2 + cellSize, halfH = h/2 + cellSize;
+  const cols = Math.max(1, Math.round((halfW*2)/cellSize));
+  const rows = Math.max(1, Math.round((halfH*2)/cellSize));
+  if(cols*rows > 20000) return null; // safety cap; shouldn't happen at building scale
+  const mask = new Uint8Array(cols*rows);
+  const idx = (x,y)=>y*cols+x;
+  let filled = 0;
+  for(let gy=0; gy<rows; gy++){
+    for(let gx=0; gx<cols; gx++){
+      const lu = -halfW + (gx+0.5)*cellSize, lv = -halfH + (gy+0.5)*cellSize;
+      if(Math.abs(lu) > w/2 || Math.abs(lv) > h/2) continue; // stay within the original candidate
+      const wx = center[0] + lu*cosA - lv*sinA;
+      const wy = center[1] + lu*sinA + lv*cosA;
+      if(!pointInPoly([wx,wy], zonePoints)) continue;
+      let blocked = false;
+      for(const ob of obstacles){
+        if(distToPolyline([wx,wy], ob.points).dist <= ob.halfWidth){ blocked=true; break; }
+      }
+      if(blocked) continue;
+      mask[idx(gx,gy)] = 1;
+      filled++;
+    }
+  }
+  const minCells = Math.max(4, (w*h*0.2)/(cellSize*cellSize));
+  if(filled < minCells) return null;
+
+  const rect = largestRectNearCentre(mask, cols, rows);
+  if(!rect) return null;
+  const rw = rect.w*cellSize, rh = rect.h*cellSize;
+  if(rw < w*0.22 || rh < h*0.22) return null; // too sliver-thin to bother with
+
+  const ru0 = -halfW + rect.x*cellSize, rv0 = -halfH + rect.y*cellSize;
+  const ruC = ru0 + rw/2, rvC = rv0 + rh/2;
+  return {
+    center: [center[0] + ruC*cosA - rvC*sinA, center[1] + ruC*sinA + rvC*cosA],
+    w: rw, h: rh
+  };
+}
+/* Greedily grows the largest all-filled axis-aligned rectangle outward from
+   the grid's centre cell (spiralling out to the nearest filled cell first if
+   the centre itself is blocked), expanding whichever side is still valid one
+   step at a time until none can grow further. Not guaranteed globally
+   maximal, but simple, fast, and reliably rectangular. */
+function largestRectNearCentre(mask, cols, rows){
+  const idx = (x,y)=>y*cols+x;
+  const cx = Math.floor(cols/2), cy = Math.floor(rows/2);
+  let startX=cx, startY=cy;
+  if(!mask[idx(cx,cy)]){
+    let found = null;
+    const maxR = Math.max(cols,rows);
+    outer:
+    for(let r=1; r<maxR; r++){
+      for(let dx=-r; dx<=r; dx++){
+        for(let dy=-r; dy<=r; dy++){
+          if(Math.max(Math.abs(dx),Math.abs(dy)) !== r) continue;
+          const x=cx+dx, y=cy+dy;
+          if(x<0||y<0||x>=cols||y>=rows) continue;
+          if(mask[idx(x,y)]){ found=[x,y]; break outer; }
+        }
+      }
+    }
+    if(!found) return null;
+    startX=found[0]; startY=found[1];
+  }
+  let left=startX, right=startX, top=startY, bottom=startY;
+  let expanded = true;
+  while(expanded){
+    expanded = false;
+    if(left>0){
+      let ok=true;
+      for(let y=top;y<=bottom;y++) if(!mask[idx(left-1,y)]){ ok=false; break; }
+      if(ok){ left--; expanded=true; }
+    }
+    if(right<cols-1){
+      let ok=true;
+      for(let y=top;y<=bottom;y++) if(!mask[idx(right+1,y)]){ ok=false; break; }
+      if(ok){ right++; expanded=true; }
+    }
+    if(top>0){
+      let ok=true;
+      for(let x=left;x<=right;x++) if(!mask[idx(x,top-1)]){ ok=false; break; }
+      if(ok){ top--; expanded=true; }
+    }
+    if(bottom<rows-1){
+      let ok=true;
+      for(let x=left;x<=right;x++) if(!mask[idx(x,bottom+1)]){ ok=false; break; }
+      if(ok){ bottom++; expanded=true; }
+    }
+  }
+  return {x:left, y:top, w:right-left+1, h:bottom-top+1};
+}
+
+function runAutofillCore(zone){
+  if(zone.houseSize==='rowhouse'){
+    autofillZoneRowhouse(zone);
+  } else if(zone.houseSize==='townhouse'){
+    autofillZoneTownhouse(zone);
+  } else if(zone.houseSize==='mansion'){
+    autofillZoneMansion(zone);
+  } else if(zone.houseSize==='hovel'){
+    autofillZoneHovel(zone);
+  } else if(zone.houseSize==='industry'){
+    if(zone.density==='low'){
+      autofillZoneIndustryLow(zone);
+    } else if(zone.density==='medium'){
+      autofillZoneIndustryMedium(zone);
+    } else if(zone.density==='high'){
+      autofillZoneIndustryHeavy(zone);
+    } else {
+      autofillZoneIndustry(zone);
+    }
+  } else {
+    autofillZoneGrid(zone);
+  }
+}
+function autofillZone(zone){
+  if(!zone.houseSize || !zone.density) { setStatus('Set house size & density for this zone first.'); return; }
+  pushUndo();
+  runAutofillCore(zone);
+  setStatus('Autofilled '+zone.buildings.length+' buildings in zone.');
+  renderAll();
+}
+function autofillAll(){
+  pushUndo();
+  state.zones.forEach(z=> {
+    if(z.houseSize && z.density) runAutofillCore(z);
+  });
+  renderAll();
+}
+
+/* Grid fill — used for hovel zones: a regular grid across the
+   whole zone interior, oriented to the nearest road. */
+function autofillZoneGrid(zone){
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  const spec = HOUSE_SPECS[zone.houseSize];
+  const gap = DENSITY_GAP[zone.density];
+  const angle = nearestRoadAngle(zone);
+  const obstacles = buildObstacles();
+  zone.buildings = gridFillPolygon(zone.points, spec, gap, obstacles, zone.id, zone.houseSize, angle);
+}
+
+/* Dense grid fill over an arbitrary polygon, oriented at `angle`. Shrinks
+   each cell down to a 50% floor to clear the boundary/obstacles, and falls
+   back to a raster-clipped irregular footprint for cells that don't fit even
+   then, so there's no unfilled gap purely because a plain rectangle didn't
+   line up. Reused both for hovel/mansion zones (the whole zone) and for the
+   interior of rowhouse/townhouse zones (whatever's left behind the front
+   ring) — adjacent rows naturally back onto each other across the density
+   gap, i.e. each house fronts one row and backs onto the next. */
+function gridFillPolygon(polyPoints, spec, gap, obstacles, seedId, houseSize, angle){
+  angle = angle || 0;
+  const c = centroid(polyPoints);
+  const rotated = polyPoints.map(p=>rotatePoint(p, c, -angle));
+  const bb = bbox(rotated);
+  const stepW = spec.w + gap, stepH = spec.h + gap;
+  const CLEARANCE = 5;
+  const MIN_SCALE = Math.sqrt(0.5);
+  const buildings = [];
+  const rnd = mulberry32(seedFor(seedId,'grid'));
+  let row = 0;
+  for(let y = bb.miny + stepH/2; y < bb.maxy; y += stepH){
+    let colOffset = (row % 2 === 1) ? stepW/2 : 0;
+    row++;
+    for(let x = bb.minx + stepW/2 + colOffset; x < bb.maxx; x += stepW){
+      const worldCenter = rotatePoint([x,y], c, angle);
+      let placed = null;
+      for(let sc=1.0; sc>=MIN_SCALE-1e-6; sc-=0.06){
+        const w = spec.w*sc, h = spec.h*sc;
+        const samples = rectSamplePoints(worldCenter, w, h, angle);
+        if(!samples.every(pt=>pointInPoly(pt, polyPoints))) continue;
+        if(minMarginForCorners(samples, obstacles) < 0) continue;
+        placed = {center:worldCenter, w, h};
+        break;
+      }
+      if(placed){
+        const flushCenter = tryFlushAlign(placed.center, placed.w, placed.h, angle, obstacles, CLEARANCE);
+        let finalCenter = placed.center;
+        if(flushCenter){
+          const samples2 = rectSamplePoints(flushCenter, placed.w, placed.h, angle);
+          if(samples2.every(pt=>pointInPoly(pt, polyPoints)) && minMarginForCorners(samples2, obstacles) >= 0){
+            finalCenter = flushCenter;
+          }
+        }
+        buildings.push({
+          cx: finalCenter[0], cy: finalCenter[1], w: placed.w, h: placed.h, angle, houseSize,
+          seed: seedFor(seedId, 'b'+buildings.length), hatchVariant: rnd() > 0.5 ? 0 : 1
+        });
+      } else {
+        const clipped = clipRectFootprint(worldCenter, spec.w, spec.h, angle, polyPoints, obstacles);
+        if(clipped){
+          buildings.push({
+            cx:clipped.center[0], cy:clipped.center[1], w:clipped.w, h:clipped.h, angle, houseSize,
+            seed: seedFor(seedId, 'b'+buildings.length), hatchVariant: rnd() > 0.5 ? 0 : 1
+          });
+        }
+      }
+    }
+  }
+  return buildings;
+}
+
+/* The raw alley line deliberately overshoots the cell's bounding box (so the
+   split below reliably crosses the whole cell regardless of orientation) —
+   but that overshoot must never end up in the stored/rendered road, or it
+   pokes straight out past the zone. Clips the line back to the two points
+   where it actually crosses the cell's own boundary, keeping any bend
+   points that fall between them. */
+function clipAlleyToPolygon(alleyPts, poly){
+  const cum = [0];
+  for(let i=0;i<alleyPts.length-1;i++) cum.push(cum[i]+dist(alleyPts[i],alleyPts[i+1]));
+  const hits = [];
+  for(let i=0;i<alleyPts.length-1;i++){
+    const a=alleyPts[i], b=alleyPts[i+1];
+    for(let j=0;j<poly.length;j++){
+      const hit = segIntersect(a, b, poly[j], poly[(j+1)%poly.length]);
+      if(hit) hits.push({point:hit, tAlong: cum[i]+dist(a,hit)});
+    }
+  }
+  if(hits.length < 2) return null;
+  hits.sort((h1,h2)=>h1.tAlong-h2.tAlong);
+  const start = hits[0], end = hits[hits.length-1];
+  const clipped = [start.point];
+  for(let i=0;i<alleyPts.length;i++){
+    if(cum[i] > start.tAlong+0.01 && cum[i] < end.tAlong-0.01) clipped.push(alleyPts[i]);
+  }
+  clipped.push(end.point);
+  return clipped;
+}
+/* Picks a rough dividing line across a cell, running the long way across its
+   shorter dimension, with 1-2 random bends partway along so it reads as a
+   twisting lane rather than a ruled-off cut. Positioned somewhere in the
+   middle 30% of the cell so it doesn't shave off a useless sliver. */
+function randomAlleyAcrossCell(poly, rnd){
+  const bb = bbox(poly);
+  const w = bb.maxx-bb.minx, h = bb.maxy-bb.miny;
+  const vertical = w >= h;
+  const margin = Math.max(w,h)*0.2 + 20;
+  let p1, p2;
+  if(vertical){
+    const x = bb.minx + w*(0.35+rnd()*0.3);
+    p1=[x, bb.miny-margin]; p2=[x, bb.maxy+margin];
+  } else {
+    const y = bb.miny + h*(0.35+rnd()*0.3);
+    p1=[bb.minx-margin, y]; p2=[bb.maxx+margin, y];
+  }
+  const bendCount = 1 + Math.floor(rnd()*2);
+  const pts=[p1];
+  for(let k=1;k<=bendCount;k++){
+    const t = k/(bendCount+1);
+    const base=[p1[0]+(p2[0]-p1[0])*t, p1[1]+(p2[1]-p1[1])*t];
+    const perp = Math.atan2(p2[1]-p1[1], p2[0]-p1[0]) + Math.PI/2;
+    const bend = (rnd()-0.5)*Math.min(w,h)*0.4;
+    pts.push([base[0]+Math.cos(perp)*bend, base[1]+Math.sin(perp)*bend]);
+  }
+  pts.push(p2);
+  return pts;
+}
+/* Splits a cell polygon into whatever ends up on each side of a (possibly
+   bent) alley path, by rasterising the cell, carving out the alley's own
+   corridor, and flood-filling out from a point just off to each side of it —
+   reusing the same grid/trace machinery used for auto-zone and ring erosion
+   elsewhere in this file. Returns null if the split doesn't cleanly produce
+   two separate regions (e.g. the alley doesn't actually cross the cell). */
+function splitPolygonByAlley(poly, alleyPts, alleyHalfWidth){
+  const cellSize = 4;
+  const maskHalfWidth = alleyHalfWidth + cellSize; // safety margin — see clipRectFootprint/enforceZoneObstacleClearance for the same fix
+  const bb = bbox(poly);
+  const minx = Math.floor(bb.minx/cellSize)*cellSize - cellSize;
+  const miny = Math.floor(bb.miny/cellSize)*cellSize - cellSize;
+  const cols = Math.max(1, Math.ceil((bb.maxx-bb.minx)/cellSize)+3);
+  const rows = Math.max(1, Math.ceil((bb.maxy-bb.miny)/cellSize)+3);
+  if(cols*rows > 200000) return null;
+  const mask = new Uint8Array(cols*rows);
+  const idx = (x,y)=>y*cols+x;
+  for(let gy=0; gy<rows; gy++){
+    for(let gx=0; gx<cols; gx++){
+      const wx=minx+(gx+0.5)*cellSize, wy=miny+(gy+0.5)*cellSize;
+      if(!pointInPoly([wx,wy], poly)) continue;
+      let blocked=false;
+      for(let i=0;i<alleyPts.length-1;i++){
+        if(distToPolyline([wx,wy], [alleyPts[i],alleyPts[i+1]]).dist <= maskHalfWidth){ blocked=true; break; }
+      }
+      if(!blocked) mask[idx(gx,gy)] = 1;
+    }
+  }
+  const midI = Math.floor((alleyPts.length-1)/2);
+  const a = alleyPts[midI], b = alleyPts[midI+1] || alleyPts[midI];
+  const dx=b[0]-a[0], dy=b[1]-a[1], len=Math.hypot(dx,dy)||1;
+  const nx=-dy/len, ny=dx/len;
+  const mid=[(a[0]+b[0])/2, (a[1]+b[1])/2];
+  const off = alleyHalfWidth + cellSize*2;
+
+  function floodFrom(seedWorld){
+    let sgx = Math.round((seedWorld[0]-minx)/cellSize), sgy = Math.round((seedWorld[1]-miny)/cellSize);
+    if(!(sgx>=0 && sgy>=0 && sgx<cols && sgy<rows && mask[idx(sgx,sgy)])){
+      let found=null;
+      const maxR = Math.max(cols,rows);
+      outer:
+      for(let r=1;r<maxR;r++){
+        for(let ddx=-r;ddx<=r;ddx++){
+          for(let ddy=-r;ddy<=r;ddy++){
+            if(Math.max(Math.abs(ddx),Math.abs(ddy))!==r) continue;
+            const gx=sgx+ddx, gy=sgy+ddy;
+            if(gx<0||gy<0||gx>=cols||gy>=rows) continue;
+            if(mask[idx(gx,gy)]){ found=[gx,gy]; break outer; }
+          }
+        }
+      }
+      if(!found) return null;
+      sgx=found[0]; sgy=found[1];
+    }
+    const visited = new Uint8Array(cols*rows);
+    const queue=[[sgx,sgy]]; visited[idx(sgx,sgy)]=1;
+    let head=0;
+    while(head<queue.length){
+      const [cx,cy]=queue[head++];
+      const nbs=[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]];
+      for(const [nx2,ny2] of nbs){
+        if(nx2<0||ny2<0||nx2>=cols||ny2>=rows) continue;
+        const ni=idx(nx2,ny2);
+        if(visited[ni]||!mask[ni]) continue;
+        visited[ni]=1; queue.push([nx2,ny2]);
+      }
+    }
+    if(queue.length<6) return null;
+    const traced = traceBoundary(visited, cols, rows, cellSize, minx, miny);
+    if(!traced||traced.length<3) return null;
+    return simplifyClosedPolygon(traced, 1.5);
+  }
+
+  const regionA = floodFrom([mid[0]+nx*off, mid[1]+ny*off]);
+  const regionB = floodFrom([mid[0]-nx*off, mid[1]-ny*off]);
+  return {regionA, regionB};
+}
+/* Hovel zones don't get an orderly grid at all — the district is carved up
+   by a randomly branching, twisting network of narrow back-alleys (a rough
+   space subdivision: repeatedly cut whichever remaining cell is currently
+   largest in two along a bent line, so the — now limited — alley budget
+   spreads evenly across the zone instead of exhausting itself in one corner;
+   stop once a cell is too small to usefully cut again), and every resulting
+   pocket gets packed with as many small, slightly-skewed hovels as will
+   actually fit, using the same fitting/clipping logic as every other house
+   type so nothing ever overlaps a road, river, canal or another building. */
+function autofillZoneHovel(zone){
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  const spec = HOUSE_SPECS.hovel;
+  const gap = DENSITY_GAP[zone.density];
+  const baseObstacles = buildObstacles();
+  const rnd = mulberry32(seedFor(zone.id, 'hovelmess'));
+  const alleyHalfWidth = (ROAD_STYLE.alley.w * sp().lineScale)/2 + 2;
+  const MIN_CELL_AREA = (spec.w+gap)*(spec.h+gap)*4.5;
+  const MAX_ALLEYS = 28; // 60% fewer than before
+
+  const alleys = [];
+  const buildings = [];
+  const dynamicObstacles = baseObstacles.slice();
+  let alleyCount = 0;
+
+  // Shared by both the maze packing below and the gap-filling pass after it:
+  // a candidate only survives if it clears every obstacle/alley and doesn't
+  // conflict with anything already placed.
+  function tryAddBuildings(candidates){
+    candidates.forEach(b=>{
+      const samples = b.points ? b.points : rectSamplePoints([b.cx,b.cy], b.w, b.h, b.angle);
+      if(minMarginForCorners(samples, dynamicObstacles) < -0.1) return;
+      if(b.points){ buildings.push(b); return; }
+      const rectB = {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle};
+      for(const k of buildings){
+        if(k.points) continue;
+        const res = satOverlap(rectB, {center:[k.cx,k.cy], w:k.w, h:k.h, angle:k.angle});
+        if(res && res.overlap > 0.3) return;
+      }
+      buildings.push(b);
+    });
+  }
+
+  function packCell(poly){
+    const angle = longestEdgeAngle(poly) + (rnd()-0.5)*0.35; // slight random tilt — unplanned, not neatly aligned
+    const packGap = Math.max(1.5, gap*0.6); // hovels crammed together tighter than the usual density gap
+    const cellBuildings = gridFillPolygon(poly, spec, packGap, dynamicObstacles, zone.id+'_h'+buildings.length, 'hovel', angle);
+    // Each cell is fitted independently, so two buildings from neighbouring
+    // cells can occasionally end up a hair too close where their boundary
+    // fitting both reached toward the same gap — check every new building
+    // against everything already placed anywhere in the zone before keeping it.
+    tryAddBuildings(cellBuildings);
+  }
+
+  // Always split whichever pending cell is currently largest, rather than
+  // recursing depth-first into one branch before ever touching the other —
+  // depth-first could exhaust the whole alley budget subdividing one corner
+  // of the zone while the opposite end never got split at all. Working
+  // largest-first spends the (now smaller) alley budget where it matters
+  // most, spreading the maze evenly across the whole zone instead.
+  const queue = [zone.points];
+  while(queue.length > 0){
+    let bestIdx = 0, bestArea = -1;
+    for(let i=0;i<queue.length;i++){
+      const a = polygonArea(queue[i]);
+      if(a > bestArea){ bestArea = a; bestIdx = i; }
+    }
+    const poly = queue.splice(bestIdx, 1)[0];
+
+    if(bestArea < MIN_CELL_AREA || alleyCount >= MAX_ALLEYS){
+      packCell(poly);
+      continue;
+    }
+    const rawAlleyPts = randomAlleyAcrossCell(poly, rnd);
+    const split = splitPolygonByAlley(poly, rawAlleyPts, alleyHalfWidth);
+    const minPiece = spec.w*spec.h*0.6;
+    if(!split || !split.regionA || !split.regionB ||
+       polygonArea(split.regionA) < minPiece || polygonArea(split.regionB) < minPiece){
+      packCell(poly); // split failed or left a useless sliver — just pack this cell whole
+      continue;
+    }
+    // The raw alley line deliberately overshoots the cell so the split above
+    // reliably crosses it regardless of orientation — clip that overshoot
+    // off before this becomes a real road, or it pokes straight out past
+    // the cell (and the zone) instead of stopping at its edge.
+    const clippedAlleyPts = clipAlleyToPolygon(rawAlleyPts, poly) || rawAlleyPts;
+    const alley = {id:'alley'+(state.nextId++), type:'alley', points:clippedAlleyPts, sourceZoneId:zone.id};
+    alleys.push(alley);
+    const alleyObstacle = {points:rawAlleyPts, halfWidth:alleyHalfWidth+1.5};
+    dynamicObstacles.push(alleyObstacle);
+    // The recursive split isn't perfectly precise across many levels, so this
+    // new alley can occasionally land on top of a building an earlier,
+    // spatially-nearby branch already placed — clear any casualties now.
+    for(let i=buildings.length-1; i>=0; i--){
+      const b = buildings[i];
+      const samples = b.points ? b.points : rectSamplePoints([b.cx,b.cy], b.w, b.h, b.angle);
+      if(minMarginForCorners(samples, [alleyObstacle]) < -0.1) buildings.splice(i,1);
+    }
+    alleyCount++;
+    queue.push(split.regionA, split.regionB);
+  }
+
+  // The maze above only gets one attempt at filling each cell, at one
+  // orientation — that leaves real gaps wherever a cell's shape didn't suit
+  // its grid angle, or a failed split fell back to packing an awkward whole
+  // cell. Sweep the entire zone for leftover free pockets big enough for
+  // another hovel and pack those too, repeating a couple of times since each
+  // round can expose smaller pockets the previous one couldn't reach.
+  for(let round=0; round<3; round++){
+    const gapPolys = findGapPolygons(zone.points, buildings, dynamicObstacles, spec);
+    if(gapPolys.length===0) break;
+    gapPolys.forEach((gapPoly, gi)=>{
+      const angle = longestEdgeAngle(gapPoly) + (rnd()-0.5)*0.3;
+      const packGap = Math.max(1.2, gap*0.5);
+      const gapBuildings = gridFillPolygon(gapPoly, spec, packGap, dynamicObstacles, zone.id+'_gap'+round+'_'+gi, 'hovel', angle);
+      tryAddBuildings(gapBuildings);
+    });
+  }
+
+  zone.buildings = buildings;
+  state.roads.push(...alleys);
+}
+/* Light industrial: mostly rowhouse-sized buildings, with an occasional much
+   larger one (about one large building for every twelve small ones) dropped
+   in among them — "500% larger" is taken to mean five times the footprint
+   area, i.e. roughly 2.24x each dimension, since scaling every side by 5
+   would tower absurdly over its neighbours on a map like this. Uses the same
+   coarse maze-subdivision as hovels (largest-cell-first, so the alleys stay
+   spread out) but with far fewer cuts — "a small number of alleyways" — and
+   bigger cells, since this should read as a handful of yards and access
+   lanes threading between buildings, not a warren. Because those alleys are
+   exactly what separates each large building from its surrounding small
+   ones, they end up naturally linking small buildings to larger ones rather
+   than needing any special-cased routing. */
+function autofillZoneIndustry(zone){
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  const smallSpec = HOUSE_SPECS.rowhouse;
+  const growth = Math.sqrt(5); // 5x footprint area -> ~2.24x each side
+  const largeSpec = {w: smallSpec.w*growth, h: smallSpec.h*growth};
+  const gap = DENSITY_GAP[zone.density];
+  const baseObstacles = buildObstacles();
+  const rnd = mulberry32(seedFor(zone.id, 'industry'));
+  const alleyHalfWidth = (ROAD_STYLE.alley.w * sp().lineScale)/2 + 2;
+  const MIN_CELL_AREA = (smallSpec.w+gap)*(smallSpec.h+gap)*6; // fewer, bigger cells than the hovel maze
+  const MAX_ALLEYS = 10; // "a small number of alleyways"
+
+  const alleys = [];
+  const buildings = [];
+  const dynamicObstacles = baseObstacles.slice();
+  let alleyCount = 0;
+
+  function tryAddBuildings(candidates){
+    candidates.forEach(b=>{
+      const samples = b.points ? b.points : rectSamplePoints([b.cx,b.cy], b.w, b.h, b.angle);
+      if(minMarginForCorners(samples, dynamicObstacles) < -0.1) return;
+      if(b.points){ buildings.push(b); return; }
+      const rectB = {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle};
+      for(const k of buildings){
+        if(k.points) continue;
+        const res = satOverlap(rectB, {center:[k.cx,k.cy], w:k.w, h:k.h, angle:k.angle});
+        if(res && res.overlap > 0.3) return;
+      }
+      buildings.push(b);
+    });
+  }
+  function packCell(poly){
+    const angle = longestEdgeAngle(poly) + (rnd()-0.5)*0.25;
+    const packGap = Math.max(gap*0.8, 3);
+    const cellBuildings = gridFillPolygon(poly, smallSpec, packGap, dynamicObstacles, zone.id+'_i'+buildings.length, 'industry', angle);
+    tryAddBuildings(cellBuildings);
+  }
+
+  // Largest-cell-first subdivision (same approach as the hovel maze, so the
+  // few alleys we do get spread out rather than clustering in one corner).
+  const queue = [zone.points];
+  while(queue.length > 0){
+    let bestIdx=0, bestArea=-1;
+    for(let i=0;i<queue.length;i++){ const a=polygonArea(queue[i]); if(a>bestArea){ bestArea=a; bestIdx=i; } }
+    const poly = queue.splice(bestIdx,1)[0];
+    if(bestArea < MIN_CELL_AREA || alleyCount >= MAX_ALLEYS){
+      packCell(poly);
+      continue;
+    }
+    const rawAlleyPts = randomAlleyAcrossCell(poly, rnd);
+    const split = splitPolygonByAlley(poly, rawAlleyPts, alleyHalfWidth);
+    const minPiece = smallSpec.w*smallSpec.h*2;
+    if(!split || !split.regionA || !split.regionB ||
+       polygonArea(split.regionA) < minPiece || polygonArea(split.regionB) < minPiece){
+      packCell(poly);
+      continue;
+    }
+    const clippedAlleyPts = clipAlleyToPolygon(rawAlleyPts, poly) || rawAlleyPts;
+    const alley = {id:'alley'+(state.nextId++), type:'alley', points:clippedAlleyPts, sourceZoneId:zone.id};
+    alleys.push(alley);
+    const alleyObstacle = {points:rawAlleyPts, halfWidth:alleyHalfWidth+1.5};
+    dynamicObstacles.push(alleyObstacle);
+    for(let i=buildings.length-1; i>=0; i--){
+      const b = buildings[i];
+      const samples = b.points ? b.points : rectSamplePoints([b.cx,b.cy], b.w, b.h, b.angle);
+      if(minMarginForCorners(samples, [alleyObstacle]) < -0.1) buildings.splice(i,1);
+    }
+    alleyCount++;
+    queue.push(split.regionA, split.regionB);
+  }
+
+  // One light gap-filling pass — industrial plots can reasonably keep some
+  // open yard space, so this isn't repeated as aggressively as for hovels.
+  const gapPolys = findGapPolygons(zone.points, buildings, dynamicObstacles, smallSpec);
+  gapPolys.forEach((gapPoly, gi)=>{
+    const angle = longestEdgeAngle(gapPoly) + (rnd()-0.5)*0.2;
+    const packGap = Math.max(gap*0.8, 3);
+    const gapBuildings = gridFillPolygon(gapPoly, smallSpec, packGap, dynamicObstacles, zone.id+'_igap'+gi, 'industry', angle);
+    tryAddBuildings(gapBuildings);
+  });
+
+  // Upgrade roughly one building in every thirteen (1 large : 12 small) into
+  // a large one, removing whatever small neighbours the bigger footprint
+  // now overlaps. Anchors are chosen with a minimum spacing between them —
+  // picking every Nth building by array index instead could cluster several
+  // anchors right next to each other (buildings from one packing pass land
+  // consecutively in the list), causing needless large-large conflicts and
+  // a much sparser result than the 1-in-12 target.
+  const smallOnly = buildings.filter(b=>!b.points);
+  const targetLarge = Math.max(1, Math.round(smallOnly.length/13));
+  const minSeparation = Math.max(largeSpec.w, largeSpec.h)*1.3;
+  const shuffled = smallOnly.slice();
+  for(let i=shuffled.length-1; i>0; i--){
+    const j = Math.floor(rnd()*(i+1));
+    const tmp=shuffled[i]; shuffled[i]=shuffled[j]; shuffled[j]=tmp;
+  }
+  const anchors = [];
+  for(const cand of shuffled){
+    if(anchors.length >= targetLarge) break;
+    if(anchors.some(a=>dist([a.cx,a.cy],[cand.cx,cand.cy]) < minSeparation)) continue;
+    anchors.push(cand);
+  }
+  const MIN_SCALE = Math.sqrt(0.5);
+  anchors.forEach(anchor=>{
+    if(!buildings.includes(anchor)) return; // already removed as a casualty of an earlier upgrade
+    const center = [anchor.cx, anchor.cy], angle = anchor.angle;
+    let placed = null;
+    for(let sc=1.0; sc>=MIN_SCALE-1e-6; sc-=0.06){
+      const w = largeSpec.w*sc, h = largeSpec.h*sc;
+      const samples = rectSamplePoints(center, w, h, angle);
+      if(!samples.every(pt=>pointInPoly(pt, zone.points))) continue;
+      if(minMarginForCorners(samples, dynamicObstacles) < 0) continue;
+      // must not overlap any large building already placed — the small-
+      // building removal below only clears small neighbours, so two large
+      // buildings landing on each other would otherwise go unnoticed
+      let conflictsLarge = false;
+      for(const b of buildings){
+        if(!b.isLarge) continue;
+        const res = satOverlap({center,w,h,angle}, {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle});
+        if(res && res.overlap > 0.3){ conflictsLarge = true; break; }
+      }
+      if(conflictsLarge) continue;
+      placed = {center, w, h};
+      break;
+    }
+    if(!placed) return; // couldn't fit a large building here — leave the small one as-is
+    for(let k=buildings.length-1; k>=0; k--){
+      const b = buildings[k];
+      if(b===anchor){ buildings.splice(k,1); continue; }
+      if(b.points || b.isLarge) continue;
+      const res = satOverlap({center:placed.center, w:placed.w, h:placed.h, angle}, {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle});
+      if(res && res.overlap > 0.3) buildings.splice(k,1);
+    }
+    buildings.push({
+      cx:placed.center[0], cy:placed.center[1], w:placed.w, h:placed.h, angle,
+      houseSize:'industry', isLarge:true,
+      seed: seedFor(zone.id, 'L'+buildings.length), hatchVariant: 1
+    });
+  });
+
+  zone.buildings = buildings;
+  state.roads.push(...alleys);
+}
+/* Light industrial at low density reads differently from the others: each
+   large building is a "central focus" placed first, with a ring of small
+   buildings fronting outward around every side of it, and a loop of alley
+   drawn around the whole cluster once it's built — skipping any side that
+   already sits against a real road, river, canal or the zone's own edge, so
+   it doesn't draw a redundant alley right next to an existing street.
+   Repeats across the zone (largest remaining gap first isn't needed here
+   since clusters are all roughly the same size — a simple grid of cluster
+   slots does the job) until nothing more will fit. */
+function autofillZoneIndustryLow(zone){
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  const smallSpec = HOUSE_SPECS.rowhouse;
+  const growth = Math.sqrt(5); // "500% larger" read as 5x footprint area
+  const largeSpec = {w: smallSpec.w*growth, h: smallSpec.h*growth};
+  const gap = DENSITY_GAP[zone.density];
+  const baseObstacles = buildObstacles();
+  const rnd = mulberry32(seedFor(zone.id, 'industrylow'));
+  const alleyHalfWidth = (ROAD_STYLE.alley.w * sp().lineScale)/2 + 2;
+  const MIN_SCALE = Math.sqrt(0.5);
+
+  const alleys = [];
+  const buildings = [];
+  const dynamicObstacles = baseObstacles.slice();
+
+  const angle = longestEdgeAngle(zone.points);
+  const c = centroid(zone.points);
+  const rotated = zone.points.map(p=>rotatePoint(p, c, -angle));
+  const bb = bbox(rotated);
+
+  const ringDepth = smallSpec.w + smallSpec.h + gap; // worst case: full-width standoff gap plus the building's own depth
+  const alleyGap = Math.max(8, gap*0.6);
+  const stepW = largeSpec.w + 2*ringDepth + alleyGap;
+  const stepH = largeSpec.h + 2*ringDepth + alleyGap;
+
+  const clusterGroups = []; // {alleyPts: [[...points...], ...]} per cluster, for the end-of-process connectivity pass
+
+  // Buildings render with a small random jitter (translation + slight
+  // rotation) for a hand-drawn look, which the stored placement geometry
+  // doesn't account for — checking against an inflated version of the
+  // candidate builds in enough real clearance to absorb it. This also fixes
+  // a real bug: circles have no .w/.h (only .radius), so without branching
+  // on them here they'd silently produce broken NaN-based overlap checks —
+  // i.e. two buildings could be treated as clear of a circle when they
+  // weren't.
+  const JITTER_SAFETY = 2.5;
+  function conflictsWithPlaced(rect){
+    const inflated = {center:rect.center, w:rect.w+JITTER_SAFETY*2, h:rect.h+JITTER_SAFETY*2, angle:rect.angle};
+    for(const b of buildings){
+      if(b.points) continue;
+      const rectB = b.isCircle ? {center:[b.cx,b.cy], w:b.radius*2, h:b.radius*2, angle:0} : {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle};
+      const res = satOverlap(inflated, rectB);
+      if(res && res.overlap > 0.3) return true;
+    }
+    return false;
+  }
+
+  function tryPlaceCluster(gridCenter){
+    // 1. front the large building onto the nearest real road if one is
+    //    close enough to this slot; otherwise fall back to the zone's own
+    //    longest-edge orientation so clusters far from any street still place.
+    const maxFrontDist = Math.max(stepW, stepH) * 1.2;
+    const fronting = frontOntoRoad(gridCenter, largeSpec.w, largeSpec.h, 6);
+    const useRoad = !!(fronting && fronting.roadDist < maxFrontDist);
+    const clusterAngle = useRoad ? fronting.angle : angle;
+    const clusterCenter = useRoad ? fronting.center : gridCenter;
+
+    let placedLarge = null;
+    for(let sc=1.0; sc>=MIN_SCALE-1e-6; sc-=0.06){
+      const w=largeSpec.w*sc, h=largeSpec.h*sc;
+      const samples = rectSamplePoints(clusterCenter, w, h, clusterAngle);
+      if(!samples.every(pt=>pointInPoly(pt, zone.points))) continue;
+      if(minMarginForCorners(samples, dynamicObstacles) < 0) continue;
+      if(conflictsWithPlaced({center:clusterCenter, w, h, angle:clusterAngle})) continue;
+      placedLarge = {center:clusterCenter, w, h};
+      break;
+    }
+    if(!placedLarge){
+      const clipped = clipRectFootprint(clusterCenter, largeSpec.w, largeSpec.h, clusterAngle, zone.points, dynamicObstacles);
+      if(clipped && !conflictsWithPlaced({center:clipped.center, w:clipped.w, h:clipped.h, angle:clusterAngle})) placedLarge = clipped;
+    }
+    if(!placedLarge) return; // no room for a large building at this slot at all — skip it
+
+    const large = {
+      cx:placedLarge.center[0], cy:placedLarge.center[1], w:placedLarge.w, h:placedLarge.h, angle:clusterAngle,
+      houseSize:'industry', isLarge:true, seed:seedFor(zone.id,'CL'+buildings.length), hatchVariant:1
+    };
+    buildings.push(large);
+
+    // 1b. Six in ten road-fronted large buildings get a circular structure
+    //     (a tank/silo) at whichever corner sits farthest from the road —
+    //     diameter half the large building's own width, pushed outward from
+    //     that corner along both of the large building's own local axes so
+    //     it clears the rectangle cleanly regardless of aspect ratio.
+    if(useRoad && rnd() < 0.6){
+      const cosA = Math.cos(large.angle), sinA = Math.sin(large.angle);
+      const localCorners = [[-large.w/2,-large.h/2],[large.w/2,-large.h/2],[large.w/2,large.h/2],[-large.w/2,large.h/2]];
+      let farLocal = localCorners[0], farDist = -1;
+      localCorners.forEach(lc=>{
+        const wx = large.cx + lc[0]*cosA - lc[1]*sinA;
+        const wy = large.cy + lc[0]*sinA + lc[1]*cosA;
+        const d = dist([wx,wy], fronting.roadPoint);
+        if(d>farDist){ farDist=d; farLocal=lc; }
+      });
+      const radius = large.w/4;
+      const sx = farLocal[0]<0 ? -1 : 1, sy = farLocal[1]<0 ? -1 : 1;
+      const pushedLocal = [sx*(large.w/2+radius), sy*(large.h/2+radius)];
+      const circleCenter = [
+        large.cx + pushedLocal[0]*cosA - pushedLocal[1]*sinA,
+        large.cy + pushedLocal[0]*sinA + pushedLocal[1]*cosA
+      ];
+      const circleRectApprox = {center:circleCenter, w:radius*2, h:radius*2, angle:0};
+      if(pointInPoly(circleCenter, zone.points) &&
+         minMarginForCorners([circleCenter], dynamicObstacles) >= radius &&
+         !conflictsWithPlaced(circleRectApprox)){
+        buildings.push({cx:circleCenter[0], cy:circleCenter[1], radius, isCircle:true, houseSize:'industry', seed:seedFor(zone.id,'CIRC'+buildings.length)});
+      }
+    }
+
+    // 2. small buildings ring around it, facing outward — most sit a random
+    //    gap away from the large building rather than touching it, and each
+    //    one gets its own independent rotation rather than lining up neatly.
+    const ring = placeRingAroundBuilding(large, smallSpec, gap, zone.points, dynamicObstacles, zone.id, 'cl'+buildings.length, rnd);
+    const ringPlaced = [];
+    ring.forEach(b=>{
+      const rectB = {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle};
+      if(conflictsWithPlaced(rectB)) return;
+      const full = {...b, houseSize:'industry'};
+      buildings.push(full);
+      ringPlaced.push(full);
+    });
+
+    // 3. a loop of alley around the whole cluster, skipping any side
+    //    already sitting against a real boundary
+    const newAlleys = drawClusterAlley(large, ringPlaced, zone.points, dynamicObstacles, alleyHalfWidth, zone.id);
+    newAlleys.forEach(a=>{
+      alleys.push(a);
+      dynamicObstacles.push({points:a.points, halfWidth:alleyHalfWidth+1.5});
+    });
+    if(newAlleys.length) clusterGroups.push({alleyPts: newAlleys.map(a=>a.points)});
+  }
+
+  for(let y = bb.miny + stepH/2; y < bb.maxy; y += stepH){
+    for(let x = bb.minx + stepW/2; x < bb.maxx; x += stepW){
+      tryPlaceCluster(rotatePoint([x,y], c, angle));
+    }
+  }
+
+  // Connect every cluster's alley loop to whatever's nearest — another
+  // cluster's loop, or a real road/thoroughfare/alley over near the zone
+  // boundary — so nothing is left as an isolated island once the fill is done.
+  const boundaryObstacles = baseObstacles.filter(ob=>ob.points && ob.points.length>=2);
+  clusterGroups.forEach((group, gi)=>{
+    const ownPoints = group.alleyPts.flat();
+    if(!ownPoints.length) return;
+    let bestDist = Infinity, bestFrom = null, bestTo = null;
+    clusterGroups.forEach((other, oi)=>{
+      if(oi===gi) return;
+      other.alleyPts.flat().forEach(op=>{
+        ownPoints.forEach(mp=>{
+          const d = dist(mp, op);
+          if(d < bestDist){ bestDist = d; bestFrom = mp; bestTo = op; }
+        });
+      });
+    });
+    boundaryObstacles.forEach(ob=>{
+      ownPoints.forEach(mp=>{
+        const hit = distToPolyline(mp, ob.points);
+        if(hit.dist < bestDist){ bestDist = hit.dist; bestFrom = mp; bestTo = hit.point; }
+      });
+    });
+    if(bestFrom && bestDist > 2){ // skip if already effectively touching
+      const connector = {id:'alley'+(state.nextId++), type:'alley', points:[bestFrom, bestTo], sourceZoneId: zone.id};
+      alleys.push(connector);
+      dynamicObstacles.push({points:connector.points, halfWidth:alleyHalfWidth+1.5});
+    }
+  });
+
+  // Second pass: the grid of clusters above never perfectly tiles an
+  // irregular zone, so sweep for whatever significant free space is left
+  // over and drop more large buildings into it — fronting onto whichever
+  // alley (including the ones this fill just drew) or other piece of
+  // infrastructure is nearest, same as the first pass but without a ring or
+  // circle of its own. Reuses findGapPolygons (built for the hovel fill) to
+  // locate the gaps, since it already correctly excludes every obstacle and
+  // every building placed so far.
+  const gapPolys = findGapPolygons(zone.points, buildings, dynamicObstacles, largeSpec);
+  gapPolys.forEach((gapPoly, gi)=>{
+    const gapCenter = centroid(gapPoly);
+    const fronting2 = frontOntoAnyBoundary(gapCenter, largeSpec.w, largeSpec.h, 6, dynamicObstacles);
+    const angle2 = fronting2 ? fronting2.angle : longestEdgeAngle(gapPoly);
+    const center2 = fronting2 ? fronting2.center : gapCenter;
+
+    let placed2 = null;
+    for(let sc=1.0; sc>=MIN_SCALE-1e-6; sc-=0.06){
+      const w=largeSpec.w*sc, h=largeSpec.h*sc;
+      const samples = rectSamplePoints(center2, w, h, angle2);
+      if(!samples.every(pt=>pointInPoly(pt, gapPoly))) continue;
+      if(minMarginForCorners(samples, dynamicObstacles) < 0) continue;
+      if(conflictsWithPlaced({center:center2, w, h, angle:angle2})) continue;
+      placed2 = {center:center2, w, h};
+      break;
+    }
+    if(!placed2){
+      const clipped = clipRectFootprint(center2, largeSpec.w, largeSpec.h, angle2, gapPoly, dynamicObstacles);
+      if(clipped && !conflictsWithPlaced({center:clipped.center, w:clipped.w, h:clipped.h, angle:angle2})) placed2 = clipped;
+    }
+    if(!placed2) return;
+    // Belt and braces: re-check right before committing, since "no overlaps"
+    // matters more here than the usual tolerance for a stray edge case.
+    if(conflictsWithPlaced({center:placed2.center, w:placed2.w, h:placed2.h, angle:angle2})) return;
+
+    buildings.push({
+      cx:placed2.center[0], cy:placed2.center[1], w:placed2.w, h:placed2.h, angle:angle2,
+      houseSize:'industry', isLarge:true, seed:seedFor(zone.id,'GAP'+gi), hatchVariant:1
+    });
+  });
+
+  // Final safety sweep: a connector alley (added after clusters were built)
+  // or a second-pass building can end up close to something placed earlier
+  // that had no way to know about it yet — drop anything left too close to
+  // any obstacle once everything is finished, rather than trust each stage
+  // got the full picture in time.
+  for(let i=buildings.length-1; i>=0; i--){
+    const b = buildings[i];
+    if(b.isCircle){
+      let minD = Infinity;
+      dynamicObstacles.forEach(ob=>{
+        const d = distToPolyline([b.cx,b.cy], ob.points).dist - ob.halfWidth;
+        if(d<minD) minD=d;
+      });
+      if(minD - b.radius < -0.5) buildings.splice(i,1);
+    } else {
+      const samples = rectSamplePoints([b.cx,b.cy], b.w, b.h, b.angle);
+      if(minMarginForCorners(samples, dynamicObstacles) < -0.5) buildings.splice(i,1);
+    }
+  }
+  // Same idea for building-vs-building: a clip-fallback rectangle grows to
+  // fit whatever free space it finds without knowing about circles (which
+  // aren't tracked in the obstacle system, only checked directly against
+  // other buildings), so an overlap can occasionally slip past the explicit
+  // check right after a placement — catch anything left once everything's done.
+  const asRect = b => b.isCircle ? {center:[b.cx,b.cy], w:b.radius*2, h:b.radius*2, angle:0} : {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle};
+  for(let i=buildings.length-1; i>=0; i--){
+    let conflict = false;
+    for(let j=0;j<i;j++){
+      const ri = asRect(buildings[i]);
+      const inflated = {center:ri.center, w:ri.w+JITTER_SAFETY*2, h:ri.h+JITTER_SAFETY*2, angle:ri.angle};
+      const res = satOverlap(inflated, asRect(buildings[j]));
+      if(res && res.overlap > 0.3){ conflict = true; break; }
+    }
+    if(conflict) buildings.splice(i,1);
+  }
+
+  zone.buildings = buildings;
+  state.roads.push(...alleys);
+}
+/* Medium industrial: larger rectangular buildings (at least three times the
+   footprint area of a light-industrial small building — read as area rather
+   than each side, for the same reason "500% larger" was read as area
+   earlier: scaling every side would look absurd at this map scale) that
+   front onto whatever infrastructure is nearby. Where a river or canal
+   passes through or along the zone, it's filled first — buildings walk
+   along its length on whichever bank(s) fall inside the zone, with a
+   service alley drawn tightly along their back edges once a run is placed.
+   The rest of the zone is then filled by scanning for any spot close enough
+   to front some other piece of infrastructure. A second pass drops circular
+   structures into whatever open space is still left, spaced apart by a
+   minimum separation rather than packed edge to edge. */
+function autofillZoneIndustryMedium(zone){
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  const smallSpec = HOUSE_SPECS.rowhouse; // light-industrial's baseline small building
+  const mediumGrowth = Math.sqrt(3); // "at least three times the size" -> 3x footprint area
+  const mediumSpec = {w: smallSpec.w*mediumGrowth, h: smallSpec.h*mediumGrowth};
+  const gap = DENSITY_GAP[zone.density];
+  const baseObstacles = buildObstacles();
+  const rnd = mulberry32(seedFor(zone.id, 'industrymedium'));
+  const alleyHalfWidth = (ROAD_STYLE.alley.w * sp().lineScale)/2 + 2;
+  const MIN_SCALE = Math.sqrt(0.5);
+  const serviceClearance = 6;
+
+  const alleys = [];
+  const buildings = [];
+  const dynamicObstacles = baseObstacles.slice();
+
+  // Buildings render with a small random jitter (translation + slight
+  // rotation) for a hand-drawn look, which the stored placement geometry
+  // doesn't account for — two buildings placed with barely enough clearance
+  // to pass a bare overlap check can still end up visibly overlapping once
+  // that jitter is applied. Checking against an inflated version of the
+  // candidate (not the building actually placed) builds in enough real
+  // clearance to absorb it.
+  const JITTER_SAFETY = 2.5;
+  function conflictsWithPlaced(rect){
+    const inflated = {center:rect.center, w:rect.w+JITTER_SAFETY*2, h:rect.h+JITTER_SAFETY*2, angle:rect.angle};
+    for(const b of buildings){
+      const rectB = b.isCircle ? {center:[b.cx,b.cy], w:b.radius*2, h:b.radius*2, angle:0} : {center:[b.cx,b.cy], w:b.w, h:b.h, angle:b.angle};
+      const res = satOverlap(inflated, rectB);
+      if(res && res.overlap > 0.3) return true;
+    }
+    return false;
+  }
+  function tryPlaceAt(center, ang, containPoly){
+    let placed = null;
+    for(let sc=1.0; sc>=MIN_SCALE-1e-6; sc-=0.06){
+      const w=mediumSpec.w*sc, h=mediumSpec.h*sc;
+      const samples = rectSamplePoints(center, w, h, ang);
+      if(!samples.every(pt=>pointInPoly(pt, containPoly))) continue;
+      if(minMarginForCorners(samples, dynamicObstacles) < 0) continue;
+      if(conflictsWithPlaced({center, w, h, angle:ang})) continue;
+      placed = {center, w, h};
+      break;
+    }
+    if(!placed){
+      const clipped = clipRectFootprint(center, mediumSpec.w, mediumSpec.h, ang, containPoly, dynamicObstacles);
+      if(clipped && !conflictsWithPlaced({center:clipped.center, w:clipped.w, h:clipped.h, angle:ang})) placed = clipped;
+    }
+    return placed;
+  }
+
+  // Walks the length of a linear feature, placing a fronting building every
+  // (mediumSpec.w + gap) — trying both perpendicular sides, since a river
+  // running through the middle of a zone fronts buildings on both banks,
+  // while a feature along the zone's own edge only has one usable side.
+  function frontRowAlongLine(linePoints, featureHalfWidth){
+    const segLens = [];
+    for(let i=0;i<linePoints.length-1;i++) segLens.push(dist(linePoints[i],linePoints[i+1]));
+    const totalLen = segLens.reduce((a,b)=>a+b,0);
+    if(totalLen < 1) return [];
+    const step = mediumSpec.w + gap;
+    const row = [];
+    let t = step/2;
+    while(t < totalLen){
+      let acc=0, segIdx=0;
+      while(segIdx<segLens.length-1 && acc+segLens[segIdx] < t){ acc+=segLens[segIdx]; segIdx++; }
+      const segT = segLens[segIdx]>0 ? (t-acc)/segLens[segIdx] : 0;
+      const a = linePoints[segIdx], b = linePoints[segIdx+1];
+      const pt = [a[0]+(b[0]-a[0])*segT, a[1]+(b[1]-a[1])*segT];
+      const segAngle = Math.atan2(b[1]-a[1], b[0]-a[0]);
+      const perp = [-Math.sin(segAngle), Math.cos(segAngle)];
+      [1,-1].forEach(sign=>{
+        const dir = [perp[0]*sign, perp[1]*sign];
+        const halfExtent = projectedHalfExtent(mediumSpec.w, mediumSpec.h, segAngle, dir);
+        const offDist = featureHalfWidth + serviceClearance + halfExtent;
+        const center = [pt[0]+dir[0]*offDist, pt[1]+dir[1]*offDist];
+        if(!pointInPoly(center, zone.points)) return;
+        const placed = tryPlaceAt(center, segAngle, zone.points);
+        if(!placed) return;
+        const backOff = placed.h/2 + alleyHalfWidth + 2;
+        const backCenter = [placed.center[0]-dir[0]*backOff, placed.center[1]-dir[1]*backOff];
+        const entry = {
+          cx:placed.center[0], cy:placed.center[1], w:placed.w, h:placed.h, angle:segAngle,
+          houseSize:'industry', isLarge:true, seed:seedFor(zone.id,'MED'+buildings.length+'_'+row.length), hatchVariant:1,
+          backCenter, side:sign, t
+        };
+        // Push immediately, not just into the local row array — otherwise
+        // the next candidate a little further along the same walk never
+        // sees this one in conflictsWithPlaced (which only checks the
+        // shared buildings array) and can overlap it outright.
+        buildings.push(entry);
+        row.push(entry);
+      });
+      t += step;
+    }
+    return row;
+  }
+
+  // 1a. Rivers and canals get priority.
+  const riverCanalFeatures = [];
+  state.rivers.forEach(r=>riverCanalFeatures.push({points:r.points, halfWidth:(r.width||14)/2}));
+  state.roads.filter(r=>r.type==='canal').forEach(r=>riverCanalFeatures.push({points:r.points, halfWidth:(roadWidth(r)*sp().lineScale)/2}));
+
+  riverCanalFeatures.forEach(feat=>{
+    const row = frontRowAlongLine(feat.points, feat.halfWidth);
+    // row buildings are already in the shared `buildings` array — pushed
+    // immediately during placement so consecutive buildings along the same
+    // walk correctly check against each other.
+    [1,-1].forEach(side=>{
+      const sideRow = row.filter(b=>b.side===side).sort((a,b)=>a.t-b.t);
+      if(sideRow.length < 2) return;
+      const pts = sideRow.map(b=>b.backCenter);
+      const alley = {id:'alley'+(state.nextId++), type:'alley', points:pts, sourceZoneId:zone.id};
+      alleys.push(alley);
+      dynamicObstacles.push({points:pts, halfWidth:alleyHalfWidth+1.5});
+    });
+  });
+
+  // 1b. Everything else: scan the zone for spots close enough to front some
+  // other piece of infrastructure (a road, or the alleys just drawn above)
+  // — or, just as validly, the zone's own edge, so this pass doesn't leave
+  // the interior of a zone with little nearby infrastructure mostly empty.
+  const angle = longestEdgeAngle(zone.points);
+  const c = centroid(zone.points);
+  const rotated = zone.points.map(p=>rotatePoint(p, c, -angle));
+  const bb = bbox(rotated);
+  const stepW = mediumSpec.w + gap + serviceClearance;
+  const stepH = mediumSpec.h + gap + serviceClearance;
+  const maxFrontDist = Math.max(stepW, stepH) * 1.2;
+  const zoneEdgeObstacle = {points: [...zone.points, zone.points[0]], halfWidth: 0};
+  const frontingTargets = dynamicObstacles.concat([zoneEdgeObstacle]);
+
+  for(let y = bb.miny + stepH/2; y < bb.maxy; y += stepH){
+    for(let x = bb.minx + stepW/2; x < bb.maxx; x += stepW){
+      const gridCenter = rotatePoint([x,y], c, angle);
+      const fronting = frontOntoAnyBoundary(gridCenter, mediumSpec.w, mediumSpec.h, serviceClearance, frontingTargets);
+      if(!fronting || fronting.boundaryDist >= maxFrontDist) continue; // nothing to front here — this pass only fills along infrastructure or the zone edge
+      const placed = tryPlaceAt(fronting.center, fronting.angle, zone.points);
+      if(!placed) continue;
+      buildings.push({
+        cx:placed.center[0], cy:placed.center[1], w:placed.w, h:placed.h, angle:fronting.angle,
+        houseSize:'industry', isLarge:true, seed:seedFor(zone.id,'MEDB'+buildings.length), hatchVariant:1
+      });
+    }
+  }
+
+  // 2. Circles into whatever open space is left, spaced at least three
+  // diameters apart centre-to-centre rather than packed solid, and never
+  // within two diameters of the zone's own edge — each one's own size also
+  // varies ±15% from the base for a less uniform, hand-placed look.
+  const circleDiameter = mediumSpec.w * 0.25;
+  const circleRadius = circleDiameter/2;
+  const minCircleSeparation = circleDiameter * 3;
+  const minEdgeClearance = circleDiameter * 2; // "not within two barrel diameters of the edge of the zone"
+  const maxCircleRadius = circleRadius * 1.15; // worst-case size, used for conservative clearance checks
+  const gapPolys = findGapPolygons(zone.points, buildings, dynamicObstacles, {w:maxCircleRadius*2, h:maxCircleRadius*2});
+  const placedCircleCenters = [];
+  gapPolys.forEach(gapPoly=>{
+    const bbGap = bbox(gapPoly);
+    for(let y=bbGap.miny+maxCircleRadius; y<bbGap.maxy; y+=circleDiameter+2){
+      for(let x=bbGap.minx+maxCircleRadius; x<bbGap.maxx; x+=circleDiameter+2){
+        const center=[x,y];
+        if(!pointInPoly(center, gapPoly)) continue;
+        if(distToClosedPolyline(center, zone.points) < minEdgeClearance) continue;
+        if(minMarginForCorners([center], dynamicObstacles) < maxCircleRadius) continue;
+        if(placedCircleCenters.some(pc=>dist(pc,center) < minCircleSeparation)) continue;
+        const thisRadius = circleRadius * (1 + (rnd()-0.5)*0.3); // ±15%
+        const rectApprox = {center, w:thisRadius*2, h:thisRadius*2, angle:0};
+        if(conflictsWithPlaced(rectApprox)) continue;
+        buildings.push({cx:center[0], cy:center[1], radius:thisRadius, isCircle:true, houseSize:'industry', seed:seedFor(zone.id,'MEDCIRC'+buildings.length)});
+        placedCircleCenters.push(center);
+      }
+    }
+  });
+
+  zone.buildings = buildings;
+  state.roads.push(...alleys);
+}
+/* Draws a rectangular alley loop around a finished cluster (the large
+   building plus its ring of small ones), but only the sides that don't
+   already sit against a real boundary — an existing road/river/canal/alley,
+   or the zone's own edge (which, by this tool's convention, usually already
+   fronts a street). Surviving sides are stitched into as few connected
+   polylines as possible rather than left as four disconnected stubs. */
+function drawClusterAlley(large, ringBuildings, zonePoints, obstacles, alleyHalfWidth, zoneId){
+  const angle = large.angle, c = [large.cx, large.cy];
+  const allPts = rectCorners(c, large.w, large.h, angle);
+  ringBuildings.forEach(b=>{
+    rectCorners([b.cx,b.cy], b.w, b.h, b.angle).forEach(p=>allPts.push(p));
+  });
+  const rotated = allPts.map(p=>rotatePoint(p, c, -angle));
+  const bbLocal = bbox(rotated);
+  const clearance = alleyHalfWidth + 3;
+  const localCorners = [
+    [bbLocal.minx-clearance, bbLocal.miny-clearance],
+    [bbLocal.maxx+clearance, bbLocal.miny-clearance],
+    [bbLocal.maxx+clearance, bbLocal.maxy+clearance],
+    [bbLocal.minx-clearance, bbLocal.maxy+clearance]
+  ];
+  const worldCorners = localCorners.map(p=>rotatePoint(p, c, angle));
+
+  const threshold = alleyHalfWidth*2 + 6;
+  function nearExistingBoundary(pt){
+    if(distToClosedPolyline(pt, zonePoints) < threshold) return true;
+    for(const ob of obstacles){
+      if(distToPolyline(pt, ob.points).dist < threshold) return true;
+    }
+    return false;
+  }
+  const sideSkip = [];
+  for(let i=0;i<4;i++){
+    const a = worldCorners[i], b = worldCorners[(i+1)%4];
+    const mid = [(a[0]+b[0])/2, (a[1]+b[1])/2];
+    sideSkip.push(nearExistingBoundary(mid));
+  }
+
+  const polylines = [];
+  let current = null;
+  for(let i=0;i<4;i++){
+    if(sideSkip[i]){
+      if(current){ polylines.push(current); current=null; }
+      continue;
+    }
+    if(!current) current = [worldCorners[i], worldCorners[(i+1)%4]];
+    else current.push(worldCorners[(i+1)%4]);
+  }
+  if(current) polylines.push(current);
+  // stitch the wraparound together if both the last and first sides survived
+  // as separate polylines (started fresh at i=0, so they wouldn't merge above)
+  if(polylines.length>1 && !sideSkip[3] && !sideSkip[0]){
+    const first = polylines.shift();
+    const last = polylines.pop();
+    polylines.push(last.concat(first.slice(1)));
+  }
+
+  return polylines.filter(pts=>pts.length>=2).map(pts=>(
+    {id:'alley'+(state.nextId++), type:'alley', points:pts, sourceZoneId:zoneId}
+  ));
+}
+/* Finds every left-over pocket of free space inside the zone — not covered
+   by a road/river/canal/alley and not already sitting under a building —
+   that's big enough to be worth packing with more hovels. Rasterises the
+   whole zone once, carves out every obstacle and every already-placed
+   building (from their own local footprint, not a full per-cell scan, so
+   this stays fast even with hundreds of buildings already down), then finds
+   each separate connected free region above a minimum size and traces it
+   into a polygon ready for gridFillPolygon. */
+function findGapPolygons(zonePoints, buildings, obstacles, spec){
+  const cellSize = 6;
+  const bb = bbox(zonePoints);
+  const minx = Math.floor(bb.minx/cellSize)*cellSize - cellSize;
+  const miny = Math.floor(bb.miny/cellSize)*cellSize - cellSize;
+  const cols = Math.max(1, Math.ceil((bb.maxx-bb.minx)/cellSize)+3);
+  const rows = Math.max(1, Math.ceil((bb.maxy-bb.miny)/cellSize)+3);
+  if(cols*rows > 500000) return [];
+  const mask = new Uint8Array(cols*rows); // 1 = free
+  const idx = (x,y)=>y*cols+x;
+  for(let gy=0; gy<rows; gy++){
+    for(let gx=0; gx<cols; gx++){
+      const wx=minx+(gx+0.5)*cellSize, wy=miny+(gy+0.5)*cellSize;
+      if(!pointInPoly([wx,wy], zonePoints)) continue;
+      let blocked=false;
+      for(const ob of obstacles){
+        if(distToPolyline([wx,wy], ob.points).dist <= ob.halfWidth){ blocked=true; break; }
+      }
+      if(!blocked) mask[idx(gx,gy)] = 1;
+    }
+  }
+  const margin = 2; // small clearance so gap-fill buildings don't land flush against an existing wall
+  buildings.forEach(b=>{
+    const poly = b.points || rectCorners([b.cx,b.cy], b.w+margin*2, b.h+margin*2, b.angle);
+    const pbb = bbox(poly);
+    const gminx=Math.max(0,Math.floor((pbb.minx-minx)/cellSize)), gmaxx=Math.min(cols-1,Math.ceil((pbb.maxx-minx)/cellSize));
+    const gminy=Math.max(0,Math.floor((pbb.miny-miny)/cellSize)), gmaxy=Math.min(rows-1,Math.ceil((pbb.maxy-miny)/cellSize));
+    for(let gy=gminy; gy<=gmaxy; gy++){
+      for(let gx=gminx; gx<=gmaxx; gx++){
+        const i = idx(gx,gy);
+        if(!mask[i]) continue;
+        const wx=minx+(gx+0.5)*cellSize, wy=miny+(gy+0.5)*cellSize;
+        if(pointInPoly([wx,wy], poly)) mask[i]=0;
+      }
+    }
+  });
+
+  const visited = new Uint8Array(cols*rows);
+  const minRegionCells = Math.max(3, Math.ceil((spec.w*spec.h*0.5)/(cellSize*cellSize)));
+  const gapPolys = [];
+  for(let gy=0; gy<rows; gy++){
+    for(let gx=0; gx<cols; gx++){
+      const i0 = idx(gx,gy);
+      if(visited[i0] || !mask[i0]) continue;
+      const queue=[[gx,gy]]; visited[i0]=1; let head=0;
+      const cells=[[gx,gy]];
+      while(head<queue.length){
+        const [cx,cy]=queue[head++];
+        const nbs=[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]];
+        for(const [nx,ny] of nbs){
+          if(nx<0||ny<0||nx>=cols||ny>=rows) continue;
+          const ni=idx(nx,ny);
+          if(visited[ni]||!mask[ni]) continue;
+          visited[ni]=1; queue.push([nx,ny]); cells.push([nx,ny]);
+        }
+      }
+      if(cells.length < minRegionCells) continue;
+      const regionMask = new Uint8Array(cols*rows);
+      cells.forEach(([cx,cy])=>{ regionMask[idx(cx,cy)]=1; });
+      const traced = traceBoundary(regionMask, cols, rows, cellSize, minx, miny);
+      if(!traced || traced.length<3) continue;
+      const simplified = simplifyClosedPolygon(traced, 3);
+      if(simplified && simplified.length>=3) gapPolys.push(simplified);
+    }
+  }
+  return gapPolys;
+}
+
+/* Mansion zones don't get filled with houses like the others — instead the
+   zone is enclosed with a plain estate wall (no towers or crenellation),
+   with a gate wherever a road crosses it, same as the wall/boundary tool.
+   At low density that's all: an empty walled plot. At medium and high
+   density (currently identical — high density is a placeholder for a future
+   refinement) a single large rectangular manor house is placed in the
+   middle, set back from the zone's own edge by roughly a fifth of the
+   zone's width on every side. */
+function autofillZoneMansion(zone){
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  state.zoneWalls.push({
+    id: 'zwall'+(state.nextId++),
+    points: zone.points.map(p=>[p[0], p[1]]),
+    sourceZoneId: zone.id
+  });
+
+  if(zone.density === 'low'){
+    zone.buildings = [];
+    return;
+  }
+
+  // medium & high density: one manor house, inset ~20% of the zone's width on every side
+  const spec = HOUSE_SPECS.mansion;
+  const obstacles = buildObstacles();
+  const angle = longestEdgeAngle(zone.points);
+  const c = centroid(zone.points);
+  const rotated = zone.points.map(p=>rotatePoint(p, c, -angle));
+  const bb = bbox(rotated);
+  const inset = (bb.maxx - bb.minx) * 0.2;
+  const left = bb.minx+inset, right = bb.maxx-inset, top = bb.miny+inset, bottom = bb.maxy-inset;
+  if(right-left < spec.w*0.4 || bottom-top < spec.h*0.4){
+    zone.buildings = []; // zone too small/narrow for a 20%-of-width inset to leave anything usable
+    return;
+  }
+  const idealW = right-left, idealH = bottom-top;
+  const worldCenter = rotatePoint([(left+right)/2, (top+bottom)/2], c, angle);
+
+  const MIN_SCALE = Math.sqrt(0.5);
+  let placed = null;
+  for(let sc=1.0; sc>=MIN_SCALE-1e-6; sc-=0.06){
+    const w = idealW*sc, h = idealH*sc;
+    const samples = rectSamplePoints(worldCenter, w, h, angle);
+    if(!samples.every(pt=>pointInPoly(pt, zone.points))) continue;
+    if(minMarginForCorners(samples, obstacles) < 0) continue;
+    placed = {center:worldCenter, w, h};
+    break;
+  }
+  if(!placed){
+    const clipped = clipRectFootprint(worldCenter, idealW, idealH, angle, zone.points, obstacles);
+    if(clipped) placed = clipped;
+  }
+  if(!placed){ zone.buildings = []; return; }
+
+  zone.buildings = [{
+    cx: placed.center[0], cy: placed.center[1], w: placed.w, h: placed.h, angle,
+    houseSize: 'mansion',
+    seed: seedFor(zone.id, 'manor'),
+    hatchVariant: 0
+  }];
+}
+/* Heavy industry: a single enormous building targeting exactly 75% of the
+   zone's own area, sized from the zone's bounding-box aspect ratio so it
+   reads as a natural fit for the zone's shape rather than an arbitrary
+   rectangle, then shrunk only as far as needed to actually fit and clear
+   any obstacle. The remaining perimeter — whatever's left between the
+   building and the zone's own edge — is encircled with a wall, reusing the
+   same per-zone wall mechanism mansion zones use. */
+/* Erodes a polygon inward by a fixed distance: rasterises it, excludes any
+   cell within that distance of the true boundary, flood-fills the
+   remaining "core" from the centroid, and traces/simplifies the result.
+   This is the same rasterise/flood-fill/trace approach used elsewhere in
+   this file (gap detection, obstacle clearance) — reused here to inset a
+   zone's own shape rather than carve around an obstacle. Returns null if
+   the erosion leaves nothing meaningful. */
+function computeInsetPolygon(zonePoints, insetDist){
+  const cellSize = 4;
+  const bb = bbox(zonePoints);
+  const minx = Math.floor(bb.minx/cellSize)*cellSize - cellSize;
+  const miny = Math.floor(bb.miny/cellSize)*cellSize - cellSize;
+  const cols = Math.max(1, Math.ceil((bb.maxx-bb.minx)/cellSize)+3);
+  const rows = Math.max(1, Math.ceil((bb.maxy-bb.miny)/cellSize)+3);
+  if(cols*rows > 500000) return null;
+  const mask = new Uint8Array(cols*rows);
+  const idx = (x,y)=>y*cols+x;
+  for(let gy=0; gy<rows; gy++){
+    for(let gx=0; gx<cols; gx++){
+      const wx=minx+(gx+0.5)*cellSize, wy=miny+(gy+0.5)*cellSize;
+      if(!pointInPoly([wx,wy], zonePoints)) continue;
+      if(distToClosedPolyline([wx,wy], zonePoints) < insetDist) continue;
+      mask[idx(gx,gy)] = 1;
+    }
+  }
+  const c = centroid(zonePoints);
+  let sgx = Math.round((c[0]-minx)/cellSize), sgy = Math.round((c[1]-miny)/cellSize);
+  if(!(sgx>=0 && sgy>=0 && sgx<cols && sgy<rows && mask[idx(sgx,sgy)])){
+    let found = null;
+    const maxR = Math.max(cols,rows);
+    outer:
+    for(let r=1;r<maxR;r++){
+      for(let ddx=-r;ddx<=r;ddx++){
+        for(let ddy=-r;ddy<=r;ddy++){
+          if(Math.max(Math.abs(ddx),Math.abs(ddy))!==r) continue;
+          const gx=sgx+ddx, gy=sgy+ddy;
+          if(gx<0||gy<0||gx>=cols||gy>=rows) continue;
+          if(mask[idx(gx,gy)]){ found=[gx,gy]; break outer; }
+        }
+      }
+    }
+    if(!found) return null;
+    sgx=found[0]; sgy=found[1];
+  }
+  const visited = new Uint8Array(cols*rows);
+  const queue=[[sgx,sgy]]; visited[idx(sgx,sgy)]=1;
+  let head=0;
+  while(head<queue.length){
+    const [cx,cy]=queue[head++];
+    const nbs=[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]];
+    for(const [nx,ny] of nbs){
+      if(nx<0||ny<0||nx>=cols||ny>=rows) continue;
+      const ni=idx(nx,ny);
+      if(visited[ni]||!mask[ni]) continue;
+      visited[ni]=1; queue.push([nx,ny]);
+    }
+  }
+  if(queue.length<6) return null;
+  const traced = traceBoundary(visited, cols, rows, cellSize, minx, miny);
+  if(!traced || traced.length<3) return null;
+  return simplifyClosedPolygon(traced, cellSize*2.5);
+}
+/* Heavy industry: a single irregular building — not a rectangle — whose
+   vertices sit one house width in from the zone's own edges, following the
+   zone's actual shape rather than fitting a rectangle inside it. The inset
+   distance is binary-searched (starting from that one-house-width guess) so
+   the resulting footprint lands on exactly 80% of the zone's area. A fence
+   then runs exactly around the zone's own boundary, reusing the same
+   per-zone wall mechanism mansion zones use. */
+function autofillZoneIndustryHeavy(zone){
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  state.zoneWalls.push({
+    id: 'zwall'+(state.nextId++),
+    points: zone.points.map(p=>[p[0], p[1]]),
+    sourceZoneId: zone.id
+  });
+
+  const zoneArea = polygonArea(zone.points);
+  const targetArea = zoneArea * 0.8;
+  const houseWidth = HOUSE_SPECS.rowhouse.w; // "one house width"
+
+  let bestPoly = null, bestDiff = Infinity;
+  const consider = (poly)=>{
+    if(!poly) return;
+    const diff = Math.abs(polygonArea(poly) - targetArea);
+    if(diff < bestDiff){ bestDiff = diff; bestPoly = poly; }
+  };
+  consider(computeInsetPolygon(zone.points, houseWidth));
+
+  // Binary-search the inset distance: area shrinks monotonically as the
+  // inset grows, so this converges quickly onto the distance that lands
+  // closest to the 80% target.
+  let lo = 0.5, hi = Math.max(houseWidth*5, 50);
+  for(let iter=0; iter<14; iter++){
+    const mid = (lo+hi)/2;
+    const poly = computeInsetPolygon(zone.points, mid);
+    if(!poly){ hi = mid; continue; }
+    consider(poly);
+    if(polygonArea(poly) > targetArea) lo = mid; else hi = mid;
+  }
+  if(!bestPoly){ zone.buildings = []; return; }
+
+  zone.buildings = [{
+    points: bestPoly,
+    houseSize: 'industry', isLarge: true,
+    seed: seedFor(zone.id, 'heavy0'), hatchVariant: 0
+  }];
+}
+
+/* ---- SAT (Separating Axis Theorem) overlap test for two oriented rectangles ---- */
+function rectAxes(angle){
+  return [[Math.cos(angle), Math.sin(angle)], [-Math.sin(angle), Math.cos(angle)]];
+}
+function projectRectOntoAxis(center, w, h, angle, axis){
+  const corners = rectCorners(center, w, h, angle);
+  let min=Infinity, max=-Infinity;
+  corners.forEach(c=>{
+    const p = c[0]*axis[0] + c[1]*axis[1];
+    if(p<min) min=p; if(p>max) max=p;
+  });
+  return [min,max];
+}
+function satOverlap(rectA, rectB){
+  const axes = [...rectAxes(rectA.angle), ...rectAxes(rectB.angle)];
+  let minOverlap = Infinity;
+  for(const axis of axes){
+    const [aMin,aMax] = projectRectOntoAxis(rectA.center, rectA.w, rectA.h, rectA.angle, axis);
+    const [bMin,bMax] = projectRectOntoAxis(rectB.center, rectB.w, rectB.h, rectB.angle, axis);
+    const overlap = Math.min(aMax,bMax) - Math.max(aMin,bMin);
+    if(overlap <= 0) return null; // a separating axis exists: no overlap
+    if(overlap < minOverlap) minOverlap = overlap;
+  }
+  return {overlap:minOverlap};
+}
+
+/* Places one ring of houses around the given polygon: a row per edge, front
+   flush to that edge, each row's houses individually widened or narrowed
+   (within the given volume tolerance) so the row tiles the edge exactly with
+   no leftover gap — this is what gives a complete, non-overlapping fill
+   rather than a row that stops short or overruns. Falls back to the raster
+   clip helper for any plot that still can't sit as a plain rectangle (an
+   obstacle, or an oddly-shaped inherited boundary from a previous ring). */
+function placeRingOnPolygon(polyPoints, spec, gap, obstacles, zoneId, ringTag){
+  // Auto-zoned (and some hand-drawn) polygons can carry lots of short,
+  // nearly-straight edges from the boundary trace. A flat per-corner inset
+  // then eats a disproportionate share of those short edges — sometimes all
+  // of it — leaving big stretches of the ring with no houses at all. Working
+  // from a lightly simplified version of the boundary fixes that at the
+  // source; containment checks below still use the true original polygon.
+  const containPoly = polyPoints;
+  polyPoints = simplifyClosedPolygon(polyPoints, Math.max(4, spec.h*0.22));
+  if(polyPoints.length < 3) polyPoints = containPoly;
+
+  const n = polyPoints.length;
+  const centroidPt = centroid(polyPoints);
+  const MIN_RATIO = 0.7, MAX_RATIO = 1.3; // "70 to 130% of the original volume"
+
+  const edgePlots = [];
+  for(let i=0;i<n;i++){
+    const a = polyPoints[i], b = polyPoints[(i+1)%n];
+    const edgeLen = dist(a,b);
+    const list = [];
+    // Leave room at each end for a perpendicular row (from the neighbouring
+    // edge) reaching in with its own depth — this is what makes corners
+    // clear naturally instead of needing a large post-hoc trim. Capped
+    // relative to the edge's own length so a modest edge is never entirely
+    // swallowed by the inset on a polygon with lots of short edges.
+    const inset = Math.min(spec.h*0.52, edgeLen*0.28);
+    const usableLen = edgeLen - inset*2;
+    if(usableLen >= spec.w*0.55){
+      const dirX=(b[0]-a[0])/edgeLen, dirY=(b[1]-a[1])/edgeLen;
+      let nx=-dirY, ny=dirX;
+      const midx=(a[0]+b[0])/2, midy=(a[1]+b[1])/2;
+      const sign = ((centroidPt[0]-midx)*nx + (centroidPt[1]-midy)*ny) >= 0 ? 1 : -1;
+      nx*=sign; ny*=sign;
+
+      // search nearby candidate counts for the best edge-exact fit within
+      // the [70%,130%] width tolerance (width scales area/"volume" directly
+      // since depth stays fixed at spec.h)
+      const idealN = usableLen/(spec.w+gap);
+      let best = null;
+      for(let N=Math.max(1,Math.round(idealN)-2); N<=Math.round(idealN)+3; N++){
+        if(N<1) continue;
+        const perW = (usableLen-(N-1)*gap)/N;
+        if(perW<=0) continue;
+        const ratio = perW/spec.w;
+        if(ratio<MIN_RATIO || ratio>MAX_RATIO) continue;
+        const score = Math.abs(ratio-1);
+        if(!best || score<best.score) best = {N, perW, score};
+      }
+      if(!best){
+        const N = Math.max(1, Math.round(idealN));
+        const perW = Math.max(spec.w*MIN_RATIO, Math.min(spec.w*MAX_RATIO, (usableLen-(N-1)*gap)/N || spec.w));
+        best = {N, perW};
+      }
+      const N = best.N, perW = best.perW;
+      for(let k=0;k<N;k++){
+        const t = inset + k*(perW+gap) + perW/2;
+        list.push({
+          edgePoint:[a[0]+dirX*t, a[1]+dirY*t],
+          inwardNormal:[nx,ny], frontDir:[dirX,dirY],
+          angle: Math.atan2(dirY,dirX),
+          w: perW, h0: spec.h
+        });
+      }
+    }
+    edgePlots.push(list);
+  }
+
+  // Corner safety net: acute corners can still leave the very end houses on
+  // two edges overlapping even with edge-exact tiling — clip both back by
+  // equal amounts (width and depth together, since the overlap is 2-D).
+  function perimRect(pb){
+    const center = [pb.edgePoint[0]+pb.inwardNormal[0]*(pb.h0/2), pb.edgePoint[1]+pb.inwardNormal[1]*(pb.h0/2)];
+    return {center, w:pb.w, h:pb.h0, angle:pb.angle};
+  }
+  function trimWidthFromCorner(pb, cornerPoint, reduction){
+    reduction = Math.max(0, Math.min(reduction, pb.w - spec.w*0.28));
+    if(reduction<=0) return;
+    const [dx,dy] = pb.frontDir;
+    const towardCorner = dist([pb.edgePoint[0]+dx, pb.edgePoint[1]+dy], cornerPoint) <
+                          dist([pb.edgePoint[0]-dx, pb.edgePoint[1]-dy], cornerPoint) ? 1 : -1;
+    pb.edgePoint = [pb.edgePoint[0]-towardCorner*dx*(reduction/2), pb.edgePoint[1]-towardCorner*dy*(reduction/2)];
+    pb.w -= reduction;
+  }
+  function trimDepthFromBack(pb, reduction){
+    reduction = Math.max(0, Math.min(reduction, pb.h0 - spec.h*0.28));
+    pb.h0 -= reduction;
+  }
+  for(let i=0;i<n;i++){
+    const listA = edgePlots[i], listB = edgePlots[(i+1)%n];
+    if(!listA.length || !listB.length) continue;
+    const bA = listA[listA.length-1], bB = listB[0];
+    for(let iter=0; iter<14; iter++){
+      const overlap = satOverlap(perimRect(bA), perimRect(bB));
+      if(!overlap || overlap.overlap <= 0.35) break;
+      const step = overlap.overlap/4 + 0.4;
+      const cornerPoint = polyPoints[(i+1)%n];
+      trimWidthFromCorner(bA, cornerPoint, step); trimDepthFromBack(bA, step);
+      trimWidthFromCorner(bB, cornerPoint, step); trimDepthFromBack(bB, step);
+    }
+  }
+
+  // Fit each plot: try the plain rectangle first; if it doesn't clear the
+  // polygon boundary or an obstacle, clip it to whatever space is free
+  // instead of dropping it, so the ring has no gaps.
+  const buildings = [];
+  let counter = 0;
+  edgePlots.forEach(list=>{
+    list.forEach(pb=>{
+      if(pb.w < spec.w*0.22) return;
+      const center = [pb.edgePoint[0]+pb.inwardNormal[0]*(pb.h0/2), pb.edgePoint[1]+pb.inwardNormal[1]*(pb.h0/2)];
+      const samples = rectSamplePoints(center, pb.w, pb.h0, pb.angle);
+      const fitsPlain = samples.every(pt=>pointInPoly(pt, containPoly)) && minMarginForCorners(samples, obstacles) >= 0;
+      const seed = seedFor(zoneId, ringTag+'_'+(counter++));
+      if(fitsPlain){
+        buildings.push({cx:center[0], cy:center[1], w:pb.w, h:pb.h0, angle:pb.angle, seed, hatchVariant:counter%2});
+      } else {
+        const clipped = clipRectFootprint(center, pb.w, pb.h0, pb.angle, containPoly, obstacles);
+        if(clipped){
+          buildings.push({cx:clipped.center[0], cy:clipped.center[1], w:clipped.w, h:clipped.h, angle:pb.angle, seed, hatchVariant:counter%2});
+        }
+      }
+    });
+  });
+  return buildings;
+}
+
+/* Places a ring of small buildings fronting OUTWARD around a single
+   rectangular building (rather than inward along a zone's own boundary,
+   which is what placeRingOnPolygon above does) — used to surround a large
+   "central focus" industrial building with smaller ones on every side.
+   Reuses the same edge-exact tiling and corner-trim safety net, but
+   containment is against the zone (buildings must stay outside the large
+   building yet inside the zone), not against the fronted shape itself.
+   Most small buildings sit a random gap away from the large one (10%-100%
+   of the small building's own width) rather than touching it — only about
+   one in ten ends up actually flush against it ("joined"). */
+function placeRingAroundBuilding(building, spec, gap, zonePoints, obstacles, zoneId, ringTag, rnd){
+  const corners = rectCorners([building.cx, building.cy], building.w, building.h, building.angle);
+  const n = 4;
+  const MIN_RATIO = 0.7, MAX_RATIO = 1.3;
+  const edgePlots = [];
+  for(let i=0;i<n;i++){
+    const a = corners[i], b = corners[(i+1)%n];
+    const edgeLen = dist(a,b);
+    const list = [];
+    const inset = Math.min(spec.h*0.52, edgeLen*0.28);
+    const usableLen = edgeLen - inset*2;
+    if(usableLen >= spec.w*0.55){
+      const dirX=(b[0]-a[0])/edgeLen, dirY=(b[1]-a[1])/edgeLen;
+      let nx=-dirY, ny=dirX;
+      const midx=(a[0]+b[0])/2, midy=(a[1]+b[1])/2;
+      // outward: point AWAY from the building's own centre (flipped from the inward version)
+      const sign = ((building.cx-midx)*nx + (building.cy-midy)*ny) >= 0 ? -1 : 1;
+      nx*=sign; ny*=sign;
+
+      const idealN = usableLen/(spec.w+gap);
+      let best = null;
+      for(let N=Math.max(1,Math.round(idealN)-2); N<=Math.round(idealN)+3; N++){
+        if(N<1) continue;
+        const perW = (usableLen-(N-1)*gap)/N;
+        if(perW<=0) continue;
+        const ratio = perW/spec.w;
+        if(ratio<MIN_RATIO || ratio>MAX_RATIO) continue;
+        const score = Math.abs(ratio-1);
+        if(!best || score<best.score) best = {N, perW, score};
+      }
+      if(!best){
+        const N = Math.max(1, Math.round(idealN));
+        const perW = Math.max(spec.w*MIN_RATIO, Math.min(spec.w*MAX_RATIO, (usableLen-(N-1)*gap)/N || spec.w));
+        best = {N, perW};
+      }
+      const N = best.N, perW = best.perW;
+      for(let k=0;k<N;k++){
+        const t = inset + k*(perW+gap) + perW/2;
+        const joined = rnd() < 0.10;
+        const standoff = joined ? 0 : (0.1 + rnd()*0.9)*spec.w;
+        const rotJitter = (rnd()-0.5)*0.6; // up to ~±17°, independent per building — not grid-aligned
+        list.push({
+          edgePoint:[a[0]+dirX*t, a[1]+dirY*t],
+          outwardNormal:[nx,ny], frontDir:[dirX,dirY],
+          angle: Math.atan2(dirY,dirX) + rotJitter,
+          w: perW, h0: spec.h, standoff
+        });
+      }
+    }
+    edgePlots.push(list);
+  }
+
+  function perimRect(pb){
+    const off = pb.standoff + pb.h0/2;
+    const center = [pb.edgePoint[0]+pb.outwardNormal[0]*off, pb.edgePoint[1]+pb.outwardNormal[1]*off];
+    return {center, w:pb.w, h:pb.h0, angle:pb.angle};
+  }
+  function trimWidthFromCorner(pb, cornerPoint, reduction){
+    reduction = Math.max(0, Math.min(reduction, pb.w - spec.w*0.28));
+    if(reduction<=0) return;
+    const [dx,dy] = pb.frontDir;
+    const towardCorner = dist([pb.edgePoint[0]+dx, pb.edgePoint[1]+dy], cornerPoint) <
+                          dist([pb.edgePoint[0]-dx, pb.edgePoint[1]-dy], cornerPoint) ? 1 : -1;
+    pb.edgePoint = [pb.edgePoint[0]-towardCorner*dx*(reduction/2), pb.edgePoint[1]-towardCorner*dy*(reduction/2)];
+    pb.w -= reduction;
+  }
+  function trimDepthFromBack(pb, reduction){
+    reduction = Math.max(0, Math.min(reduction, pb.h0 - spec.h*0.28));
+    pb.h0 -= reduction;
+  }
+  for(let i=0;i<n;i++){
+    const listA = edgePlots[i], listB = edgePlots[(i+1)%n];
+    if(!listA.length || !listB.length) continue;
+    const bA = listA[listA.length-1], bB = listB[0];
+    for(let iter=0; iter<14; iter++){
+      const overlap = satOverlap(perimRect(bA), perimRect(bB));
+      if(!overlap || overlap.overlap <= 0.35) break;
+      const step = overlap.overlap/4 + 0.4;
+      const cornerPoint = corners[(i+1)%n];
+      trimWidthFromCorner(bA, cornerPoint, step); trimDepthFromBack(bA, step);
+      trimWidthFromCorner(bB, cornerPoint, step); trimDepthFromBack(bB, step);
+    }
+  }
+
+  const buildings = [];
+  let counter = 0;
+  edgePlots.forEach(list=>{
+    list.forEach(pb=>{
+      if(pb.w < spec.w*0.22) return;
+      const off = pb.standoff + pb.h0/2;
+      const center = [pb.edgePoint[0]+pb.outwardNormal[0]*off, pb.edgePoint[1]+pb.outwardNormal[1]*off];
+      const samples = rectSamplePoints(center, pb.w, pb.h0, pb.angle);
+      const fitsPlain = samples.every(pt=>pointInPoly(pt, zonePoints)) && minMarginForCorners(samples, obstacles) >= 0;
+      const seed = seedFor(zoneId, ringTag+'_'+(counter++));
+      if(fitsPlain){
+        buildings.push({cx:center[0], cy:center[1], w:pb.w, h:pb.h0, angle:pb.angle, seed, hatchVariant:counter%2});
+      } else {
+        const clipped = clipRectFootprint(center, pb.w, pb.h0, pb.angle, zonePoints, obstacles);
+        if(clipped){
+          buildings.push({cx:clipped.center[0], cy:clipped.center[1], w:clipped.w, h:clipped.h, angle:pb.angle, seed, hatchVariant:counter%2});
+        }
+      }
+    });
+  });
+  return buildings;
+}
+
+/* Erodes a polygon by the footprint of a just-placed ring (plus a service-
+   alley gap), returning whatever interior area remains for the next ring —
+   found by rasterising, excluding the ring's footprints and their alley
+   buffer, flood-filling from any free cell, and tracing/simplifying the
+   result. Returns null once nothing meaningful is left. */
+function erodePolygonByRing(polyPoints, ringBuildings, alleyGap){
+  const cellSize = 4;
+  const bb = bbox(polyPoints);
+  const minx = Math.floor(bb.minx/cellSize)*cellSize - cellSize;
+  const miny = Math.floor(bb.miny/cellSize)*cellSize - cellSize;
+  const cols = Math.max(1, Math.ceil((bb.maxx-bb.minx)/cellSize)+3);
+  const rows = Math.max(1, Math.ceil((bb.maxy-bb.miny)/cellSize)+3);
+  if(cols*rows > 300000) return null;
+  const blocked = new Uint8Array(cols*rows);
+  const idx=(x,y)=>y*cols+x;
+  for(let gy=0; gy<rows; gy++){
+    for(let gx=0; gx<cols; gx++){
+      const wx=minx+(gx+0.5)*cellSize, wy=miny+(gy+0.5)*cellSize;
+      if(!pointInPoly([wx,wy], polyPoints)) blocked[idx(gx,gy)]=1;
+    }
+  }
+  ringBuildings.forEach(b=>{
+    const poly = b.points || rectCorners([b.cx,b.cy], b.w, b.h, b.angle);
+    const pbb = bbox(poly);
+    const gminx=Math.max(0,Math.floor((pbb.minx-alleyGap-minx)/cellSize));
+    const gmaxx=Math.min(cols-1,Math.ceil((pbb.maxx+alleyGap-minx)/cellSize));
+    const gminy=Math.max(0,Math.floor((pbb.miny-alleyGap-miny)/cellSize));
+    const gmaxy=Math.min(rows-1,Math.ceil((pbb.maxy+alleyGap-miny)/cellSize));
+    for(let gy=gminy; gy<=gmaxy; gy++){
+      for(let gx=gminx; gx<=gmaxx; gx++){
+        const wx=minx+(gx+0.5)*cellSize, wy=miny+(gy+0.5)*cellSize;
+        if(pointInPoly([wx,wy], poly)){ blocked[idx(gx,gy)]=1; continue; }
+        let minD=Infinity;
+        for(let k=0;k<poly.length;k++){
+          const d = distToPolyline([wx,wy], [poly[k], poly[(k+1)%poly.length]]).dist;
+          if(d<minD) minD=d;
+        }
+        if(minD<=alleyGap) blocked[idx(gx,gy)]=1;
+      }
+    }
+  });
+  let seed=null;
+  const cpt = centroid(polyPoints);
+  const cgx = Math.floor((cpt[0]-minx)/cellSize), cgy = Math.floor((cpt[1]-miny)/cellSize);
+  if(cgx>=0 && cgy>=0 && cgx<cols && cgy<rows && !blocked[idx(cgx,cgy)]){
+    seed = [cgx,cgy];
+  } else {
+    // centroid cell itself is blocked (unusual shape) — spiral outward from
+    // it for the nearest free cell, rather than raster-scanning from the grid
+    // corner, which tends to land in a small isolated pocket near a corner.
+    const maxR = Math.max(cols,rows);
+    outer:
+    for(let r=1; r<maxR; r++){
+      for(let dx=-r; dx<=r; dx++){
+        for(let dy=-r; dy<=r; dy++){
+          if(Math.max(Math.abs(dx),Math.abs(dy)) !== r) continue;
+          const gx=cgx+dx, gy=cgy+dy;
+          if(gx<0||gy<0||gx>=cols||gy>=rows) continue;
+          if(!blocked[idx(gx,gy)]){ seed=[gx,gy]; break outer; }
+        }
+      }
+    }
+  }
+  if(!seed) return null;
+  const visited = new Uint8Array(cols*rows);
+  const queue=[seed]; visited[idx(seed[0],seed[1])]=1;
+  let head=0, count=0;
+  while(head<queue.length){
+    const [cx,cy]=queue[head++]; count++;
+    const nbs=[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]];
+    for(const [nx,ny] of nbs){
+      if(nx<0||ny<0||nx>=cols||ny>=rows) continue;
+      const ni=idx(nx,ny);
+      if(visited[ni]||blocked[ni]) continue;
+      visited[ni]=1; queue.push([nx,ny]);
+    }
+  }
+  if(count < 25) return null; // negligible sliver left — stop
+  const poly = traceBoundary(visited, cols, rows, cellSize, minx, miny);
+  if(!poly || poly.length<3) return null;
+  return simplifyClosedPolygon(poly, 8);
+}
+
+/* Townhouse fill: a single ring of houses fronts the zone's own boundary —
+   the road, canal or thoroughfare it was drawn against — each row widened or
+   narrowed (within 70-130% of the base footprint) so it tiles its edge
+   exactly with no leftover gap. The centre of the zone is deliberately left
+   empty (a shared courtyard/garden behind the terrace), unlike rowhouses. */
+function autofillZoneTownhouse(zone){
+  const spec = HOUSE_SPECS[zone.houseSize];
+  const gap = DENSITY_GAP[zone.density];
+  const obstacles = buildObstacles();
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+  const frontBuildings = placeRingOnPolygon(zone.points, spec, gap, obstacles, zone.id, 'front');
+  frontBuildings.forEach(b=>{ b.houseSize = zone.houseSize; });
+  zone.buildings = frontBuildings;
+}
+
+/* Removes any alley roads a previous autofill of this zone created, so
+   re-running autofill doesn't leave stale alleys behind. */
+function removeZoneAlleys(zoneId){
+  state.roads = state.roads.filter(r=>r.sourceZoneId !== zoneId);
+}
+/* Removes any estate wall a previous autofill of this zone created (mansion
+   zones), so re-running autofill or deleting the zone doesn't leave one
+   floating behind with nothing inside it. */
+function removeZoneWalls(zoneId){
+  state.zoneWalls = state.zoneWalls.filter(w=>w.sourceZoneId !== zoneId);
+}
+
+/* Finds where a long line at a given row (in the interior's rotated grid
+   frame) crosses the zone's own boundary, and returns the outermost crossing
+   points — i.e. where that row's alley would meet the street on each side.
+   Bends the path if a straight line between them would step outside the
+   zone (an irregular/non-convex boundary). */
+function alleyPathForRow(rowY, angle, rotCenter, bb, zonePoly, zoneId){
+  const margin = Math.max(400, (bb.maxx-bb.minx)+(bb.maxy-bb.miny));
+  const p1 = rotatePoint([bb.minx-margin, rowY], rotCenter, angle);
+  const p2 = rotatePoint([bb.maxx+margin, rowY], rotCenter, angle);
+  const hits = [];
+  const n = zonePoly.length;
+  for(let i=0;i<n;i++){
+    const hit = segIntersect(p1, p2, zonePoly[i], zonePoly[(i+1)%n]);
+    if(hit) hits.push(hit);
+  }
+  if(hits.length < 2) return null;
+  hits.sort((h1,h2)=>dist(p1,h1)-dist(p1,h2));
+  const start = hits[0], end = hits[hits.length-1];
+
+  let pathPoints = [start, end];
+  let allInside = true;
+  const steps = 14;
+  for(let k=1; k<steps; k++){
+    const t = k/steps;
+    const pt = [start[0]+(end[0]-start[0])*t, start[1]+(end[1]-start[1])*t];
+    if(!pointInPoly(pt, zonePoly)){ allInside=false; break; }
+  }
+  if(!allInside){
+    const zc = centroid(zonePoly);
+    const mid = [(start[0]+end[0])/2, (start[1]+end[1])/2];
+    pathPoints = [start, [mid[0]+(zc[0]-mid[0])*0.35, mid[1]+(zc[1]-mid[1])*0.35], end];
+  }
+  return {id:'alley'+(state.nextId++), type:'alley', points:pathPoints, sourceZoneId:zoneId};
+}
+
+/* Fills the interior behind the front ring with alternating rows: a row of
+   houses, then a row given over to an alley instead, repeating. The alley is
+   a real road — it's added to state.roads so it renders, blends at
+   junctions, and becomes an obstacle houses on both sides must clear — and
+   its ends run all the way out to the zone's own boundary, joining whatever
+   street or thoroughfare that edge represents. */
+function fillRowhouseInterior(interiorPoly, zonePoly, spec, gap, obstacles, seedId, houseSize, zoneId){
+  const angle = nearestRoadAngle({points: interiorPoly});
+  const c = centroid(interiorPoly);
+  const rotated = interiorPoly.map(p=>rotatePoint(p, c, -angle));
+  const bb = bbox(rotated);
+  const alleyHalf = (ROAD_STYLE.alley.w * sp().lineScale)/2;
+  const alleyClearance = 3;
+
+  // Pass 1 — decide which rows are alleys and build their paths first, so
+  // house rows on both sides of an alley can be fitted against it. Rows are
+  // placed sequentially rather than centred in an even grid: each house row
+  // sits flush against the alley (or the interior's edge) just ahead of it,
+  // and the density gap is spent entirely as garden space behind the house,
+  // before the next alley — not split evenly on both sides of every row.
+  const alleys = [];
+  const rowYs = [];
+  let cursor = bb.miny;
+  let row = 0;
+  while(cursor < bb.maxy){
+    if(row % 2 === 1){
+      const y = cursor + alleyHalf;
+      const alley = alleyPathForRow(y, angle, c, bb, zonePoly, zoneId);
+      if(alley) alleys.push(alley);
+      rowYs.push({y, isAlley:true});
+      cursor = y + alleyHalf + alleyClearance;
+    } else {
+      const y = cursor + spec.h/2;
+      rowYs.push({y, isAlley:false});
+      cursor = y + spec.h/2 + gap; // house depth, then its garden gap behind it
+    }
+    row++;
+  }
+  const ROAD_W_ALLEY = ROAD_STYLE.alley.w * sp().lineScale;
+  const alleyObstacles = alleys.map(a=>({points:a.points, halfWidth:ROAD_W_ALLEY/2}));
+  const fullObstacles = obstacles.concat(alleyObstacles);
+
+  // Pass 2 — fill the non-alley rows with houses, using the complete
+  // obstacle list (existing roads/rivers plus the alleys just created).
+  const buildings = [];
+  const rnd = mulberry32(seedFor(seedId,'rowint'));
+  const stepW = spec.w + gap;
+  const MIN_SCALE = Math.sqrt(0.5);
+  let colRow = 0;
+  rowYs.forEach(({y, isAlley})=>{
+    if(isAlley){ colRow++; return; }
+    const colOffset = (colRow % 2 === 1) ? stepW/2 : 0;
+    colRow++;
+    for(let x = bb.minx + stepW/2 + colOffset; x < bb.maxx; x += stepW){
+      const worldCenter = rotatePoint([x,y], c, angle);
+      let placed = null;
+      for(let sc=1.0; sc>=MIN_SCALE-1e-6; sc-=0.06){
+        const w = spec.w*sc, h = spec.h*sc;
+        const samples = rectSamplePoints(worldCenter, w, h, angle);
+        if(!samples.every(pt=>pointInPoly(pt, interiorPoly))) continue;
+        if(minMarginForCorners(samples, fullObstacles) < 0) continue;
+        placed = {center:worldCenter, w, h};
+        break;
+      }
+      if(placed){
+        buildings.push({
+          cx:placed.center[0], cy:placed.center[1], w:placed.w, h:placed.h, angle, houseSize,
+          seed: seedFor(seedId,'ri'+buildings.length), hatchVariant: rnd()>0.5?0:1
+        });
+      } else {
+        const clipped = clipRectFootprint(worldCenter, spec.w, spec.h, angle, interiorPoly, fullObstacles);
+        if(clipped){
+          buildings.push({
+            cx:clipped.center[0], cy:clipped.center[1], w:clipped.w, h:clipped.h, angle, houseSize,
+            seed: seedFor(seedId,'ri'+buildings.length), hatchVariant: rnd()>0.5?0:1
+          });
+        }
+      }
+    }
+  });
+  return {buildings, alleys};
+}
+
+/* Rowhouse fill: a ring fronts the zone's own boundary, tiled edge-exact as
+   with townhouses. Behind it, the interior alternates rows of houses with
+   rows given over to a real alley road — so every rowhouse ends up fronting
+   either the street or another rowhouse, and backing onto either an alley or
+   another rowhouse in turn, and the whole shape gets used. */
+function autofillZoneRowhouse(zone){
+  const spec = HOUSE_SPECS[zone.houseSize];
+  const gap = DENSITY_GAP[zone.density];
+  const obstacles = buildObstacles();
+  const alleyGap = Math.max(5, gap);
+  removeZoneAlleys(zone.id);
+  removeZoneWalls(zone.id);
+
+  const frontBuildings = placeRingOnPolygon(zone.points, spec, gap, obstacles, zone.id, 'front');
+  frontBuildings.forEach(b=>{ b.houseSize = zone.houseSize; });
+
+  let interiorBuildings = [];
+  const interior = erodePolygonByRing(zone.points, frontBuildings, alleyGap);
+  if(interior && polygonArea(interior) > spec.w*spec.h*1.1){
+    const result = fillRowhouseInterior(interior, zone.points, spec, gap, obstacles, zone.id+'_int', zone.houseSize, zone.id);
+    interiorBuildings = result.buildings;
+    state.roads.push(...result.alleys);
+  }
+
+  zone.buildings = [...frontBuildings, ...interiorBuildings];
+}
+
+/* ---------------------------------------------------------------- toolbar UI */
+function renderToolbar(){
+  const tb = document.getElementById('toolbar');
+  clear(tb);
+
+  // Cross-cutting Select & Edit tool — works on shapes from any stage
+  const selBlock = document.createElement('div');
+  selBlock.className = 'stage-block';
+  const selHead = document.createElement('div');
+  selHead.className = 'stage-head' + (state.tool==='select' ? ' current' : '');
+  selHead.innerHTML = `<span class="num">&#9998;</span><span>Select &amp; Edit</span>`;
+  selBlock.appendChild(selHead);
+  const selBtn = document.createElement('button');
+  selBtn.className = 'tool-btn' + (state.tool==='select' ? ' active' : '');
+  selBtn.innerHTML = `<span class="swatch" style="background:#2a7fd4"></span><span>Select / move points</span>`;
+  selBtn.onclick = ()=>{
+    if(state.tool==='select'){
+      cancelDrawing();
+    } else {
+      state.drawing = null;
+      state.tool = 'select';
+      state.selection = null; state.selectedVertexIndex = null;
+      setStatus('Click any shape to select it, drag a point to reshape it, click its edge again to add a point, Delete to remove one.');
+      renderAll();
+    }
+  };
+  selBlock.appendChild(selBtn);
+  tb.appendChild(selBlock);
+
+  STAGES.forEach(st=>{
+    const block = document.createElement('div');
+    block.className = 'stage-block';
+    const head = document.createElement('div');
+    head.className = 'stage-head' + (state.stage===st.n ? ' current' : '');
+    head.innerHTML = `<span class="num">${st.n}</span><span>${st.label}</span>`;
+    head.onclick = ()=>{ state.stage = st.n; cancelDrawing(); };
+    block.appendChild(head);
+    st.tools.forEach(t=>{
+      const btn = document.createElement('button');
+      btn.className = 'tool-btn' + (state.tool===t.id ? ' active' : '');
+      btn.innerHTML = `<span class="swatch" style="background:${t.swatch}"></span><span>${t.label}</span>`;
+      btn.onclick = ()=>{
+        state.stage = st.n;
+        if(t.kind === 'click'){
+          state.drawing = null;
+          state.selection = null; state.selectedVertexIndex = null;
+          state.tool = (state.tool===t.id) ? null : t.id;
+          setStatus(state.tool ? 'Click inside an area bordered by roads, rivers, canals or walls to turn it into a zone.' : '');
+          renderAll();
+        } else if(state.tool===t.id){ cancelDrawing(); } else { startDrawing(t.id); }
+      };
+      block.appendChild(btn);
+    });
+    if(st.key==='autofill'){
+      const btn1 = document.createElement('button');
+      btn1.className='tool-btn'; btn1.style.marginTop='4px';
+      btn1.innerHTML = '<span>&#9998;</span><span>Autofill selected zone</span>';
+      btn1.onclick = ()=>{
+        const z = state.zones.find(z=>z.id===state.selectedZoneId);
+        if(z) autofillZone(z); else setStatus('Select a zone first (click it on the map).');
+      };
+      block.appendChild(btn1);
+      const btn2 = document.createElement('button');
+      btn2.className='tool-btn';
+      btn2.innerHTML = '<span>&#10024;</span><span>Autofill all zones</span>';
+      btn2.onclick = autofillAll;
+      block.appendChild(btn2);
+    }
+    tb.appendChild(block);
+  });
+}
+
+/* ---------------------------------------------------------------- right panel UI */
+function renderRightPanel(){
+  const rp = document.getElementById('rightPanel');
+  clear(rp);
+
+  // layers
+  const h1 = document.createElement('h2'); h1.textContent='Layers'; rp.appendChild(h1);
+  [['natural','Natural features'],['infrastructure','Infrastructure'],['walls','Walls'],
+   ['zones','Zone outlines'],['buildings','Buildings']].forEach(([key,label])=>{
+    const row = document.createElement('label');
+    row.className='layer-row';
+    row.innerHTML = `<input type="checkbox" ${state.layers[key]?'checked':''}/> ${label}`;
+    row.querySelector('input').onchange = (e)=>{ state.layers[key] = e.target.checked; renderAll(); };
+    rp.appendChild(row);
+  });
+
+  // select & edit
+  if(state.tool==='select'){
+    const hs = document.createElement('h2'); hs.textContent='Select & Edit'; rp.appendChild(hs);
+    if(!state.selection){
+      const hint = document.createElement('div'); hint.className='hint';
+      hint.textContent = 'Click any shape on the map to select it. Drag its blue points to reshape it. Click its edge again to add a point. Select a point and press Delete to remove it.';
+      rp.appendChild(hint);
+    } else {
+      const info = document.createElement('div'); info.className='hint';
+      const label = state.selection.type.charAt(0).toUpperCase()+state.selection.type.slice(1);
+      info.textContent = label+' selected — '+state.selection.obj.points.length+' points.';
+      rp.appendChild(info);
+      const delBtn = document.createElement('button');
+      delBtn.className='btn danger'; delBtn.textContent='Delete this shape';
+      delBtn.onclick = removeSelectedShape;
+      rp.appendChild(delBtn);
+    }
+  }
+
+  // current drawing controls
+  if(state.drawing){
+    const h2 = document.createElement('h2'); h2.textContent='Drawing'; rp.appendChild(h2);
+    const hint = document.createElement('div'); hint.className='hint';
+    hint.textContent = TOOL_KIND[state.drawing.kind]==='closed'
+      ? 'Click to add points. Click near the first point (or press Enter) to close the shape.'
+      : 'Click to add points. Double-click or press Enter to finish the line.';
+    rp.appendChild(hint);
+    if(state.drawing.kind==='river' || state.drawing.kind==='road:canal'){
+      const isCanal = state.drawing.kind==='road:canal';
+      const defaultW = isCanal ? ROAD_STYLE.canal.w : 14;
+      const f = document.createElement('div'); f.className='field';
+      f.innerHTML = `<label>${isCanal?'Canal':'River'} width</label><input type="range" min="${isCanal?4:6}" max="${isCanal?26:30}" value="${defaultW}" id="waterWidth"/>`;
+      rp.appendChild(f);
+      f.querySelector('input').oninput = (e)=>{ state.drawing.width = +e.target.value; };
+    }
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className='btn secondary'; cancelBtn.textContent='Cancel drawing';
+    cancelBtn.onclick = cancelDrawing;
+    rp.appendChild(cancelBtn);
+    const finishBtn = document.createElement('button');
+    finishBtn.className='btn'; finishBtn.textContent='Finish shape';
+    finishBtn.onclick = finishDrawing;
+    rp.appendChild(finishBtn);
+  }
+
+  // zone list + attribute editor (stage 4/5)
+  if(state.stage===4 || state.stage===5){
+    const h3 = document.createElement('h2'); h3.textContent='Zones'; rp.appendChild(h3);
+    if(state.tool==='autozone'){
+      const hint = document.createElement('div'); hint.className='hint';
+      hint.textContent = 'Click any area on the map that\'s fully bordered by roads, rivers, canals or walls — it\'ll become a zone automatically.';
+      rp.appendChild(hint);
+    } else if(state.zones.length===0){
+      const hint = document.createElement('div'); hint.className='hint';
+      hint.textContent = 'Draw a zone by hand, or use "Click enclosed area" on the left to auto-detect one bordered by roads, rivers, canals or walls.';
+      rp.appendChild(hint);
+    }
+    const list = document.createElement('div'); list.className='zone-list';
+    state.zones.forEach((z,i)=>{
+      const item = document.createElement('div');
+      item.className = 'zone-item' + (z.id===state.selectedZoneId?' sel':'');
+      item.innerHTML = `<span>Zone ${i+1}</span><span class="tag">${z.houseSize||'—'} · ${z.density||'—'}</span>`;
+      item.onclick = ()=>{ state.selectedZoneId = z.id; renderAll(); };
+      list.appendChild(item);
+    });
+    rp.appendChild(list);
+
+    const zone = state.zones.find(z=>z.id===state.selectedZoneId);
+    if(zone){
+      const h4 = document.createElement('h2'); h4.textContent='Zone attributes'; rp.appendChild(h4);
+      const f1 = document.createElement('div'); f1.className='field';
+      f1.innerHTML = `<label>House size</label>
+        <select id="houseSizeSel">
+          <option value="">— choose —</option>
+          ${Object.entries(HOUSE_SPECS).map(([k,v])=>`<option value="${k}" ${zone.houseSize===k?'selected':''}>${v.label}</option>`).join('')}
+        </select>`;
+      rp.appendChild(f1);
+      f1.querySelector('select').onchange = (e)=>{ zone.houseSize = e.target.value || null; renderAll(); };
+
+      const f2 = document.createElement('div'); f2.className='field';
+      f2.innerHTML = `<label>Density</label>
+        <select id="densitySel">
+          <option value="">— choose —</option>
+          <option value="low" ${zone.density==='low'?'selected':''}>Low</option>
+          <option value="medium" ${zone.density==='medium'?'selected':''}>Medium</option>
+          <option value="high" ${zone.density==='high'?'selected':''}>High</option>
+        </select>`;
+      rp.appendChild(f2);
+      f2.querySelector('select').onchange = (e)=>{ zone.density = e.target.value || null; renderAll(); };
+
+      const fillBtn = document.createElement('button');
+      fillBtn.className='btn'; fillBtn.textContent='Autofill this zone';
+      fillBtn.onclick = ()=>autofillZone(zone);
+      rp.appendChild(fillBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className='btn danger'; delBtn.textContent='Delete zone';
+      delBtn.onclick = ()=>{
+        pushUndo();
+        state.zones = state.zones.filter(z=>z.id!==zone.id);
+        removeZoneAlleys(zone.id);
+        removeZoneWalls(zone.id);
+        state.selectedZoneId = null;
+        renderAll();
+      };
+      rp.appendChild(delBtn);
+    }
+  }
+
+  // shape management (stages 1-3)
+  if(state.stage<=3){
+    const h5 = document.createElement('h2'); h5.textContent='Shapes on this layer'; rp.appendChild(h5);
+    let list = [];
+    if(state.stage===1) list = [...state.rivers.map(s=>({s,label:'River',arr:state.rivers})),
+                                 ...state.parks.map(s=>({s,label:'Park',arr:state.parks})),
+                                 ...state.hills.map(s=>({s,label:'Hill',arr:state.hills}))];
+    if(state.stage===2) list = state.roads.map(s=>({s,label:s.type,arr:state.roads}));
+    if(state.stage===3) list = state.walls.map(s=>({s,label:'Wall',arr:state.walls}));
+    if(list.length===0){
+      const hint = document.createElement('div'); hint.className='hint';
+      hint.textContent = 'Nothing drawn on this layer yet.';
+      rp.appendChild(hint);
+    }
+    list.forEach(item=>{
+      const row = document.createElement('div');
+      row.className='zone-item';
+      row.innerHTML = `<span>${item.label}</span><span class="tag">${item.s.points.length} pts</span>`;
+      const del = document.createElement('span');
+      del.textContent = '✕'; del.style.cursor='pointer'; del.style.color='#c96a5a'; del.style.marginLeft='8px';
+      del.onclick = (ev)=>{
+        ev.stopPropagation();
+        pushUndo();
+        item.arr.splice(item.arr.indexOf(item.s),1);
+        renderAll();
+      };
+      row.appendChild(del);
+      rp.appendChild(row);
+    });
+  }
+
+  // save / load
+  const h7 = document.createElement('h2'); h7.textContent='Save & Load'; rp.appendChild(h7);
+  const saveHint = document.createElement('div'); saveHint.className='hint';
+  saveHint.textContent = 'Save your work as a file, then load it again later to keep building on it.';
+  rp.appendChild(saveHint);
+  const saveBtn = document.createElement('button');
+  saveBtn.className='btn'; saveBtn.textContent='Save map to file';
+  saveBtn.onclick = exportProjectJSON;
+  rp.appendChild(saveBtn);
+  const loadBtn = document.createElement('button');
+  loadBtn.className='btn secondary'; loadBtn.textContent='Load map from file';
+  loadBtn.onclick = ()=> document.getElementById('loadFileInput').click();
+  rp.appendChild(loadBtn);
+
+  // export
+  const h6 = document.createElement('h2'); h6.textContent='Export'; rp.appendChild(h6);
+  const exportBtn = document.createElement('button');
+  exportBtn.className='btn secondary'; exportBtn.textContent='Download map as SVG';
+  exportBtn.onclick = exportSVG;
+  rp.appendChild(exportBtn);
+  const clearBtn = document.createElement('button');
+  clearBtn.className='btn danger';
+  clearBtn.textContent = clearMapArmed ? 'Click again to confirm — clears everything' : 'Clear entire map';
+  clearBtn.onclick = ()=>{
+    if(!clearMapArmed){
+      clearMapArmed = true;
+      setStatus('Click "Clear entire map" once more to confirm.');
+      if(clearMapArmTimer) clearTimeout(clearMapArmTimer);
+      clearMapArmTimer = setTimeout(()=>{ clearMapArmed=false; clearMapArmTimer=null; renderAll(); }, 5000);
+      renderAll();
+      return;
+    }
+    clearMapArmed = false;
+    if(clearMapArmTimer){ clearTimeout(clearMapArmTimer); clearMapArmTimer=null; }
+    pushUndo();
+    state.rivers=[]; state.parks=[]; state.hills=[]; state.roads=[]; state.walls=[]; state.zoneWalls=[];
+    state.zones=[]; state.selectedZoneId=null; state.drawing=null; state.tool=null;
+    setStatus('Map cleared. Ctrl+Z to undo.');
+    renderAll();
+  };
+  rp.appendChild(clearBtn);
+}
+
+function exportSVG(){
+  const clone = svg.cloneNode(true);
+  clone.querySelector('#layer-drawing') && clone.removeChild(clone.querySelector('#layer-drawing'));
+  const serializer = new XMLSerializer();
+  let src = serializer.serializeToString(clone);
+  src = '<?xml version="1.0" standalone="no"?>\n' + src;
+  const blob = new Blob([src], {type:'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'fantasy-town-map.svg';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------------------------------------------------------- save / load project */
+/* Saves everything needed to pick the map back up later — every drawn
+   shape, the current style/layers — as a plain JSON file the person can
+   keep and re-open in this same tool. This is a different thing from
+   "Download as SVG" above: the SVG is a finished picture, this is the
+   editable project itself. */
+const SAVE_FORMAT_VERSION = 1;
+function exportProjectJSON(){
+  const data = {
+    format:'town-map-builder', version:SAVE_FORMAT_VERSION, savedAt:new Date().toISOString(),
+    style: state.style, layers: state.layers,
+    rivers: state.rivers, parks: state.parks, hills: state.hills,
+    roads: state.roads, walls: state.walls, zoneWalls: state.zoneWalls, zones: state.zones,
+    nextId: state.nextId
+  };
+  const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = data.savedAt.slice(0,16).replace(/[:T]/g,'-');
+  a.href = url; a.download = 'town-map-'+stamp+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus('Map saved.');
+}
+/* Scans a loaded save for the highest numeric id in use, so freshly drawn
+   shapes afterward never collide with restored ones even if the file's own
+   nextId was missing, stale, or hand-edited. */
+function safeNextId(data){
+  let maxNum = 0;
+  const scan = (arr)=>{
+    (arr||[]).forEach(o=>{
+      const m = /(\d+)/.exec((o && o.id) || '');
+      if(m) maxNum = Math.max(maxNum, parseInt(m[1],10));
+    });
+  };
+  scan(data.rivers); scan(data.parks); scan(data.hills); scan(data.roads); scan(data.zones); scan(data.zoneWalls);
+  if(Array.isArray(data.walls)) scan(data.walls);
+  if(data.wall) scan([data.wall]); // old save files used a single wall field
+  return Math.max(maxNum+1, Number(data.nextId)||1);
+}
+function importProjectFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let data;
+    try{ data = JSON.parse(e.target.result); }
+    catch(err){ setStatus("Couldn't read that file — it doesn't look like valid JSON."); return; }
+    if(!data || typeof data!=='object' || !Array.isArray(data.zones) || !Array.isArray(data.roads)){
+      setStatus("That file doesn't look like a town map save file.");
+      return;
+    }
+    pushUndo();
+    state.style = (STYLE_PARAMS[data.style]) ? data.style : state.style;
+    state.layers = data.layers && typeof data.layers==='object' ? data.layers : state.layers;
+    state.rivers = Array.isArray(data.rivers) ? data.rivers : [];
+    state.parks = Array.isArray(data.parks) ? data.parks : [];
+    state.hills = Array.isArray(data.hills) ? data.hills : [];
+    state.roads = Array.isArray(data.roads) ? data.roads : [];
+    // walls used to be a single object in older save files — accept either shape
+    if(Array.isArray(data.walls)) state.walls = data.walls;
+    else if(data.wall && Array.isArray(data.wall.points)) state.walls = [data.wall];
+    else state.walls = [];
+    state.zoneWalls = Array.isArray(data.zoneWalls) ? data.zoneWalls : [];
+    state.zones = Array.isArray(data.zones) ? data.zones.map(z=>({...z, buildings: Array.isArray(z.buildings) ? z.buildings : []})) : [];
+    state.nextId = safeNextId(data);
+    state.selection = null; state.selectedVertexIndex = null; state.draggingVertex = false;
+    state.drawing = null; state.tool = null; state.selectedZoneId = null;
+    setStatus('Map loaded from file.');
+    renderAll();
+  };
+  reader.onerror = ()=> setStatus("Couldn't read that file.");
+  reader.readAsText(file);
+}
+document.getElementById('loadFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  importProjectFile(file);
+  e.target.value = ''; // allow reloading the same filename later
+});
+
+/* ---------------------------------------------------------------- style toggle */
+document.getElementById('styleToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-style]');
+  if(!btn) return;
+  state.style = btn.dataset.style;
+  renderAll();
+});
+function syncStyleToggle(){
+  document.querySelectorAll('#styleToggle button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.style===state.style);
+  });
+}
+const _renderAll = renderAll;
+renderAll = function(){ _renderAll(); syncStyleToggle(); };
+
+/* ---------------------------------------------------------------- init */
+renderAll();
+
+})();
+</script>
+</body>
+</html>
