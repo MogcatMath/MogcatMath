@@ -2,99 +2,153 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Frequency Polygons</title>
 <style>
   :root{
+    /* theme-flipping tokens */
+    --paper:#ffffff;
     --ink:#1c2a2e;
-    --paper:#33383b;
-    --card:#ffffff;
-    --teal:#1f6f6b;
-    --teal-dark:#154d4a;
-    --amber:#d98a3d;
-    --line:#d8d0c0;
+    --muted:#5b6b6a;
+    --grid-square: rgba(90,98,96,0.22);
     --grid:#e4e9e8;
+    --teal:#1f6f6b;
+    --graph-ink:#154d4a;
+    --amber:#d98a3d;
+    --btn-dark-bg:#1c1c1c;
+
+    /* constant tokens — the "page" itself stays true white/dark-ink paper regardless of theme */
+    --table-bg:#ffffff;
+    --table-ink:#1c2a2e;
+    --teal-dark:#154d4a;
     --mid-bg:#eef6f4;
-    --title:#c8cccc;
+    --line:#d8d0c0;
   }
+  html[data-theme="dark"]{
+    --paper:#202327;
+    --ink:#ece9e3;
+    --muted:#a7aeac;
+    --grid-square: rgba(255,255,255,0.10);
+    --grid: rgba(255,255,255,0.16);
+    --teal:#4fb2ab;
+    --graph-ink:#8fe0da;
+    --amber:#e6a765;
+    --btn-dark-bg:#0d0e0f;
+  }
+
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-  html,body{height:100%;}
+  html,body{height:100%; margin:0;}
   body{
-    margin:0;
-    background:var(--paper);
+    height:100dvh;
+    overflow:hidden;
+    overscroll-behavior:none;
+    background-color:var(--paper);
     background-image:
-      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);
-    background-size: 22px 22px;
+      repeating-linear-gradient(0deg, var(--grid-square) 0px, var(--grid-square) 1px, transparent 1px, transparent 22px),
+      repeating-linear-gradient(90deg, var(--grid-square) 0px, var(--grid-square) 1px, transparent 1px, transparent 22px);
     color:var(--ink);
     font-family: 'Iowan Old Style','Georgia', ui-serif, serif;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: none;
+    transition: background-color .25s ease, color .25s ease;
   }
   .app{
-    min-height:100vh;
+    height:100%;
     display:flex;
     flex-direction:column;
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   header{
-    padding: 18px 26px 10px;
+    flex:0 0 auto;
+    padding: 12px 22px 6px;
     display:flex;
-    align-items:baseline;
+    align-items:center;
     justify-content:space-between;
-    flex-wrap:wrap;
-    gap:8px;
-  }
-  .eyebrow{
-    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-    letter-spacing:.14em;
-    text-transform:uppercase;
-    font-size:11px;
-    color:var(--teal);
-    font-weight:700;
+    gap:12px;
   }
   h1{
-    margin:2px 0 0;
-    font-size: clamp(22px, 3.2vw, 30px);
+    margin:0;
+    font-size: clamp(19px, 2.4vw, 25px);
     font-weight:600;
     letter-spacing:-0.01em;
-    color:var(--title);
+    color:var(--ink);
   }
-  .subtitle{
-    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-    font-size:13.5px;
-    color:#5b6b6a;
-    max-width:520px;
+
+  /* theme toggle */
+  .theme-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   }
+  .theme-icon{ font-size:15px; line-height:1; opacity:.8; }
+  .switch{
+    position:relative;
+    display:inline-block;
+    width:46px;
+    height:26px;
+    flex:0 0 auto;
+  }
+  .switch input{
+    opacity:0;
+    width:100%;
+    height:100%;
+    margin:0;
+    position:absolute;
+    cursor:pointer;
+    z-index:1;
+  }
+  .switch .track{
+    position:absolute;
+    inset:0;
+    background:var(--muted);
+    opacity:.35;
+    border-radius:999px;
+    transition: background .2s ease, opacity .2s ease;
+  }
+  .switch .thumb{
+    position:absolute;
+    top:3px; left:3px;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--ink);
+    transition: transform .2s ease, background .2s ease;
+  }
+  .switch input:checked ~ .thumb{ transform: translateX(20px); }
+  .switch input:checked ~ .track{ opacity:.55; }
+
   main{
-    flex:1;
+    flex:1 1 auto;
+    min-height:0;
     display:grid;
     grid-template-columns: minmax(300px, 420px) 1fr;
-    gap: 20px;
-    padding: 10px 26px 26px;
-    align-items:start;
+    gap: 16px;
+    padding: 6px 22px 14px;
   }
   @media (max-width: 880px){
+    body{ height:auto; overflow:auto; }
     main{ grid-template-columns: 1fr; }
   }
 
   .panel{
-    background:var(--card);
-    border:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    background:transparent;
+    border:2px solid var(--ink);
     border-radius:14px;
-    box-shadow: 0 1px 2px rgba(28,42,46,0.06), 0 8px 24px -16px rgba(28,42,46,0.25);
     overflow:hidden;
-  }
-  #tablePanel{
-    background-color:#ffffff;
-    background-image:
-      repeating-linear-gradient(0deg, rgba(90,98,96,0.22) 0px, rgba(90,98,96,0.22) 1px, transparent 1px, transparent 22px),
-      repeating-linear-gradient(90deg, rgba(90,98,96,0.22) 0px, rgba(90,98,96,0.22) 1px, transparent 1px, transparent 22px);
+    transition: border-color .25s ease;
   }
   .panel-head{
+    flex:0 0 auto;
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding: 14px 18px 12px;
-    border-bottom:1px solid var(--line);
+    padding: 10px 16px 9px;
+    border-bottom:1.5px solid var(--ink);
   }
   .panel-title{
     font-size:15px;
@@ -112,37 +166,40 @@
     width:20px;height:20px;
     border-radius:50%;
     display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
   }
 
   /* Table */
   .table-scroll{
-    max-height: 56vh;
+    flex:1 1 auto;
+    min-height:0;
     overflow-y:auto;
     -webkit-overflow-scrolling: touch;
-    padding: 10px 16px 4px;
+    padding: 8px 14px 4px;
   }
   table{
     width:100%;
     border-collapse:collapse;
     font-family: 'Iowan Old Style','Georgia', ui-serif, serif;
-    font-size:15px;
-    border: 2px solid var(--ink);
-    background:#ffffff;
+    font-size:14.5px;
+    border: 2px solid var(--table-ink);
+    background:var(--table-bg);
+    color:var(--table-ink);
   }
   thead th{
     text-align:center;
-    font-size:12px;
+    font-size:11.5px;
     letter-spacing:.04em;
     text-transform:uppercase;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    color:var(--ink);
+    color:var(--table-ink);
     font-weight:700;
-    padding: 9px 6px;
+    padding: 8px 6px;
     position:sticky;
     top:0;
-    background:#fff;
+    background:var(--table-bg);
     z-index:2;
-    border: 1px solid var(--ink);
+    border: 1px solid var(--table-ink);
     border-top:none;
   }
   thead th:first-child{ border-left:none; }
@@ -152,14 +209,14 @@
     background: var(--mid-bg);
   }
   td{
-    padding: 6px;
-    border: 1px solid var(--ink);
+    padding: 5px;
+    border: 1px solid var(--table-ink);
     text-align:center;
     vertical-align:middle;
+    color:var(--table-ink);
   }
   td:first-child{ border-left:none; }
   tr:last-child td{ border-bottom:none; }
-  td.no-border, th.no-border{ border-color: transparent; border-width:0; background:none; }
   .class-cell{
     display:flex;
     align-items:center;
@@ -168,17 +225,17 @@
     white-space:nowrap;
     font-variant-numeric: tabular-nums;
   }
-  .class-cell .ineq{ color:var(--ink); font-size:16px; font-weight:700; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  .class-cell .ineq{ color:var(--table-ink); font-size:15px; font-weight:700; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   input[type="number"], input.class-input{
-    width:52px;
-    min-height:44px;
+    width:48px;
+    min-height:40px;
     border:1.5px solid var(--line);
     border-radius:4px;
     text-align:center;
-    font-size:15px;
+    font-size:14.5px;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background:#ffffff;
-    color:var(--ink);
+    background:var(--table-bg);
+    color:var(--table-ink);
     -webkit-appearance:none;
     appearance:none;
   }
@@ -187,7 +244,7 @@
     border-color: var(--teal);
     box-shadow: 0 0 0 3px rgba(31,111,107,0.15);
   }
-  .freq-input{ width:64px; }
+  .freq-input{ width:58px; }
   td.mid-val{
     font-weight:700;
     color:var(--teal-dark);
@@ -200,76 +257,84 @@
   .row-fade.in{ opacity:1; }
 
   .del-btn{
-    min-width:32px;min-height:32px;
+    min-width:30px;min-height:30px;
     border-radius:50%;
     border:none;
     background:transparent;
     color:#b7a9a0;
-    font-size:18px;
+    font-size:17px;
     line-height:1;
     cursor:pointer;
   }
   .del-btn:active{ background:#f1e8e0; }
 
   .table-footer{
+    flex:0 0 auto;
     display:flex;
     justify-content:flex-start;
-    padding: 8px 16px 14px;
+    padding: 6px 14px 10px;
   }
   .add-row{
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size:13px;
     font-weight:600;
-    color:var(--teal-dark);
+    color:var(--ink);
     background:none;
-    border:1.5px dashed var(--line);
+    border:1.5px dashed var(--muted);
     border-radius:10px;
-    padding: 8px 14px;
-    min-height:40px;
+    padding: 7px 13px;
+    min-height:38px;
     cursor:pointer;
   }
   .add-row:active{ background:var(--mid-bg); }
 
   .controls{
+    flex:0 0 auto;
     display:flex;
     flex-wrap:wrap;
-    gap:10px;
-    padding: 14px 18px 18px;
-    border-top:1px solid var(--line);
+    gap:8px;
+    padding: 10px 14px 12px;
+    border-top:1.5px solid var(--ink);
   }
   button.action{
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight:700;
-    font-size:14px;
+    font-size:13.5px;
     letter-spacing:.01em;
     border:none;
     border-radius:11px;
-    padding: 12px 18px;
-    min-height:44px;
+    padding: 10px 14px;
+    min-height:42px;
     cursor:pointer;
     flex:1;
-    min-width:110px;
-    transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease;
+    min-width:100px;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease, background-color .2s ease;
   }
   button.action:active{ transform: scale(0.97); }
   button.action:disabled{ opacity:.4; cursor:default; }
-  .btn-populate{ background:var(--ink); color:#fff; }
-  .btn-middle{ background:var(--ink); color:#fff; }
-  .btn-axes{ background:var(--ink); color:#fff; }
+  .btn-populate{ background:var(--btn-dark-bg); color:#fff; }
+  .btn-middle{ background:var(--btn-dark-bg); color:#fff; }
+  .btn-axes{ background:var(--btn-dark-bg); color:#fff; }
   .btn-draw{ background:var(--amber); color:#fff; }
-  .btn-reset{ background:none; color:#8a9291; border:1.5px solid var(--line); flex:0 1 auto; min-width:90px; }
+  .btn-reset{ background:none; color:var(--muted); border:1.5px solid var(--muted); flex:0 1 auto; min-width:84px; }
 
   /* Right panel / axes */
   .axes-wrap{
-    padding: 6px 14px 18px;
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 8px 14px;
+    overflow:hidden;
   }
-  svg{ width:100%; height:auto; display:block; touch-action:none; }
+  svg{ max-width:100%; max-height:100%; width:auto; height:auto; display:block; touch-action:none; }
   .axis-line{ stroke:var(--ink); stroke-width:2; }
   .grid-line{ stroke:var(--grid); stroke-width:1; }
   .tick-label{
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size:16px;
-    fill:#5b6b6a;
+    fill:var(--muted);
   }
   .axis-caption{
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -290,23 +355,31 @@
     stroke-width:2;
   }
   .poly-point.zero-touch{
-    fill:#fff;
+    fill:none;
     stroke:var(--amber);
+    stroke-width:2.5;
   }
   .empty-note{
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size:13.5px;
-    color:#8a9291;
+    color:var(--muted);
     text-align:center;
-    padding: 60px 20px;
+    padding: 20px;
   }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div>
-      <h1>Frequency Polygons</h1>
+    <h1>Frequency Polygons</h1>
+    <div class="theme-toggle">
+      <span class="theme-icon" aria-hidden="true">&#9728;&#65039;</span>
+      <label class="switch">
+        <input type="checkbox" id="themeToggle" aria-label="Toggle dark mode">
+        <span class="track"></span>
+        <span class="thumb"></span>
+      </label>
+      <span class="theme-icon" aria-hidden="true">&#127769;</span>
     </div>
   </header>
 
@@ -365,6 +438,11 @@
   var resetBtn = document.getElementById('resetBtn');
   var axesWrap = document.getElementById('axesWrap');
   var emptyNote = document.getElementById('emptyNote');
+  var themeToggle = document.getElementById('themeToggle');
+
+  themeToggle.addEventListener('change', function(){
+    document.documentElement.setAttribute('data-theme', this.checked ? 'dark' : 'light');
+  });
 
   var classes = [];      // {from, to, freq}
   var hasMiddle = false;
@@ -699,7 +777,7 @@
         '<animate attributeName="r" from="0" to="'+(p.zero?4.5:6)+'" begin="'+delay+'s" dur="0.3s" fill="freeze"/>' +
         '</circle>');
       if(!p.zero){
-        svg.push('<text class="tick-label" x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-weight="700" fill="var(--teal-dark)" opacity="0">'+formatNum(p.y)+
+        svg.push('<text class="tick-label" x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-weight="700" fill="var(--graph-ink)" opacity="0">'+formatNum(p.y)+
           '<animate attributeName="opacity" from="0" to="1" begin="'+delay+'s" dur="0.3s" fill="freeze"/></text>');
       }
     });
