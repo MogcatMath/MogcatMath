@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive teaching tool: the effect of sample size on the accuracy of estimating a population's mean and median.">
+<meta name="color-scheme" content="light">
+<style>
+  html{ -webkit-text-size-adjust:100%; }
+  body{ margin:0; }
+  img{ max-width:100%; }
+  [hidden]{ display:none !important; }
+</style>
+<title>How Big a Sample?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#FBFAF6;
+    --grid:#C7DCE8;
+    --grid-soft:#E4EEF4;
+    --ink:#16324F;
+    --ink-soft:#4E6A80;
+    --rule:#A2B9C9;
+    --teal:#0E7370;
+    --teal-pale:#D3E8E6;
+    --terracotta:#BC4E35;
+    --terracotta-pale:#F2DBD4;
+    --amber:#B87A08;
+    --amber-pale:#FBEFD4;
+    --panel:rgba(255,255,252,0.93);
+    --display:"Outfit","Segoe UI",system-ui,sans-serif;
+    --ui:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    color:var(--ink);
+    font-family:var(--ui);
+    font-size:16px;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--grid-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-soft) 1px, transparent 1px),
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:26px 26px, 26px 26px, 130px 130px, 130px 130px;
+    -webkit-text-size-adjust:100%;
+  }
+
+  .sheet{
+    max-width:1280px;
+    margin:0 auto;
+    padding:0 18px 24px 30px;
+    border-left:2px solid var(--terracotta);
+    min-height:100vh;
+  }
+
+  /* ---------- control bars ---------- */
+
+  .bar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:12px 20px;
+    padding:10px 14px;
+    background:var(--panel);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    margin-top:14px;
+  }
+  .bar + .bar{ margin-top:10px; border-width:1.5px; border-color:var(--rule); }
+
+  .masthead{ display:flex; flex-direction:column; gap:2px; }
+  h1{
+    font-family:var(--display);
+    font-size:29px;
+    font-weight:600;
+    line-height:1.05;
+    margin:0;
+    letter-spacing:-0.01em;
+    text-wrap:balance;
+  }
+  .eyebrow{
+    font-size:14px;
+    font-weight:600;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+
+  .seg{ display:flex; border:2px solid var(--ink); border-radius:8px; overflow:hidden; }
+  .seg button{
+    font-family:var(--ui);
+    font-size:17px;
+    font-weight:500;
+    padding:12px 16px;
+    min-height:50px;
+    border:0;
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .seg button + button{ border-left:2px solid var(--ink); }
+  .seg button[aria-pressed="true"]{ color:#FFFFFF; font-weight:600; }
+  .seg button[data-mode="median"][aria-pressed="true"]{ background:var(--terracotta); }
+  .seg button[data-mode="mean"][aria-pressed="true"]{ background:var(--teal); }
+
+  .sizer{ display:flex; align-items:center; gap:12px; flex:1 1 340px; min-width:300px; }
+  .sizer > label{ font-size:17px; font-weight:500; white-space:nowrap; }
+  .slider-wrap{ flex:1 1 auto; display:flex; flex-direction:column; gap:2px; }
+
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:34px; background:transparent; cursor:pointer; margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:10px; border-radius:5px; background:var(--grid); border:1px solid var(--rule);
+  }
+  input[type=range]::-moz-range-track{
+    height:10px; border-radius:5px; background:var(--grid); border:1px solid var(--rule);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:34px; height:34px; margin-top:-13px; border-radius:50%;
+    background:var(--ink); border:3px solid var(--paper);
+    box-shadow:0 1px 3px rgba(22,50,79,.4);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:28px; height:28px; border-radius:50%;
+    background:var(--ink); border:3px solid var(--paper);
+  }
+  .ticks{
+    display:flex; justify-content:space-between;
+    font-size:14px; color:var(--ink-soft);
+    font-variant-numeric:tabular-nums; padding:0 2px;
+  }
+
+  .nbox{
+    font-variant-numeric:tabular-nums;
+    font-size:17px; font-weight:500; min-width:86px; text-align:right;
+    white-space:nowrap;
+  }
+  .nbox b{ font-size:27px; font-weight:600; }
+
+  button.act{
+    font-family:var(--ui); font-size:17px; font-weight:500;
+    min-height:50px; padding:12px 16px;
+    border-radius:8px; border:2px solid var(--ink);
+    background:#FFFFFC; color:var(--ink); cursor:pointer;
+  }
+  button.act:hover{ background:var(--grid-soft); }
+  button.act.primary{ background:var(--ink); color:#FFFFFC; }
+  button.act.primary:hover{ background:#20456B; }
+  button.act:disabled{ opacity:.4; cursor:default; }
+  button.act:disabled:hover{ background:#FFFFFC; }
+  #reveal[aria-pressed="true"]{ background:var(--amber); border-color:#7E5300; color:#1F1400; }
+  #record[aria-pressed="true"]{ background:var(--ink); border-color:var(--ink); color:#FFFFFC; }
+
+  :focus-visible{ outline:3px solid var(--amber); outline-offset:2px; }
+
+  /* ---------- readouts ---------- */
+
+  .readouts{ display:flex; flex-wrap:wrap; gap:8px 24px; align-items:baseline; flex:1 1 auto; }
+  .stat{ display:flex; align-items:baseline; gap:7px; }
+  .stat .k{
+    font-size:14px; font-weight:600;
+    letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .stat .v{ font-size:21px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .stat.truth .k{ color:#7E5300; }
+  .stat.truth .v{ color:var(--amber); }
+
+  .toggles{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* ---------- stage ---------- */
+
+  .plate{
+    margin-top:12px;
+    border:2px solid var(--ink);
+    border-radius:10px;
+    background:rgba(255,255,252,.74);
+    padding:6px 6px 2px;
+    overflow-x:auto;
+  }
+  svg.stage{ display:block; width:100%; min-width:680px; height:auto; max-height:calc(100vh - 250px); }
+
+  .foot{
+    display:flex; flex-wrap:wrap; gap:6px 22px;
+    margin:10px 0 0; font-size:14px;
+    color:var(--ink-soft); line-height:1.5;
+  }
+  .foot b{ font-weight:600; color:var(--ink); }
+
+  @keyframes dotIn{ from{ opacity:0; } to{ opacity:1; } }
+  .dot{ animation:dotIn .32s ease-out both; }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
+
+</head>
+<body>
+<div class="sheet">
+
+  <div class="bar">
+    <div class="masthead">
+      <span class="eyebrow">Estimating a hidden population</span>
+      <h1>How Big a Sample?</h1>
+    </div>
+
+    <div class="seg" role="group" aria-label="What to estimate">
+      <button type="button" data-mode="median" aria-pressed="true">Median &amp; box plot</button>
+      <button type="button" data-mode="mean" aria-pressed="false">Mean &amp; curve</button>
+    </div>
+
+    <div class="sizer">
+      <label for="nslider">Sample size</label>
+      <div class="slider-wrap">
+        <input id="nslider" type="range" min="0" max="1000" step="1" value="450"
+               aria-label="Sample size" aria-valuetext="30">
+        <div class="ticks"><span>3</span><span>10</span><span>30</span><span>100</span><span>500</span></div>
+      </div>
+      <div class="nbox">n = <b id="nval">30</b></div>
+    </div>
+
+    <button type="button" class="act primary" id="resample">New sample</button>
+  </div>
+
+  <div class="bar">
+    <div class="readouts">
+      <div class="stat"><span class="k" id="r-est-k">Sample median</span><span class="v" id="r-est">&mdash;</span></div>
+      <div class="stat"><span class="k" id="r-spread-k">Interquartile range</span><span class="v" id="r-spread">&mdash;</span></div>
+      <div class="stat truth" hidden id="r-true-wrap"><span class="k" id="r-true-k">True median</span><span class="v" id="r-true">&mdash;</span></div>
+      <div class="stat truth" hidden id="r-err-wrap"><span class="k">Off by</span><span class="v" id="r-err">&mdash;</span></div>
+    </div>
+    <div class="toggles">
+      <button type="button" class="act" id="newpop">New population</button>
+      <button type="button" class="act" id="reveal" aria-pressed="false">Reveal the truth</button>
+      <button type="button" class="act" id="record" aria-pressed="false">Show record</button>
+      <button type="button" class="act" id="clear" disabled>Clear record</button>
+    </div>
+  </div>
+
+  <div class="plate">
+    <svg class="stage" id="stage" viewBox="0 0 1000 470" role="img"
+         aria-label="A number line from 0 to 100 showing the sample, with the box plot or fitted curve above it."></svg>
+  </div>
+
+  <p class="foot">
+    <span><b>Move the slider</b> and the sample grows or shrinks in front of you. <b>New sample</b> takes a fresh one of the same size from the same population.</span>
+    <span><b>Quartiles</b> at the &frac14;(n+1)th and &frac34;(n+1)th values, interpolated.</span>
+    <span><b>s</b> uses the divisor n&nbsp;&minus;&nbsp;1.</span>
+    <span>A Normal population is symmetric, so its mean and median are the same number.</span>
+  </p>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var stage = document.getElementById("stage");
+
+  /* ---------- geometry: one shared 0-100 scale for every register ---------- */
+  var PAD_L = 58, PAD_R = 58, VW = 1000;
+  var SPAN = VW - PAD_L - PAD_R;
+  function X(v){ return PAD_L + (v / 100) * SPAN; }
+
+  var PLOT_TOP = 20;
+  var BAND_TOP = 254, BAND_BOT = 314;
+  var DOTS_TOP = 340, AXIS_Y = 430, DOTS_BOT = AXIS_Y - 10;
+  function plotBottom(){ return S.showRecord ? 222 : 320; }
+
+  /* ---------- state ---------- */
+  var POOL_MAX = 500, RECORD_CAP = 16;
+  var S = {
+    mode: "median",
+    n: 30,
+    pool: [],          /* {v, j} — the sample grows and shrinks along this list */
+    revealed: false,
+    showRecord: false,
+    record: [],        /* {v, n, mode} */
+    pop: null
+  };
+  function sample(){ return S.pool.slice(0, S.n); }
+
+  function accent(){ return S.mode === "median" ? "#BC4E35" : "#0E7370"; }
+  function accentPale(){ return S.mode === "median" ? "#F2DBD4" : "#D3E8E6"; }
+
+  /* ---------- maths ---------- */
+  function gauss(){
+    var u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function newPopulation(){
+    /* mean 42-68, sd 5-7: four standard deviations still stay clear of 0 and 100 */
+    return { mu: 42 + Math.random() * 26, sigma: 5 + Math.random() * 2 };
+  }
+  function newPool(){
+    var out = [], i, v;
+    for (i = 0; i < POOL_MAX; i++){
+      v = S.pop.mu + S.pop.sigma * gauss();
+      if (v < 0.6) v = 0.6;
+      if (v > 99.4) v = 99.4;
+      out.push({ v: v, j: Math.random() });
+    }
+    return out;
+  }
+  function quantile(sorted, p){
+    var n = sorted.length, pos = p * (n + 1), lo, frac;
+    if (pos <= 1) return sorted[0];
+    if (pos >= n) return sorted[n - 1];
+    lo = Math.floor(pos); frac = pos - lo;
+    return sorted[lo - 1] + frac * (sorted[lo] - sorted[lo - 1]);
+  }
+  function stats(list){
+    var vals = list.map(function(d){ return d.v; }).sort(function(a, b){ return a - b; });
+    var n = vals.length, i, sum = 0, ss = 0, m;
+    for (i = 0; i < n; i++) sum += vals[i];
+    m = sum / n;
+    for (i = 0; i < n; i++) ss += (vals[i] - m) * (vals[i] - m);
+    return {
+      sorted: vals, n: n, mean: m,
+      sd: n > 1 ? Math.sqrt(ss / (n - 1)) : 0,
+      min: vals[0], max: vals[n - 1],
+      q1: quantile(vals, 0.25),
+      med: quantile(vals, 0.5),
+      q3: quantile(vals, 0.75)
+    };
+  }
+  function estimateOf(st){ return S.mode === "median" ? st.med : st.mean; }
+  function fmt(x){ return (Math.round(x * 10) / 10).toFixed(1); }
+
+  /* ---------- svg helpers ---------- */
+  function el(name, attrs, parent){
+    var e = document.createElementNS(SVGNS, name), k;
+    for (k in attrs) if (attrs.hasOwnProperty(k)) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function text(str, attrs, parent){
+    var t = el("text", attrs, parent);
+    t.textContent = str;
+    return t;
+  }
+  var FONT = { "font-family": "'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif" };
+  function label(str, x, y, size, colour, anchor, parent, weight){
+    var t = text(str, {
+      x: x, y: y, "font-size": size, fill: colour,
+      "text-anchor": anchor || "start",
+      "font-weight": weight || 400,
+      "font-family": FONT["font-family"],
+      "font-variant-numeric": "tabular-nums"
+    }, parent);
+    return t;
+  }
+
+  /* ---------- rendering ---------- */
+  function render(){
+    while (stage.firstChild) stage.removeChild(stage.firstChild);
+    var plotBot = plotBottom();
+    var list = sample();
+
+    drawAxis();
+    if (S.mode === "median") drawBox(plotBot, list); else drawCurve(plotBot, list);
+    if (S.showRecord) drawBand();
+    drawDots(list);
+    if (S.revealed) drawTruth(list);
+  }
+
+  function drawAxis(){
+    var g = el("g", {}, stage), v;
+    el("line", { x1: X(0), y1: AXIS_Y, x2: X(100), y2: AXIS_Y,
+      stroke: "#16324F", "stroke-width": 2.5, "stroke-linecap": "round" }, g);
+    for (v = 0; v <= 100; v += 2){
+      var major = (v % 10 === 0);
+      el("line", { x1: X(v), y1: AXIS_Y, x2: X(v), y2: AXIS_Y + (major ? 12 : 6),
+        stroke: major ? "#16324F" : "#A2B9C9", "stroke-width": major ? 2 : 1.2 }, g);
+      if (major) label(String(v), X(v), AXIS_Y + 34, 18, "#16324F", "middle", g, 500);
+    }
+    label("THE VALUES IN THE SAMPLE", X(0), DOTS_TOP - 10, 14, "#4E6A80", "start", g, 600)
+      .setAttribute("letter-spacing", "0.8");
+  }
+
+  function drawDots(list){
+    var g = el("g", {}, stage), i, d, n = list.length;
+    var h = DOTS_BOT - DOTS_TOP;
+    var r = n <= 12 ? 10 : n <= 30 ? 8.5 : n <= 80 ? 6.5 : n <= 200 ? 5 : n <= 350 ? 4 : 3.4;
+    var alpha = n <= 12 ? 0.8 : n <= 80 ? 0.62 : n <= 200 ? 0.5 : 0.42;
+    for (i = 0; i < n; i++){
+      d = list[i];
+      var c = el("circle", {
+        cx: X(d.v).toFixed(2),
+        cy: (DOTS_TOP + r + d.j * (h - 2 * r)).toFixed(2),
+        r: r, fill: accent(), "fill-opacity": alpha,
+        stroke: accent(), "stroke-opacity": Math.min(1, alpha + 0.25), "stroke-width": 1
+      }, g);
+      c.setAttribute("class", "dot");
+      c.style.animationDelay = ((i / n) * 260).toFixed(0) + "ms";
+    }
+  }
+
+  function drawBox(plotBot, list){
+    var st = stats(list);
+    var g = el("g", {}, stage);
+    var cy = Math.min((PLOT_TOP + plotBot) / 2 + 30, plotBot - 110);
+    var bh = 100, top = cy - bh / 2, bot = cy + bh / 2;
+
+    el("line", { x1: X(st.min), y1: cy, x2: X(st.q1), y2: cy, stroke: "#16324F", "stroke-width": 2 }, g);
+    el("line", { x1: X(st.q3), y1: cy, x2: X(st.max), y2: cy, stroke: "#16324F", "stroke-width": 2 }, g);
+    el("line", { x1: X(st.min), y1: cy - 26, x2: X(st.min), y2: cy + 26,
+      stroke: "#16324F", "stroke-width": 2.5, "stroke-linecap": "round" }, g);
+    el("line", { x1: X(st.max), y1: cy - 26, x2: X(st.max), y2: cy + 26,
+      stroke: "#16324F", "stroke-width": 2.5, "stroke-linecap": "round" }, g);
+
+    el("rect", { x: X(st.q1), y: top, width: Math.max(1, X(st.q3) - X(st.q1)), height: bh,
+      fill: accentPale(), stroke: "#16324F", "stroke-width": 2.5, rx: 2 }, g);
+
+    el("line", { x1: X(st.med), y1: top, x2: X(st.med), y2: bot,
+      stroke: accent(), "stroke-width": 5, "stroke-linecap": "round" }, g);
+    el("line", { x1: X(st.med), y1: bot, x2: X(st.med), y2: DOTS_TOP - 18,
+      stroke: accent(), "stroke-width": 2, "stroke-dasharray": "5 6", "stroke-opacity": .8 }, g);
+
+    pin("median " + fmt(st.med), X(st.med), top - 12, accent(), g);
+    edge("Q₁ " + fmt(st.q1), X(st.q1) - 8, bot + 26, "end", g);
+    edge("Q₃ " + fmt(st.q3), X(st.q3) + 8, bot + 26, "start", g);
+    edge("lowest " + fmt(st.min), X(st.min) - 12, cy + 6, "end", g);
+    edge("highest " + fmt(st.max), X(st.max) + 12, cy + 6, "start", g);
+  }
+
+  function drawCurve(plotBot, list){
+    var st = stats(list);
+    var base = plotBot - 4, topY = PLOT_TOP + 40;
+    var g = el("g", {}, stage);
+    var s = Math.max(st.sd, 0.9), m = st.mean;
+
+    var d = "", i, v, z, y;
+    for (i = 0; i <= 300; i++){
+      v = (i / 300) * 100;
+      z = (v - m) / s;
+      y = base - (base - topY) * Math.exp(-0.5 * z * z);
+      d += (i ? "L" : "M") + X(v).toFixed(2) + " " + y.toFixed(2);
+    }
+    el("path", { d: d + "L" + X(100).toFixed(2) + " " + base + "L" + X(0).toFixed(2) + " " + base + "Z",
+      fill: accent(), "fill-opacity": .13 }, g);
+    el("path", { d: d, fill: "none", stroke: accent(), "stroke-width": 3.5,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }, g);
+    el("line", { x1: X(0), y1: base, x2: X(100), y2: base, stroke: "#A2B9C9", "stroke-width": 1.5 }, g);
+
+    [-1, 1].forEach(function(k){
+      var v2 = m + k * s;
+      if (v2 < 0 || v2 > 100) return;
+      var y2 = base - (base - topY) * Math.exp(-0.5);
+      el("line", { x1: X(v2), y1: y2, x2: X(v2), y2: base,
+        stroke: accent(), "stroke-width": 1.5, "stroke-dasharray": "3 5", "stroke-opacity": .7 }, g);
+    });
+    label("← s →", X(Math.min(99, m + s / 2)), base - 14, 15, accent(), "middle", g, 500);
+
+    el("line", { x1: X(m), y1: topY - 8, x2: X(m), y2: base,
+      stroke: accent(), "stroke-width": 4, "stroke-linecap": "round" }, g);
+    el("line", { x1: X(m), y1: base, x2: X(m), y2: DOTS_TOP - 18,
+      stroke: accent(), "stroke-width": 2, "stroke-dasharray": "5 6", "stroke-opacity": .8 }, g);
+
+    pin("mean " + fmt(m), X(m), topY - 14, accent(), g);
+    label("curve fitted from this sample: mean " + fmt(m) + ", s = " + fmt(st.sd),
+      X(100), PLOT_TOP + 6, 15, "#4E6A80", "end", g, 400);
+  }
+
+  /* a value label with a paper-coloured backing plate, kept inside the drawing */
+  function pin(str, x, y, colour, g){
+    var size = 22, w = str.length * 11 + 22, h = 28;
+    var cx = Math.max(PAD_L - 10 + w / 2, Math.min(VW - PAD_R + 10 - w / 2, x));
+    el("rect", { x: cx - w / 2, y: y - 22, width: w, height: h, rx: 5,
+      fill: "#FBFAF6", "fill-opacity": .88 }, g);
+    label(str, cx, y, size, colour, "middle", g, 600);
+  }
+  function edge(str, x, y, anchor, g){
+    var w = str.length * 8.6;
+    if (anchor === "end" && x - w < PAD_L - 10) { x = x + w + 24; anchor = "start"; }
+    if (anchor === "start" && x + w > VW - PAD_R + 10) { x = x - w - 24; anchor = "end"; }
+    return label(str, x, y, 16, "#4E6A80", anchor, g, 500);
+  }
+
+  function drawBand(){
+    var g = el("g", {}, stage);
+    var mine = S.record.filter(function(r){ return r.mode === S.mode; });
+    el("rect", { x: PAD_L - 8, y: BAND_TOP, width: SPAN + 16, height: BAND_BOT - BAND_TOP,
+      fill: "#FFFFFC", "fill-opacity": .82, stroke: "#A2B9C9", "stroke-width": 1.5,
+      "stroke-dasharray": "4 4", rx: 6 }, g);
+    label(S.mode === "median" ? "EVERY MEDIAN SO FAR" : "EVERY MEAN SO FAR",
+      PAD_L - 8, BAND_TOP - 10, 14, "#4E6A80", "start", g, 600)
+      .setAttribute("letter-spacing", "0.8");
+
+    if (!mine.length){
+      label("let go of the slider, or press New sample, and the estimate is logged here",
+        VW / 2, BAND_TOP + 36, 16, "#8299AB", "middle", g, 400);
+      return;
+    }
+
+    var lo = Infinity, hi = -Infinity, lastLabelX = -999;
+    mine.forEach(function(r, i){
+      var age = mine.length - 1 - i;
+      var op = Math.max(0.24, 1 - age * 0.08);
+      if (r.v < lo) lo = r.v;
+      if (r.v > hi) hi = r.v;
+      el("line", { x1: X(r.v), y1: BAND_TOP + 30, x2: X(r.v), y2: BAND_BOT - 6,
+        stroke: accent(), "stroke-width": 3.5, "stroke-opacity": op, "stroke-linecap": "round" }, g);
+      if (Math.abs(X(r.v) - lastLabelX) > 42 || i === mine.length - 1){
+        var t = label("n=" + r.n, X(r.v), BAND_TOP + 22, 14, accent(), "middle", g, 500);
+        t.setAttribute("fill-opacity", Math.max(0.4, op));
+        lastLabelX = X(r.v);
+      }
+    });
+
+    label(mine.length === 1 ? "1 estimate so far"
+        : mine.length + " estimates, spread over " + fmt(hi - lo),
+      X(100) + 8, BAND_TOP - 10, 15, "#4E6A80", "end", g, 600);
+  }
+
+  function drawTruth(list){
+    var g = el("g", {}, stage);
+    var mu = S.pop.mu;
+    el("line", { x1: X(mu), y1: PLOT_TOP - 2, x2: X(mu), y2: AXIS_Y,
+      stroke: "#B87A08", "stroke-width": 3, "stroke-dasharray": "10 7", "stroke-linecap": "round" }, g);
+
+    /* the plate sits beside the number line, on the far side from the sample's own estimate */
+    var est = estimateOf(stats(list));
+    var str = (S.mode === "median" ? "true median " : "true mean ") + fmt(mu);
+    var w = str.length * 10.5 + 22, h = 30, ty = AXIS_Y - 38;
+    var bx = (mu <= est) ? X(mu) - 12 - w : X(mu) + 12;
+    if (bx < PAD_L - 12) bx = X(mu) + 12;
+    if (bx + w > VW - PAD_R + 12) bx = X(mu) - 12 - w;
+    bx = Math.max(4, Math.min(VW - w - 4, bx));
+
+    el("rect", { x: bx, y: ty, width: w, height: h, rx: 5,
+      fill: "#FBEFD4", stroke: "#B87A08", "stroke-width": 1.5 }, g);
+    label(str, bx + w / 2, ty + 21, 20, "#7E5300", "middle", g, 600);
+  }
+
+  /* ---------- readouts ---------- */
+  function updateReadouts(){
+    var med = S.mode === "median";
+    document.getElementById("r-est-k").textContent = med ? "Sample median" : "Sample mean";
+    document.getElementById("r-spread-k").textContent = med ? "Interquartile range" : "Sample s";
+    document.getElementById("r-true-k").textContent = med ? "True median" : "True mean";
+
+    var st = stats(sample());
+    var e = estimateOf(st);
+    var est = document.getElementById("r-est");
+    est.textContent = fmt(e);
+    est.style.color = accent();
+    document.getElementById("r-spread").textContent = med ? fmt(st.q3 - st.q1) : fmt(st.sd);
+
+    var tw = document.getElementById("r-true-wrap"), ew = document.getElementById("r-err-wrap");
+    tw.hidden = !S.revealed; ew.hidden = !S.revealed;
+    if (S.revealed){
+      document.getElementById("r-true").textContent = fmt(S.pop.mu);
+      document.getElementById("r-err").textContent = fmt(Math.abs(e - S.pop.mu));
+    }
+  }
+  function paint(){ render(); updateReadouts(); }
+
+  /* ---------- the record ---------- */
+  function logEstimate(){
+    S.record.push({ v: estimateOf(stats(sample())), n: S.n, mode: S.mode });
+    trimRecord();
+    document.getElementById("clear").disabled = false;
+  }
+  function trimRecord(){
+    ["median", "mean"].forEach(function(m){
+      var idx = [], i;
+      for (i = 0; i < S.record.length; i++) if (S.record[i].mode === m) idx.push(i);
+      while (idx.length > RECORD_CAP){
+        S.record.splice(idx.shift(), 1);
+        idx = idx.map(function(k){ return k - 1; });
+      }
+    });
+  }
+
+  /* ---------- controls ---------- */
+  function nFromT(t){
+    return Math.max(3, Math.min(500, Math.round(3 * Math.pow(500 / 3, t / 1000))));
+  }
+  var slider = document.getElementById("nslider");
+  var nval = document.getElementById("nval");
+
+  slider.addEventListener("input", function(){
+    var n = nFromT(+slider.value);
+    if (n === S.n) return;
+    S.n = n;
+    nval.textContent = n;
+    slider.setAttribute("aria-valuetext", String(n));
+    paint();
+  });
+  /* letting go of the slider logs where that sample size landed */
+  slider.addEventListener("change", function(){ logEstimate(); paint(); });
+
+  document.getElementById("resample").addEventListener("click", function(){
+    S.pool = newPool();
+    logEstimate();
+    paint();
+  });
+
+  document.querySelectorAll(".seg button").forEach(function(b){
+    b.addEventListener("click", function(){
+      if (S.mode === b.dataset.mode) return;
+      S.mode = b.dataset.mode;
+      document.querySelectorAll(".seg button").forEach(function(o){
+        o.setAttribute("aria-pressed", String(o.dataset.mode === S.mode));
+      });
+      logEstimate();
+      paint();
+    });
+  });
+
+  document.getElementById("newpop").addEventListener("click", function(){
+    S.pop = newPopulation();
+    S.pool = newPool();
+    S.revealed = false;
+    document.getElementById("reveal").setAttribute("aria-pressed", "false");
+    S.record = [];
+    document.getElementById("clear").disabled = true;
+    paint();
+  });
+
+  document.getElementById("reveal").addEventListener("click", function(){
+    S.revealed = !S.revealed;
+    this.setAttribute("aria-pressed", String(S.revealed));
+    paint();
+  });
+
+  document.getElementById("record").addEventListener("click", function(){
+    S.showRecord = !S.showRecord;
+    this.setAttribute("aria-pressed", String(S.showRecord));
+    this.textContent = S.showRecord ? "Hide record" : "Show record";
+    render();
+  });
+
+  document.getElementById("clear").addEventListener("click", function(){
+    S.record = [];
+    this.disabled = true;
+    render();
+  });
+
+  /* ---------- open in a working state ---------- */
+  S.pop = newPopulation();
+  S.pool = newPool();
+  S.n = nFromT(+slider.value);
+  nval.textContent = S.n;
+  paint();
+})();
+</script>
+</body>
+</html>
