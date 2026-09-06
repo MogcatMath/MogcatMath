@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Frequency Polygons and Cumulative Frequency Diagrams</title>
+<style>
+  :root{
+    /* theme-flipping tokens */
+    --paper:#ffffff;
+    --ink:#1c2a2e;
+    --muted:#5b6b6a;
+    --grid-square: rgba(90,98,96,0.22);
+    --grid:#e4e9e8;
+    --teal:#1f6f6b;
+    --graph-ink:#154d4a;
+    --amber:#d98a3d;
+    --btn-dark-bg:#1c1c1c;
+
+    /* constant tokens — the "page" itself stays true white/dark-ink paper regardless of theme */
+    --table-bg:#ffffff;
+    --table-ink:#1c2a2e;
+    --teal-dark:#154d4a;
+    --mid-bg:#eef6f4;
+    --line:#d8d0c0;
+  }
+  html[data-theme="dark"]{
+    --paper:#202327;
+    --ink:#ece9e3;
+    --muted:#a7aeac;
+    --grid-square: rgba(255,255,255,0.10);
+    --grid: rgba(255,255,255,0.16);
+    --teal:#4fb2ab;
+    --graph-ink:#8fe0da;
+    --amber:#e6a765;
+    --btn-dark-bg:#0d0e0f;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%; margin:0;}
+  body{
+    height:100dvh;
+    overflow:hidden;
+    overscroll-behavior:none;
+    -webkit-text-size-adjust:100%;
+    background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(0deg, var(--grid-square) 0px, var(--grid-square) 1px, transparent 1px, transparent 22px),
+      repeating-linear-gradient(90deg, var(--grid-square) 0px, var(--grid-square) 1px, transparent 1px, transparent 22px);
+    color:var(--ink);
+    font-family: 'Iowan Old Style','Georgia', ui-serif, serif;
+    -webkit-overflow-scrolling: touch;
+    transition: background-color .25s ease, color .25s ease;
+  }
+  .app{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  header{
+    flex:0 0 auto;
+    padding: 12px 22px 6px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  h1{
+    margin:0;
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight:600;
+    letter-spacing:-0.01em;
+    color:var(--ink);
+    min-width:0;
+    flex:1 1 auto;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* theme toggle */
+  .theme-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .theme-icon{ font-size:15px; line-height:1; opacity:.8; }
+  .switch{
+    position:relative;
+    display:inline-block;
+    width:46px;
+    height:26px;
+    flex:0 0 auto;
+  }
+  .switch input{
+    opacity:0;
+    width:100%;
+    height:100%;
+    margin:0;
+    position:absolute;
+    cursor:pointer;
+    z-index:1;
+  }
+  .switch .track{
+    position:absolute;
+    inset:0;
+    background:var(--muted);
+    opacity:.35;
+    border-radius:999px;
+    transition: background .2s ease, opacity .2s ease;
+  }
+  .switch .thumb{
+    position:absolute;
+    top:3px; left:3px;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--ink);
+    transition: transform .2s ease, background .2s ease;
+  }
+  .switch input:checked ~ .thumb{ transform: translateX(20px); }
+  .switch input:checked ~ .track{ opacity:.55; }
+
+  main{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    grid-template-columns: minmax(300px, 420px) 1fr;
+    gap: 16px;
+    padding: 6px 22px 14px;
+  }
+  @media (max-width: 880px){
+    body{ height:auto; overflow:auto; }
+    main{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    background:transparent;
+    border:2px solid var(--ink);
+    border-radius:14px;
+    overflow:hidden;
+    transition: border-color .25s ease;
+  }
+  .panel-head{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 10px 16px 9px;
+    border-bottom:1.5px solid var(--ink);
+  }
+  .panel-title{
+    font-size:15px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .num{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:11px;
+    font-weight:800;
+    color:#fff;
+    background:var(--teal);
+    width:20px;height:20px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+
+  .mode-switch{
+    display:flex;
+    flex:1 1 auto;
+    min-width:0;
+    background:var(--mid-bg);
+    border-radius:10px;
+    padding:3px;
+    gap:2px;
+  }
+  .mode-btn{
+    flex:1;
+    min-width:0;
+    min-height:38px;
+    border:none;
+    background:none;
+    padding:8px 8px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+    letter-spacing:.01em;
+    color:var(--teal-dark);
+    border-radius:8px;
+    cursor:pointer;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .mode-btn.active{
+    background:var(--btn-dark-bg);
+    color:#fff;
+  }
+
+  .view-pane{
+    width:100%;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+
+  /* Table */
+  .table-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 14px 4px;
+  }
+  .cum-derived{
+    margin-top:12px;
+    padding-top:10px;
+    border-top:1.5px dashed var(--muted);
+  }
+  .cum-derived-title{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  #cumTable td.mid-val{ color:var(--teal-dark); }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family: 'Iowan Old Style','Georgia', ui-serif, serif;
+    font-size:14.5px;
+    border: 2px solid var(--table-ink);
+    background:var(--table-bg);
+    color:var(--table-ink);
+  }
+  thead th{
+    text-align:center;
+    font-size:11.5px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    color:var(--table-ink);
+    font-weight:700;
+    padding: 8px 6px;
+    position:sticky;
+    top:0;
+    background:var(--table-bg);
+    z-index:2;
+    border: 1px solid var(--table-ink);
+    border-top:none;
+  }
+  thead th:first-child{ border-left:none; }
+  thead th.del-col{ border:none; background:none; }
+  td.del-col{ border:none; }
+  th.mid-col, td.mid-col{
+    background: var(--mid-bg);
+  }
+  td{
+    padding: 5px;
+    border: 1px solid var(--table-ink);
+    text-align:center;
+    vertical-align:middle;
+    color:var(--table-ink);
+  }
+  td:first-child{ border-left:none; }
+  tr:last-child td{ border-bottom:none; }
+  .class-cell{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    white-space:nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .class-cell .ineq{ color:var(--table-ink); font-size:15px; font-weight:700; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  input[type="number"], input.class-input{
+    width:52px;
+    min-height:42px;
+    border:1.5px solid var(--line);
+    border-radius:4px;
+    text-align:center;
+    font-size:16px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background:var(--table-bg);
+    color:var(--table-ink);
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  input[type="number"]:focus, input.class-input:focus{
+    outline:none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(31,111,107,0.15);
+  }
+  .freq-input{ width:62px; }
+  td.mid-val{
+    font-weight:700;
+    color:var(--teal-dark);
+    font-variant-numeric: tabular-nums;
+  }
+  .row-fade{
+    opacity:0;
+    transition: opacity .5s ease;
+  }
+  .row-fade.in{ opacity:1; }
+
+  .del-btn{
+    min-width:34px;min-height:34px;
+    border-radius:50%;
+    border:none;
+    background:transparent;
+    color:#b7a9a0;
+    font-size:18px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .del-btn:active{ background:#f1e8e0; }
+
+  .table-footer{
+    flex:0 0 auto;
+    display:flex;
+    justify-content:flex-start;
+    padding: 6px 14px 10px;
+  }
+  .add-row{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    background:none;
+    border:1.5px dashed var(--muted);
+    border-radius:10px;
+    padding: 7px 13px;
+    min-height:38px;
+    cursor:pointer;
+  }
+  .add-row:active{ background:var(--mid-bg); }
+
+  .controls{
+    flex:0 0 auto;
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    padding: 8px 14px 10px;
+    border-top:1.5px solid var(--ink);
+  }
+  button.action{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight:700;
+    font-size:13.5px;
+    letter-spacing:.01em;
+    border:none;
+    border-radius:11px;
+    padding: 9px 14px;
+    min-height:44px;
+    cursor:pointer;
+    flex:1;
+    min-width:100px;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease, background-color .2s ease;
+  }
+  button.action:active{ transform: scale(0.97); }
+  button.action:disabled{ opacity:.4; cursor:default; }
+  .btn-populate{ background:var(--btn-dark-bg); color:#fff; }
+  .btn-middle{ background:var(--btn-dark-bg); color:#fff; }
+  .btn-axes{ background:var(--btn-dark-bg); color:#fff; }
+  .btn-draw{ background:var(--amber); color:#fff; }
+  .btn-reset{ background:none; color:var(--muted); border:1.5px solid var(--muted); flex:0 1 auto; min-width:84px; }
+
+  /* Right panel / axes */
+  .axes-wrap{
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 8px 14px;
+    overflow:hidden;
+  }
+  svg{ max-width:100%; max-height:100%; width:auto; height:auto; display:block; touch-action:none; }
+  .axis-line{ stroke:var(--ink); stroke-width:2; }
+  .grid-line{ stroke:var(--grid); stroke-width:1; }
+  .tick-label{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:16px;
+    fill:var(--muted);
+  }
+  .axis-caption{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:16px;
+    font-weight:700;
+    fill:var(--ink);
+  }
+  .poly-line{
+    fill:none;
+    stroke:var(--teal);
+    stroke-width:3;
+    stroke-linejoin:round;
+    stroke-linecap:round;
+  }
+  .poly-point{
+    fill:var(--amber);
+    stroke:#fff;
+    stroke-width:2;
+  }
+  .poly-point.zero-touch{
+    fill:none;
+    stroke:var(--amber);
+    stroke-width:2.5;
+  }
+  .empty-note{
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:13.5px;
+    color:var(--muted);
+    text-align:center;
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Frequency Polygons and Cumulative Frequency Diagrams</h1>
+    <div class="theme-toggle">
+      <span class="theme-icon" aria-hidden="true">&#9728;&#65039;</span>
+      <label class="switch">
+        <input type="checkbox" id="themeToggle" aria-label="Toggle dark mode">
+        <span class="track"></span>
+        <span class="thumb"></span>
+      </label>
+      <span class="theme-icon" aria-hidden="true">&#127769;</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT: table -->
+    <section class="panel" id="tablePanel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="num">1</span><span id="panel1TitleText">Frequency table</span></div>
+      </div>
+      <div class="table-scroll">
+        <table id="freqTable">
+          <thead id="tableHead">
+            <tr id="headRow">
+              <th>Class</th>
+              <th class="mid-col" id="midHeader" style="display:none;">Middle</th>
+              <th>Frequency</th>
+              <th class="del-col" style="width:32px;"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+
+        <div class="cum-derived" id="cumDerivedSection" style="display:none;">
+          <div class="cum-derived-title">Cumulative frequency table</div>
+          <table id="cumTable">
+            <thead><tr><th>Class</th><th>Cumulative Frequency</th></tr></thead>
+            <tbody id="cumTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="table-footer" id="tableFooter">
+        <button class="add-row" id="addRowBtn">+ Add class</button>
+      </div>
+      <div class="controls">
+        <button class="action btn-populate" id="populateBtn">Populate</button>
+        <button class="action btn-middle" id="middleBtn">Middle</button>
+        <button class="action btn-axes" id="drawAxesBtn">Draw axes</button>
+        <button class="action btn-draw" id="drawPolygonBtn" disabled>Draw polygon</button>
+        <button class="action btn-reset" id="resetBtn">Reset</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: axes -->
+    <section class="panel">
+      <div class="panel-head">
+        <span class="num">2</span>
+        <div class="mode-switch" role="tablist">
+          <button class="mode-btn active" id="modePolygonBtn" type="button" role="tab" aria-selected="true">Frequency polygon</button>
+          <button class="mode-btn" id="modeCumulativeBtn" type="button" role="tab" aria-selected="false">Cumulative frequency</button>
+        </div>
+      </div>
+      <div class="axes-wrap" id="axesWrap">
+        <div class="view-pane" id="polygonView">
+          <div class="empty-note" id="emptyNote">Fill in the table, find the middles, then tap <strong>Draw axes</strong>.</div>
+        </div>
+        <div class="view-pane" id="cumulativeView" style="display:none;">
+          <div class="empty-note">Fill in the table, then tap <strong>Draw axes</strong> to plot the cumulative frequency curve.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  var tbody = document.getElementById('tbody');
+  var cumTbody = document.getElementById('cumTbody');
+  var cumDerivedSection = document.getElementById('cumDerivedSection');
+  var addRowBtn = document.getElementById('addRowBtn');
+  var populateBtn = document.getElementById('populateBtn');
+  var middleBtn = document.getElementById('middleBtn');
+  var drawAxesBtn = document.getElementById('drawAxesBtn');
+  var drawPolygonBtn = document.getElementById('drawPolygonBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var axesWrap = document.getElementById('axesWrap');
+  var themeToggle = document.getElementById('themeToggle');
+  var polygonView = document.getElementById('polygonView');
+  var cumulativeView = document.getElementById('cumulativeView');
+  var modePolygonBtn = document.getElementById('modePolygonBtn');
+  var modeCumulativeBtn = document.getElementById('modeCumulativeBtn');
+  var mode = 'polygon'; // 'polygon' | 'cumulative'
+
+  function refreshDrawButtons(){
+    var axisState = (mode === 'polygon') ? axisStatePoly : axisStateCum;
+    drawAxesBtn.disabled = false;
+    drawPolygonBtn.disabled = !axisState;
+  }
+
+  // Recomputes the derived cumulative table, and — if the cumulative graph has
+  // already been drawn once — silently redraws it too, so editing the original
+  // frequency table keeps everything downstream in sync automatically.
+  // animated=true only for the deliberate first Draw axes/Draw curve press.
+  function refreshCumulativeDerived(animated){
+    if(mode !== 'cumulative') return;
+    renderCumulativeTable();
+    if(axisStateCum){
+      drawAxesCumulative();
+      plotCumulativeCurve(!!animated);
+    }
+  }
+
+  function setMode(m){
+    mode = m;
+    var isPolygon = (m === 'polygon');
+    polygonView.style.display = isPolygon ? 'flex' : 'none';
+    cumulativeView.style.display = isPolygon ? 'none' : 'flex';
+    cumDerivedSection.style.display = isPolygon ? 'none' : 'block';
+    modePolygonBtn.classList.toggle('active', isPolygon);
+    modeCumulativeBtn.classList.toggle('active', !isPolygon);
+    modePolygonBtn.setAttribute('aria-selected', isPolygon ? 'true' : 'false');
+    modeCumulativeBtn.setAttribute('aria-selected', isPolygon ? 'false' : 'true');
+
+    drawPolygonBtn.textContent = isPolygon ? 'Draw polygon' : 'Draw curve';
+
+    if(!isPolygon) refreshCumulativeDerived(false);
+
+    refreshDrawButtons();
+  }
+
+  modePolygonBtn.addEventListener('click', function(){ setMode('polygon'); });
+  modeCumulativeBtn.addEventListener('click', function(){ setMode('cumulative'); });
+
+  themeToggle.addEventListener('change', function(){
+    document.documentElement.setAttribute('data-theme', this.checked ? 'dark' : 'light');
+  });
+
+  var classes = [];      // {from, to, freq}
+  var hasMiddle = false;
+  var axisStatePoly = null;  // geometry captured when the polygon axes are drawn
+  var axisStateCum = null;   // geometry captured when the cumulative-frequency axes are drawn
+
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+  function formatNum(n){
+    n = Math.round(n*100)/100;
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+
+  function makeEmptyRow(){ return { from:'', to:'', freq:'', fromAuto:true }; }
+
+  function seedInitialRows(){
+    classes = [makeEmptyRow(), makeEmptyRow(), makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
+  }
+
+  function syncFromInputs(){
+    var rows = tbody.querySelectorAll('tr');
+    rows.forEach(function(row, i){
+      var from = row.querySelector('.from-input');
+      var to = row.querySelector('.to-input');
+      var freq = row.querySelector('.freq-input');
+      classes[i].from = from.value === '' ? '' : parseFloat(from.value);
+      classes[i].to = to.value === '' ? '' : parseFloat(to.value);
+      classes[i].freq = freq.value === '' ? '' : parseFloat(freq.value);
+    });
+    refreshCumulativeDerived(false);
+  }
+
+  function renderTable(fadeMiddle){
+    tbody.innerHTML = '';
+    var midHeader = document.getElementById('midHeader');
+    if(midHeader) midHeader.style.display = hasMiddle ? '' : 'none';
+
+    classes.forEach(function(c, i){
+      var tr = document.createElement('tr');
+
+      var classTd = document.createElement('td');
+      var wrap = document.createElement('div');
+      wrap.className = 'class-cell';
+      wrap.innerHTML =
+        '<input type="number" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="class-input from-input" value="'+(c.from===''?'':c.from)+'">' +
+        '<span class="ineq">&le; x &lt;</span>' +
+        '<input type="number" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" class="class-input to-input" value="'+(c.to===''?'':c.to)+'">';
+      classTd.appendChild(wrap);
+      tr.appendChild(classTd);
+
+      if(hasMiddle){
+        var midTd = document.createElement('td');
+        midTd.className = 'mid-val mid-col row-fade';
+        var mid = (c.from!=='' && c.to!=='') ? formatNum((c.from + c.to)/2) : '\u2013';
+        midTd.textContent = mid;
+        tr.appendChild(midTd);
+      }
+
+      var freqTd = document.createElement('td');
+      var freqInput = document.createElement('input');
+      freqInput.type = 'number';
+      freqInput.inputMode = 'decimal';
+      freqInput.autocomplete = 'off';
+      freqInput.setAttribute('autocorrect','off');
+      freqInput.setAttribute('spellcheck','false');
+      freqInput.className = 'freq-input';
+      freqInput.value = c.freq === '' ? '' : c.freq;
+      freqTd.appendChild(freqInput);
+      tr.appendChild(freqTd);
+
+      var delTd = document.createElement('td');
+      delTd.className = 'del-col';
+      var delBtn = document.createElement('button');
+      delBtn.className = 'del-btn';
+      delBtn.textContent = '\u00d7';
+      delBtn.setAttribute('aria-label','Remove class');
+      delBtn.addEventListener('click', function(){
+        syncFromInputs();
+        classes.splice(i,1);
+        renderTable(false);
+        refreshCumulativeDerived(false);
+      });
+      delTd.appendChild(delBtn);
+      tr.appendChild(delTd);
+
+      tbody.appendChild(tr);
+    });
+
+    // wire up listeners to keep state in sync — 'input' for live updates as the
+    // person types or dials the spinner, 'change' as a safety net on blur
+    tbody.querySelectorAll('input').forEach(function(inp){
+      inp.addEventListener('change', syncFromInputs);
+      inp.addEventListener('input', syncFromInputs);
+    });
+
+    // auto-fill next row's lower bound when this row's upper bound is set —
+    // uses 'input' so it stays live while dialing with the spinner arrows,
+    // and stops overwriting once the person edits the next row's lower bound by hand
+    var rowEls = tbody.querySelectorAll('tr');
+
+    function setToMin(rowEl, i){
+      var toInput = rowEl.querySelector('.to-input');
+      if(!toInput) return;
+      var fromVal = classes[i].from;
+      if(fromVal !== '' && fromVal !== null && !isNaN(fromVal)){
+        toInput.min = fromVal + 1;
+      } else {
+        toInput.removeAttribute('min');
+      }
+    }
+
+    rowEls.forEach(function(rowEl, i){
+      var fromInput = rowEl.querySelector('.from-input');
+      var toInput = rowEl.querySelector('.to-input');
+      if(!fromInput || !toInput) return;
+
+      setToMin(rowEl, i);
+
+      fromInput.addEventListener('input', function(){
+        classes[i].fromAuto = false;
+        classes[i].from = fromInput.value === '' ? '' : parseFloat(fromInput.value);
+        setToMin(rowEl, i);
+      });
+
+      toInput.addEventListener('input', function(){
+        syncFromInputs();
+        if(i+1 < classes.length && toInput.value !== '' && classes[i+1].fromAuto !== false){
+          classes[i+1].from = parseFloat(toInput.value);
+          classes[i+1].fromAuto = true;
+          var nextFromInput = rowEls[i+1].querySelector('.from-input');
+          if(nextFromInput) nextFromInput.value = classes[i+1].from;
+          setToMin(rowEls[i+1], i+1);
+          if(hasMiddle){
+            var nextMidCell = rowEls[i+1].querySelector('.mid-val');
+            if(nextMidCell && classes[i+1].to !== ''){
+              nextMidCell.textContent = formatNum((classes[i+1].from + classes[i+1].to)/2);
+            }
+          }
+        }
+      });
+    });
+
+    if(fadeMiddle){
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          tbody.querySelectorAll('.row-fade').forEach(function(el){ el.classList.add('in'); });
+        });
+      });
+    } else if(hasMiddle){
+      tbody.querySelectorAll('.row-fade').forEach(function(el){ el.classList.add('in'); });
+    }
+  }
+
+  resetBtn.addEventListener('click', function(){
+    hasMiddle = false;
+    seedInitialRows();
+    renderTable(false);
+    resetAxes();
+    refreshCumulativeDerived(false);
+  });
+
+  addRowBtn.addEventListener('click', function(){
+    syncFromInputs();
+    var newRow = makeEmptyRow();
+    var last = classes[classes.length-1];
+    if(last && last.to !== '' && last.to !== null){
+      newRow.from = last.to;
+      newRow.fromAuto = true;
+    }
+    classes.push(newRow);
+    renderTable(false);
+    refreshCumulativeDerived(false);
+  });
+
+  populateBtn.addEventListener('click', function(){
+    syncFromInputs();
+    var numClasses = classes.length >= 2 ? classes.length : randInt(4,7);
+    var width = [2,5,10][randInt(0,2)];
+    var start = width * randInt(0,3);
+    classes = [];
+    for(var i=0;i<numClasses;i++){
+      var from = start + i*width;
+      var to = from + width;
+      var freq = randInt(1,28);
+      classes.push({from:from, to:to, freq:freq});
+    }
+    hasMiddle = false;
+    renderTable(false);
+    resetAxes();
+    refreshCumulativeDerived(false);
+  });
+
+  middleBtn.addEventListener('click', function(){
+    syncFromInputs();
+    if(classes.length < 2){
+      alert('Add at least two classes first.');
+      return;
+    }
+    var ok = classes.every(function(c){ return c.from !== '' && c.to !== '' && c.to > c.from; });
+    if(!ok){
+      alert('Fill in every "from" and "to" value first (to must be greater than from).');
+      return;
+    }
+    hasMiddle = true;
+    renderTable(true);
+  });
+
+  drawAxesBtn.addEventListener('click', function(){
+    if(mode === 'polygon') syncFromInputs();
+    if(classes.length < 2){
+      alert('Add at least two classes first.');
+      return;
+    }
+    var ok = classes.every(function(c){
+      return c.from !== '' && c.to !== '' && c.to > c.from && c.freq !== '' && c.freq >= 0;
+    });
+    if(!ok){
+      alert('Fill in every class boundary and frequency first.');
+      return;
+    }
+    if(mode === 'polygon') drawAxesPolygon(); else drawAxesCumulative();
+    refreshDrawButtons();
+  });
+
+  drawPolygonBtn.addEventListener('click', function(){
+    var axisState = (mode === 'polygon') ? axisStatePoly : axisStateCum;
+    if(!axisState){
+      alert('Draw the axes first.');
+      return;
+    }
+    if(mode === 'polygon') plotPolygon(); else plotCumulativeCurve(true);
+  });
+
+  function resetAxes(){
+    axisStatePoly = null;
+    axisStateCum = null;
+    refreshDrawButtons();
+    polygonView.innerHTML = '<div class="empty-note">Fill in the table, find the middles, then tap <strong>Draw axes</strong>.</div>';
+    cumulativeView.innerHTML = '<div class="empty-note">Fill in the table, then tap <strong>Draw axes</strong> to plot the cumulative frequency curve.</div>';
+  }
+
+  function drawAxesPolygon(){
+    var sorted = classes.slice().sort(function(a,b){ return a.from - b.from; });
+
+    var mids = sorted.map(function(c){ return (c.from + c.to)/2; });
+    var freqs = sorted.map(function(c){ return c.freq; });
+    var maxFreq = Math.max.apply(null, freqs);
+
+    var leadX = sorted[0].from;
+    var trailX = sorted[sorted.length-1].to;
+
+    var pts = [{x:leadX, y:0, zero:true}];
+    mids.forEach(function(m,i){ pts.push({x:m, y:freqs[i], zero:false}); });
+    pts.push({x:trailX, y:0, zero:true});
+
+    var xMin = leadX, xMax = trailX;
+    var yMax = maxFreq * 1.18 || 1;
+
+    // SVG geometry
+    var W = 640, H = 460;
+    var marginL = 66, marginR = 24, marginT = 26, marginB = 68;
+    var plotW = W - marginL - marginR;
+    var plotH = H - marginT - marginB;
+
+    function sx(x){ return marginL + (x - xMin) / (xMax - xMin) * plotW; }
+    function sy(y){ return (H - marginB) - (y / yMax) * plotH; }
+
+    function niceStep(range, targetCount){
+      var rawStep = range / targetCount;
+      var mag = Math.pow(10, Math.floor(Math.log(rawStep)/Math.LN10));
+      var steps = [1,2,5,10];
+      var s = mag;
+      for(var i=0;i<steps.length;i++){
+        if(steps[i]*mag >= rawStep){ s = steps[i]*mag; break; }
+      }
+      return s;
+    }
+
+    // y ticks - nice step
+    var step = niceStep(yMax, 5);
+    var yTicks = [];
+    for(var v=0; v<=yMax; v+=step){ yTicks.push(Math.round(v*100)/100); }
+    if(yTicks[yTicks.length-1] < maxFreq) yTicks.push(Math.round((yTicks[yTicks.length-1]+step)*100)/100);
+
+    // x ticks: evenly spaced round numbers (e.g. 10, 20, 30...) rather than one
+    // per class boundary, so labels stay legible even when class widths vary.
+    // The plotted points still use the true linear scale above.
+    var xStep = niceStep(xMax - xMin, 5) || 1;
+    var xTicks = [];
+    var xStart = Math.ceil(xMin / xStep) * xStep;
+    for(var xt = xStart; xt <= xMax + 1e-9; xt += xStep){ xTicks.push(Math.round(xt*100)/100); }
+    if(xTicks.length === 0 || xTicks[0] > xMin + 1e-9){ xTicks.unshift(Math.round(xMin*100)/100); }
+    if(xTicks[xTicks.length-1] < xMax - 1e-9){ xTicks.push(Math.round(xMax*100)/100); }
+
+    var svg = [];
+    svg.push('<svg id="polySvg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">');
+
+    // gridlines (horizontal, from y ticks)
+    yTicks.forEach(function(t){
+      var y = sy(t);
+      svg.push('<line class="grid-line" x1="'+marginL+'" y1="'+y+'" x2="'+(W-marginR)+'" y2="'+y+'"/>');
+      svg.push('<text class="tick-label" x="'+(marginL-8)+'" y="'+(y+4)+'" text-anchor="end">'+formatNum(t)+'</text>');
+    });
+
+    // x ticks
+    xTicks.forEach(function(t){
+      var x = sx(t);
+      svg.push('<line class="grid-line" x1="'+x+'" y1="'+marginT+'" x2="'+x+'" y2="'+(H-marginB)+'"/>');
+      svg.push('<text class="tick-label" x="'+x+'" y="'+(H-marginB+18)+'" text-anchor="middle">'+formatNum(t)+'</text>');
+    });
+
+    // axes
+    svg.push('<line class="axis-line" x1="'+marginL+'" y1="'+marginT+'" x2="'+marginL+'" y2="'+(H-marginB)+'"/>');
+    svg.push('<line class="axis-line" x1="'+marginL+'" y1="'+(H-marginB)+'" x2="'+(W-marginR)+'" y2="'+(H-marginB)+'"/>');
+
+    svg.push('<text class="axis-caption" x="'+(marginL)+'" y="18" text-anchor="start">Frequency</text>');
+    svg.push('<text class="axis-caption" x="'+(W/2)+'" y="'+(H-10)+'" text-anchor="middle">Middle of class</text>');
+
+    svg.push('<g id="polyLayer"></g>');
+    svg.push('</svg>');
+    polygonView.innerHTML = svg.join('');
+
+    axisStatePoly = { pts: pts, sx: sx, sy: sy };
+  }
+
+  function plotPolygon(){
+    var svgEl = document.getElementById('polySvg');
+    var layer = document.getElementById('polyLayer');
+    if(!svgEl || !layer) return;
+    layer.innerHTML = '';
+
+    var pts = axisStatePoly.pts, sx = axisStatePoly.sx, sy = axisStatePoly.sy;
+    var svg = [];
+
+    var pointDelay = 0.4;   // seconds between each point appearing
+    var lineDur = 0.5;      // seconds for each segment to draw
+    var lineStartBase = pts.length * pointDelay; // lines begin once all points have appeared
+
+    // points — appear one by one, left to right
+    pts.forEach(function(p, idx){
+      var cx = sx(p.x), cy = sy(p.y);
+      var cls = 'poly-point' + (p.zero ? ' zero-touch' : '');
+      var delay = (idx * pointDelay).toFixed(2);
+      svg.push('<circle class="'+cls+'" cx="'+cx+'" cy="'+cy+'" r="0">' +
+        '<animate attributeName="r" from="0" to="'+(p.zero?4.5:6)+'" begin="'+delay+'s" dur="0.3s" fill="freeze"/>' +
+        '</circle>');
+      if(!p.zero){
+        svg.push('<text class="tick-label" x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-weight="700" fill="var(--graph-ink)" opacity="0">'+formatNum(p.y)+
+          '<animate attributeName="opacity" from="0" to="1" begin="'+delay+'s" dur="0.3s" fill="freeze"/></text>');
+      }
+    });
+
+    // segments — drawn one at a time, left to right, once all points are down.
+    // the two end segments (touching zero) finish as dotted, since that convention isn't always used
+    for(var i=1;i<pts.length;i++){
+      var x1 = sx(pts[i-1].x), y1 = sy(pts[i-1].y);
+      var x2 = sx(pts[i].x), y2 = sy(pts[i].y);
+      var segLen = Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+      var segStart = (lineStartBase + (i-1) * lineDur).toFixed(2);
+      var isEndSegment = (i === 1) || (i === pts.length - 1);
+      var switchToDotted = isEndSegment
+        ? '<set attributeName="stroke-dasharray" to="7,6" begin="'+(parseFloat(segStart)+lineDur).toFixed(2)+'s" fill="freeze"/>'
+        : '';
+      svg.push('<line class="poly-line" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+
+        '" style="stroke-dasharray:'+segLen+'; stroke-dashoffset:'+segLen+';">' +
+        '<animate attributeName="stroke-dashoffset" from="'+segLen+'" to="0" begin="'+segStart+'s" dur="'+lineDur+'s" fill="freeze"/>' +
+        switchToDotted +
+        '</line>');
+    }
+
+    layer.innerHTML = svg.join('');
+  }
+
+  // ---- Cumulative frequency ----
+
+  function renderCumulativeTable(){
+    cumTbody.innerHTML = '';
+    var sorted = classes.slice().sort(function(a,b){ return a.from - b.from; });
+    var valid = sorted.filter(function(c){
+      return c.from !== '' && c.to !== '' && c.to > c.from && c.freq !== '' && c.freq !== null && !isNaN(c.freq);
+    });
+
+    if(valid.length === 0){
+      var emptyTr = document.createElement('tr');
+      var emptyTd = document.createElement('td');
+      emptyTd.colSpan = 2;
+      emptyTd.style.padding = '16px';
+      emptyTd.style.color = 'var(--muted)';
+      emptyTd.textContent = 'Fill in the frequency table first.';
+      emptyTr.appendChild(emptyTd);
+      cumTbody.appendChild(emptyTr);
+      return;
+    }
+
+    var lowest = valid[0].from;
+    var cum = 0;
+    valid.forEach(function(c){
+      cum += c.freq;
+      var tr = document.createElement('tr');
+
+      var classTd = document.createElement('td');
+      classTd.innerHTML = '<div class="class-cell">'+formatNum(lowest)+' <span class="ineq">&le; x &lt;</span> '+formatNum(c.to)+'</div>';
+      tr.appendChild(classTd);
+
+      var cumTd = document.createElement('td');
+      cumTd.className = 'mid-val';
+      cumTd.textContent = formatNum(cum);
+      tr.appendChild(cumTd);
+
+      cumTbody.appendChild(tr);
+    });
+  }
+
+  function drawAxesCumulative(){
+    var sorted = classes.slice().sort(function(a,b){ return a.from - b.from; });
+
+    var xMin = sorted[0].from;
+    var xMax = sorted[sorted.length-1].to;
+
+    var cum = 0;
+    var pts = [{x: xMin, y: 0}];
+    sorted.forEach(function(c){
+      cum += c.freq;
+      pts.push({x: c.to, y: cum});
+    });
+    var maxCum = cum;
+    var yMax = maxCum * 1.12 || 1;
+
+    // SVG geometry — matches the frequency polygon panel for a consistent look
+    var W = 640, H = 460;
+    var marginL = 66, marginR = 24, marginT = 26, marginB = 68;
+    var plotW = W - marginL - marginR;
+    var plotH = H - marginT - marginB;
+
+    function sx(x){ return marginL + (x - xMin) / (xMax - xMin) * plotW; }
+    function sy(y){ return (H - marginB) - (y / yMax) * plotH; }
+
+    function niceStep(range, targetCount){
+      var rawStep = range / targetCount;
+      var mag = Math.pow(10, Math.floor(Math.log(rawStep)/Math.LN10));
+      var steps = [1,2,5,10];
+      var s = mag;
+      for(var i=0;i<steps.length;i++){
+        if(steps[i]*mag >= rawStep){ s = steps[i]*mag; break; }
+      }
+      return s;
+    }
+
+    // y ticks
+    var step = niceStep(yMax, 5);
+    var yTicks = [];
+    for(var v=0; v<=yMax; v+=step){ yTicks.push(Math.round(v*100)/100); }
+    if(yTicks[yTicks.length-1] < maxCum) yTicks.push(Math.round((yTicks[yTicks.length-1]+step)*100)/100);
+
+    // x ticks — evenly spaced round numbers, same approach as the frequency polygon
+    var xStep = niceStep(xMax - xMin, 5) || 1;
+    var xTicks = [];
+    var xStart = Math.ceil(xMin / xStep) * xStep;
+    for(var xt = xStart; xt <= xMax + 1e-9; xt += xStep){ xTicks.push(Math.round(xt*100)/100); }
+    if(xTicks.length === 0 || xTicks[0] > xMin + 1e-9){ xTicks.unshift(Math.round(xMin*100)/100); }
+    if(xTicks[xTicks.length-1] < xMax - 1e-9){ xTicks.push(Math.round(xMax*100)/100); }
+
+    var svg = [];
+    svg.push('<svg id="cumSvg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">');
+
+    yTicks.forEach(function(t){
+      var y = sy(t);
+      svg.push('<line class="grid-line" x1="'+marginL+'" y1="'+y+'" x2="'+(W-marginR)+'" y2="'+y+'"/>');
+      svg.push('<text class="tick-label" x="'+(marginL-8)+'" y="'+(y+4)+'" text-anchor="end">'+formatNum(t)+'</text>');
+    });
+
+    xTicks.forEach(function(t){
+      var x = sx(t);
+      svg.push('<line class="grid-line" x1="'+x+'" y1="'+marginT+'" x2="'+x+'" y2="'+(H-marginB)+'"/>');
+      svg.push('<text class="tick-label" x="'+x+'" y="'+(H-marginB+18)+'" text-anchor="middle">'+formatNum(t)+'</text>');
+    });
+
+    svg.push('<line class="axis-line" x1="'+marginL+'" y1="'+marginT+'" x2="'+marginL+'" y2="'+(H-marginB)+'"/>');
+    svg.push('<line class="axis-line" x1="'+marginL+'" y1="'+(H-marginB)+'" x2="'+(W-marginR)+'" y2="'+(H-marginB)+'"/>');
+
+    svg.push('<text class="axis-caption" x="'+(marginL)+'" y="18" text-anchor="start">Cumulative frequency</text>');
+    svg.push('<text class="axis-caption" x="'+(W/2)+'" y="'+(H-10)+'" text-anchor="middle">Upper class boundary</text>');
+
+    svg.push('<g id="cumLayer"></g>');
+    svg.push('</svg>');
+    cumulativeView.innerHTML = svg.join('');
+
+    axisStateCum = { pts: pts, sx: sx, sy: sy };
+  }
+
+  // Fritsch–Carlson monotone cubic Hermite spline, converted to SVG cubic Bezier
+  // segments. Chosen over a plain Catmull-Rom spline because a cumulative
+  // frequency curve must never dip downward between points — this method
+  // passes through every point exactly while guaranteeing the curve stays
+  // as flat or rising (never falling) between them, matching how cumulative
+  // frequency actually behaves.
+  function monotoneCubicPath(pts){
+    var n = pts.length;
+    if(n < 2) return '';
+    if(n === 2){
+      return 'M'+pts[0].x+','+pts[0].y+' L'+pts[1].x+','+pts[1].y;
+    }
+    var dx = [], dy = [], d = [];
+    for(var i=0;i<n-1;i++){
+      dx.push(pts[i+1].x - pts[i].x);
+      dy.push(pts[i+1].y - pts[i].y);
+      d.push(dx[i] === 0 ? 0 : dy[i]/dx[i]);
+    }
+    var m = new Array(n);
+    m[0] = d[0];
+    m[n-1] = d[n-2];
+    for(var j=1;j<n-1;j++){
+      if(d[j-1]*d[j] <= 0){ m[j] = 0; }
+      else { m[j] = (d[j-1]+d[j])/2; }
+    }
+    for(var k=0;k<n-1;k++){
+      if(d[k] === 0){
+        m[k] = 0; m[k+1] = 0;
+      } else {
+        var a = m[k]/d[k];
+        var b = m[k+1]/d[k];
+        var s = a*a + b*b;
+        if(s > 9){
+          var t = 3/Math.sqrt(s);
+          m[k] = t*a*d[k];
+          m[k+1] = t*b*d[k];
+        }
+      }
+    }
+    var dstr = 'M'+pts[0].x+','+pts[0].y+' ';
+    for(var p=0;p<n-1;p++){
+      var p0 = pts[p], p1 = pts[p+1];
+      var cx1 = p0.x + dx[p]/3;
+      var cy1 = p0.y + m[p]*dx[p]/3;
+      var cx2 = p1.x - dx[p]/3;
+      var cy2 = p1.y - m[p+1]*dx[p]/3;
+      dstr += 'C'+cx1+','+cy1+' '+cx2+','+cy2+' '+p1.x+','+p1.y+' ';
+    }
+    return dstr;
+  }
+
+  function plotCumulativeCurve(animated){
+    var svgEl = document.getElementById('cumSvg');
+    var layer = document.getElementById('cumLayer');
+    if(!svgEl || !layer) return;
+    layer.innerHTML = '';
+
+    var pts = axisStateCum.pts, sx = axisStateCum.sx, sy = axisStateCum.sy;
+    var pointDelay = animated ? 0.4 : 0;
+    var pointDur = animated ? 0.3 : 0.01;
+    var pxPts = pts.map(function(p){ return {x: sx(p.x), y: sy(p.y)}; });
+
+    var svg = [];
+    pts.forEach(function(p, idx){
+      var cx = pxPts[idx].x, cy = pxPts[idx].y;
+      var delay = (idx * pointDelay).toFixed(2);
+      svg.push('<circle class="poly-point" cx="'+cx+'" cy="'+cy+'" r="0">' +
+        '<animate attributeName="r" from="0" to="6" begin="'+delay+'s" dur="'+pointDur+'s" fill="freeze"/>' +
+        '</circle>');
+      svg.push('<text class="tick-label" x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-weight="700" fill="var(--graph-ink)" opacity="0">'+formatNum(p.y)+
+        '<animate attributeName="opacity" from="0" to="1" begin="'+delay+'s" dur="'+pointDur+'s" fill="freeze"/></text>');
+    });
+    layer.innerHTML = svg.join('');
+
+    var path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', monotoneCubicPath(pxPts));
+    path.setAttribute('class', 'poly-line');
+    layer.appendChild(path);
+
+    var len = path.getTotalLength();
+    path.style.strokeDasharray = len;
+    path.style.strokeDashoffset = len;
+    path.getBoundingClientRect(); // force reflow before transition starts
+
+    var curveStart = animated ? pts.length * pointDelay : 0;
+    var curveDur = animated ? Math.max(0.6, (pts.length - 1) * 0.5) : 0.01;
+    path.style.transition = 'stroke-dashoffset '+curveDur+'s cubic-bezier(0.25,0.1,0.25,1) '+curveStart+'s';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        path.style.strokeDashoffset = '0';
+      });
+    });
+  }
+
+  seedInitialRows();
+  renderTable(false);
+})();
+</script>
+</body>
+</html>
