@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-view="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inequalities">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f1ea">
+<title>Graphical inequalities</title>
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg: #f3f1ea;
+    --panel: #fbfaf6;
+    --ink: #1c2330;
+    --muted: #5d6675;
+    --line: #d5d1c4;
+    --chip: #ffffff;
+    --chip-hover: #eeebe0;
+    --focus: #1f4fe0;
+    --stage: #ffffff;
+    --badge-bg: rgba(255,255,255,.92);
+    --note-bg: rgba(28,35,48,.9);
+    --note-ink: #ffffff;
+    --sw-one: rgba(224,36,36,.05);
+    --sw-all: rgba(20,104,58,.8);
+    --err: #c0392b;
+    color-scheme: light;
+  }
+  :root[data-view="dark"] {
+    color-scheme: dark;
+    --bg: #0f1218; --panel: #1a1f29; --ink: #eceff4; --muted: #9aa4b5;
+    --line: #343b49; --chip: #242a36; --chip-hover: #303747;
+    --focus: #8fb0ff;
+    --stage: #141820;
+    --badge-bg: rgba(30,36,48,.92);
+    --note-bg: rgba(236,239,244,.92);
+    --note-ink: #141820;
+    --sw-one: rgba(255,90,90,.05);
+    --sw-all: rgba(52,199,116,.8);
+    --err: #ff8a80;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body {
+    margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none;
+    touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none; -webkit-text-size-adjust: 100%;
+    background: var(--bg); color: var(--ink);
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app {
+    height: 100%;
+    height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 31vw, 400px);
+    gap: 12px;
+    padding: 12px;
+    padding-left: calc(12px + env(safe-area-inset-left, 0px));
+    padding-right: calc(12px + env(safe-area-inset-right, 0px));
+  }
+  input { -webkit-user-select: text; user-select: text; }
+  .stage {
+    position: relative;
+    min-height: 0; min-width: 0;
+    background: var(--stage);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; }
+  .panel {
+    min-height: 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  h1 { font-size: 17px; line-height: 1.2; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  .sub { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .list {
+    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start;
+    padding-right: 2px;
+  }
+  .chip {
+    appearance: none; font: inherit; color: var(--ink);
+    background: var(--chip);
+    border: 2px solid var(--line);
+    border-radius: 8px;
+    min-height: 46px; padding: 6px 8px;
+    font-size: 17px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    transition: background .12s, border-color .12s;
+  }
+  .chip:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .chip .dot { width: 12px; height: 12px; border-radius: 50%; background: transparent; flex: none; display: none; }
+  @media (hover: hover) {
+    .chip:hover:not(.on):not(:disabled), .btn:hover { background: var(--chip-hover); }
+    .segbtn[aria-pressed="false"]:hover { background: var(--chip-hover); }
+  }
+  .chip:active:not(:disabled), .btn:active, .segbtn:active { transform: scale(.97); }
+  .chip.on { border-color: var(--c); }
+  .chip.on .dot { display: block; background: var(--c); }
+  .chip.off { opacity: .4; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    appearance: none; font: inherit; font-weight: 600; font-size: 15px;
+    background: var(--chip); color: var(--ink);
+    border: 2px solid var(--line); border-radius: 8px;
+    min-height: 44px; padding: 0 14px; cursor: pointer;
+  }
+  .btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .btn.active { border-color: var(--focus); }
+  .count { margin-left: auto; color: var(--muted); font-size: 14px; }
+  .note {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: var(--note-bg); color: var(--note-ink);
+    padding: 8px 16px; border-radius: 20px;
+    font-size: 15px; font-weight: 600; pointer-events: none;
+    display: none; max-width: 90%; text-align: center;
+  }
+  .badge {
+    position: absolute; left: 10px; bottom: 10px;
+    background: var(--badge-bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 4px 9px; font-size: 13px; font-weight: 600; pointer-events: none;
+  }
+  .key { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; font-size: 12.5px; color: var(--muted); }
+  .key div { display: flex; align-items: center; gap: 8px; }
+  .sw { width: 26px; height: 14px; border-radius: 3px; flex: none; border: 1px solid rgba(0,0,0,.15); }
+  .sw.one { background: linear-gradient(var(--sw-one), var(--sw-one)), var(--stage); }
+  .sw.all { background: linear-gradient(var(--sw-all), var(--sw-all)), var(--stage); }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .segbtn {
+    appearance: none; font: inherit; font-weight: 600; font-size: 15px;
+    min-height: 44px; padding: 0 14px; font-size: 15px;
+    border: 0; background: var(--chip); color: var(--ink); cursor: pointer;
+  }
+  .segbtn[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+  .segbtn:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+  .chip:disabled { cursor: not-allowed; }
+  .custom { display: grid; gap: 6px; }
+  .chead { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .chead .lbl { margin-right: auto; }
+  .sym {
+    appearance: none; font: inherit; font-size: 19px; font-weight: 600; line-height: 1;
+    width: 42px; min-height: 40px; padding: 0; cursor: pointer;
+    color: var(--ink); background: var(--chip);
+    border: 2px solid var(--line); border-radius: 8px;
+  }
+  .sym:active { transform: scale(.95); }
+  .crow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .cin {
+    font: inherit; font-size: 17px; min-height: 44px; min-width: 0;
+    padding: 0 10px; color: var(--ink); background: var(--chip);
+    border: 2px solid var(--line); border-radius: 8px;
+  }
+  .cin::placeholder { color: var(--muted); opacity: .75; }
+  .cin:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+  .cin.bad { border-color: var(--err); }
+  .cplot { min-width: 78px; font-size: 15px; }
+  .cmsg { font-size: 12px; color: var(--err); margin-top: 3px; display: none; }
+  .ln { width: 26px; height: 0; flex: none; border-top: 3px solid var(--muted); }
+  .ln.d { border-top-style: dashed; }
+
+  /* Narrow screens (portrait): stack */
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+    .list { max-height: 28vh; grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="graph" role="img" aria-label="Graph of the selected inequalities"></canvas>
+    <div class="note" id="note" role="status"></div>
+    <div class="badge" id="badge"></div>
+  </div>
+
+  <aside class="panel">
+    <div class="head">
+      <h1>Graphical inequalities</h1>
+      <div class="seg" role="group" aria-label="Colour scheme">
+        <button class="segbtn" type="button" data-t="light" aria-pressed="true">Light</button>
+        <button class="segbtn" type="button" data-t="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="clear" type="button">Clear</button>
+      <button class="btn active" id="zoom" type="button" aria-pressed="true">Auto-zoom</button>
+      <span class="count" id="count">0 of 3</span>
+    </div>
+    <div class="custom" id="custom">
+      <div class="chead">
+        <span class="lbl">Your own</span>
+        <button class="sym" type="button" data-s="≤" aria-label="less than or equal sign">≤</button>
+        <button class="sym" type="button" data-s="≥" aria-label="greater than or equal sign">≥</button>
+        <button class="sym" type="button" data-s="&lt;" aria-label="less than sign">&lt;</button>
+        <button class="sym" type="button" data-s="&gt;" aria-label="greater than sign">&gt;</button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+    <div class="key" id="key">
+      <div><span class="ln"></span>≤ ≥ solid line</div>
+      <div><span class="ln d"></span>&lt; &gt; dashed line</div>
+      <div><span class="sw one"></span>One holds: 5% shade</div>
+      <div><span class="sw all"></span>All hold: 80% shade</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  // Each inequality: a·x + b·y  (op)  c
+  const INEQ = [
+    { a: 1, b: 0, op: '>=', c: 2,  t: 'x ≥ 2' },
+    { a: 1, b: 0, op: '<',  c: 5,  t: 'x < 5' },
+    { a: 1, b: 0, op: '>',  c: -3, t: 'x > −3' },
+    { a: 1, b: 0, op: '<=', c: -1, t: 'x ≤ −1' },
+    { a: 0, b: 1, op: '>=', c: 1,  t: 'y ≥ 1' },
+    { a: 0, b: 1, op: '<',  c: 4,  t: 'y < 4' },
+    { a: 0, b: 1, op: '>',  c: -2, t: 'y > −2' },
+    { a: 0, b: 1, op: '<=', c: 3,  t: 'y ≤ 3' },
+    { a: -1, b: 1, op: '>',  c: 0,  t: 'y > x' },
+    { a: -1, b: 1, op: '<=', c: 2,  t: 'y ≤ x + 2' },
+    { a: -2, b: 1, op: '>=', c: -1, t: 'y ≥ 2x − 1' },
+    { a: 1, b: 1, op: '<',  c: 4,  t: 'y < 4 − x' },
+    { a: -0.5, b: 1, op: '>=', c: 1, t: 'y ≥ ½x + 1' },
+    { a: -2, b: 1, op: '<=', c: 3,  t: 'y ≤ 2x + 3' },
+    { a: 1, b: 1, op: '<=', c: 5,  t: 'x + y ≤ 5' },
+    { a: 1, b: 1, op: '>',  c: 1,  t: 'x + y > 1' },
+    { a: 2, b: 1, op: '>=', c: 4,  t: '2x + y ≥ 4' },
+    { a: 1, b: -1, op: '<=', c: 2, t: 'x − y ≤ 2' },
+    { a: 3, b: 2, op: '<',  c: 12, t: '3x + 2y < 12' },
+    { a: 1, b: 2, op: '>=', c: -2, t: 'x + 2y ≥ −2' }
+  ];
+  const THEMES = {
+    light: {
+      bg: [255, 255, 255], all: [20, 104, 58],
+      cols: [[224, 36, 36], [31, 79, 224], [255, 204, 0]],
+      grid: 'rgba(40,60,90,0.16)', axis: '#1c2330', text: '#1c2330',
+      halo: 'rgba(255,255,255,0.85)', casing: 'rgba(28,35,48,0.55)', labelBg: 'rgba(255,255,255,0.94)'
+    },
+    dark: {
+      bg: [20, 24, 32], all: [52, 199, 116],
+      cols: [[255, 90, 90], [91, 140, 255], [255, 210, 31]],
+      grid: 'rgba(190,205,235,0.15)', axis: '#e6eaf2', text: '#e6eaf2',
+      halo: 'rgba(20,24,32,0.85)', casing: 'rgba(0,0,0,0.6)', labelBg: 'rgba(30,36,48,0.95)'
+    }
+  };
+  let T = THEMES.light;
+  let COLS = [];
+  function setTheme(name) {
+    T = THEMES[name];
+    COLS = T.cols.map(c => ({ rgb: c, css: 'rgb(' + c.join(',') + ')' }));
+    document.documentElement.setAttribute('data-view', name);
+    document.querySelectorAll('.segbtn').forEach(b =>
+      b.setAttribute('aria-pressed', b.dataset.t === name ? 'true' : 'false'));
+    refreshUI();
+    draw();
+  }
+  document.querySelectorAll('.segbtn').forEach(b =>
+    b.addEventListener('click', () => setTheme(b.dataset.t)));
+
+  const MAX = 3;
+  const CUSTOM = [null, null, null];             // parsed user inequalities (ids 20, 21, 22)
+  const qOf = i => (i < 20 ? INEQ[i] : CUSTOM[i - 20]);
+  const Y_HALF = 7;           // graph shows y from -7 to 7; x range follows the window shape
+
+  function getVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  let chosen = [];            // indices into INEQ, in order of selection
+  const stage = document.getElementById('stage');
+  const canvas = document.getElementById('graph');
+  const ctx = canvas.getContext('2d');
+  const listEl = document.getElementById('list');
+  const countEl = document.getElementById('count');
+
+  // ---------- UI ----------
+  const chips = INEQ.map((q, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.innerHTML = '<span class="dot"></span><span>' + q.t + '</span>';
+    b.addEventListener('click', () => toggle(i));
+    listEl.appendChild(b);
+    return b;
+  });
+
+  function toggle(i) {
+    if (!qOf(i)) return;
+    const pos = chosen.indexOf(i);
+    if (pos >= 0) chosen.splice(pos, 1);
+    else if (chosen.length < MAX) chosen.push(i);
+    else return;
+    refreshUI();
+    applyView();
+    draw();
+  }
+
+  document.getElementById('clear').addEventListener('click', () => {
+    chosen = []; refreshUI(); applyView(); draw();
+  });
+
+  function refreshUI() {
+    chips.forEach((b, i) => {
+      const pos = chosen.indexOf(i);
+      const on = pos >= 0;
+      b.classList.toggle('on', on);
+      b.classList.toggle('off', !on && chosen.length >= MAX);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) b.style.setProperty('--c', COLS[pos].css);
+      else b.style.removeProperty('--c');
+    });
+    customEls.forEach((el, k) => {
+      const pos = chosen.indexOf(20 + k);
+      const on = pos >= 0, ok = !!CUSTOM[k];
+      el.btn.classList.toggle('on', on);
+      el.btn.classList.toggle('off', !on && (!ok || chosen.length >= MAX));
+      el.btn.disabled = !ok && !on;
+      el.btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) el.btn.style.setProperty('--c', COLS[pos].css);
+      else el.btn.style.removeProperty('--c');
+    });
+    countEl.textContent = chosen.length + ' of ' + MAX;
+  }
+
+
+  // ---------- Custom inequalities ----------
+  class PErr extends Error {}
+  const FRACS = { '½': '(1/2)', '¼': '(1/4)', '¾': '(3/4)', '⅓': '(1/3)', '⅔': '(2/3)', '⅕': '(1/5)', '⅛': '(1/8)' };
+  const isConst = f => f.a === 0 && f.b === 0;
+  const scaleF = (f, k) => ({ a: f.a * k, b: f.b * k, c: f.c * k });
+  const addF = (f, g) => ({ a: f.a + g.a, b: f.b + g.b, c: f.c + g.c });
+  const NONLIN = 'Only straight-line (linear) inequalities';
+  const mulF = (f, g) => {
+    if (isConst(f)) return scaleF(g, f.c);
+    if (isConst(g)) return scaleF(f, g.c);
+    throw new PErr(NONLIN);
+  };
+  const divF = (f, g) => {
+    if (!isConst(g)) throw new PErr(NONLIN);
+    if (g.c === 0) throw new PErr('Cannot divide by zero');
+    return scaleF(f, 1 / g.c);
+  };
+
+  function parseLinear(str) {
+    const toks = str.match(/\d*\.?\d+|\d+\.|[xy+\-*\/()]/g) || [];
+    if (toks.join('') !== str) throw new PErr('Cannot read that: use x, y, numbers and + − × ÷');
+    let i = 0;
+    const peek = () => toks[i];
+    const isNum = t => !!t && /^[\d.]/.test(t);
+    function expr() {
+      let v = term();
+      while (peek() === '+' || peek() === '-') {
+        const op = toks[i++];
+        const r = term();
+        v = op === '+' ? addF(v, r) : addF(v, scaleF(r, -1));
+      }
+      return v;
+    }
+    function term() {
+      let v = unary();
+      for (;;) {
+        const t = peek();
+        if (t === '*') { i++; v = mulF(v, unary()); }
+        else if (t === '/') { i++; v = divF(v, unary()); }
+        else if (isNum(t) || t === 'x' || t === 'y' || t === '(') { v = mulF(v, unary()); }
+        else break;
+      }
+      return v;
+    }
+    function unary() {
+      if (peek() === '-') { i++; return scaleF(unary(), -1); }
+      if (peek() === '+') { i++; return unary(); }
+      return primary();
+    }
+    function primary() {
+      const t = toks[i++];
+      if (t === undefined) throw new PErr('That looks unfinished');
+      if (isNum(t)) { const n = parseFloat(t); if (isNaN(n)) throw new PErr('Cannot read that number'); return { a: 0, b: 0, c: n }; }
+      if (t === 'x') return { a: 1, b: 0, c: 0 };
+      if (t === 'y') return { a: 0, b: 1, c: 0 };
+      if (t === '(') {
+        const v = expr();
+        if (toks[i++] !== ')') throw new PErr('A bracket is not closed');
+        return v;
+      }
+      throw new PErr('Cannot read that: use x, y, numbers and + − × ÷');
+    }
+    const v = expr();
+    if (i < toks.length) throw new PErr('Cannot read that: use x, y, numbers and + − × ÷');
+    return v;
+  }
+
+  // Returns { ok: true, q } or { ok: false, msg }
+  function parseIneq(raw) {
+    let s = raw.toLowerCase();
+    for (const k in FRACS) s = s.split(k).join(FRACS[k]);
+    s = s.replace(/[−–—]/g, '-').replace(/[×·]/g, '*').replace(/÷/g, '/')
+         .replace(/≤/g, '<=').replace(/≥/g, '>=').replace(/=</g, '<=').replace(/=>/g, '>=')
+         .replace(/\s+/g, '');
+    if (!s) return { ok: false, msg: '' };
+    const rels = s.match(/<=|>=|<|>/g) || [];
+    if (rels.length === 0) return { ok: false, msg: s.includes('=') ? 'That is an equation: use <, >, ≤ or ≥' : 'Include <, >, ≤ or ≥' };
+    if (rels.length > 1) return { ok: false, msg: 'Use just one inequality sign' };
+    const op = rels[0];
+    const at = s.indexOf(op);
+    const l = s.slice(0, at), r = s.slice(at + op.length);
+    if (l.includes('=') || r.includes('=')) return { ok: false, msg: 'Use just one inequality sign' };
+    let L, R;
+    try { L = parseLinear(l); R = parseLinear(r); }
+    catch (e) { if (e instanceof PErr) return { ok: false, msg: e.message }; throw e; }
+    const clean = v => (Math.abs(v) < 1e-12 ? 0 : v);
+    const a = clean(L.a - R.a), b = clean(L.b - R.b), c = clean(R.c - L.c);
+    if (a === 0 && b === 0) return { ok: false, msg: 'Include x or y' };
+    if (![a, b, c].every(isFinite)) return { ok: false, msg: 'Those numbers are too large' };
+    const t = raw.trim().replace(/\s+/g, ' ').replace(/<=|=</g, '≤').replace(/>=|=>/g, '≥')
+                .replace(/\*/g, '×').replace(/-/g, '−').replace(/\s*([≤≥<>])\s*/g, ' $1 ');
+    return { ok: true, q: { a, b, op, c, t } };
+  }
+
+  const customWrap = document.getElementById('custom');
+  const customEls = [0, 1, 2].map(k => {
+    const item = document.createElement('div');
+    item.innerHTML =
+      '<div class="crow">' +
+        '<input class="cin" type="text" inputmode="text" autocomplete="off" autocorrect="off" ' +
+        'autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="e.g. y ≥ 2x − 1" ' +
+        'aria-label="Your own inequality ' + (k + 1) + '">' +
+        '<button class="chip cplot" type="button" aria-pressed="false" disabled>' +
+        '<span class="dot"></span><span>Plot</span></button>' +
+      '</div><div class="cmsg" role="alert"></div>';
+    customWrap.appendChild(item);
+    const el = {
+      input: item.querySelector('.cin'),
+      btn: item.querySelector('.cplot'),
+      msg: item.querySelector('.cmsg'),
+      timer: null, last: { ok: false, msg: '' }
+    };
+    const showMsg = () => {
+      const bad = !el.last.ok && !!el.last.msg;
+      el.msg.textContent = bad ? el.last.msg : '';
+      el.msg.style.display = bad ? 'block' : 'none';
+      el.input.classList.toggle('bad', bad);
+      el.input.setAttribute('aria-invalid', bad ? 'true' : 'false');
+    };
+    el.input.addEventListener('input', () => {
+      const id = 20 + k;
+      const res = parseIneq(el.input.value);
+      el.last = res;
+      const was = chosen.indexOf(id) >= 0;
+      CUSTOM[k] = res.ok ? res.q : null;
+      if (!res.ok && was) chosen.splice(chosen.indexOf(id), 1);
+      clearTimeout(el.timer);
+      if (res.ok) showMsg(); else el.timer = setTimeout(showMsg, 800);
+      refreshUI();
+      if (was) { applyView(); draw(); }
+    });
+    el.input.addEventListener('blur', () => { clearTimeout(el.timer); showMsg(); });
+    el.input.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      clearTimeout(el.timer); showMsg();
+      if (CUSTOM[k] && chosen.indexOf(20 + k) < 0) toggle(20 + k);
+      if (CUSTOM[k]) el.input.blur();
+    });
+    el.btn.addEventListener('click', () => toggle(20 + k));
+    return el;
+  });
+
+  // Symbol keys: insert ≤ ≥ < > into the box being edited (not on the iPad keyboard)
+  let lastInput = null;
+  customEls.forEach(el => el.input.addEventListener('focus', () => { lastInput = el.input; }));
+  document.querySelectorAll('.sym').forEach(b => {
+    b.addEventListener('mousedown', e => e.preventDefault());
+    b.addEventListener('click', () => {
+      const inp = lastInput || (customEls.find(e => !e.input.value) || customEls[0]).input;
+      inp.focus({ preventScroll: true });
+      const st = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+      const en = inp.selectionEnd == null ? st : inp.selectionEnd;
+      inp.setRangeText(b.dataset.s, st, en, 'end');
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
+
+  // ---------- Maths ----------
+  function holds(q, x, y) {
+    const v = q.a * x + q.b * y;
+    switch (q.op) {
+      case '<': return v < q.c;
+      case '<=': return v <= q.c;
+      case '>': return v > q.c;
+      default: return v >= q.c;
+    }
+  }
+
+  // ---------- View / zoom ----------
+  const BOX = 200;            // large box used to find the common region
+  let W = 0, H = 0, dpr = 1;
+  let cx = 0, cy = 0, hy = Y_HALF;
+  let xmin = -10, xmax = 10, ymin = -Y_HALF, ymax = Y_HALF, scale = 40;
+  let autoZoom = true;
+  let gridStep = 1;
+  const noteEl = document.getElementById('note');
+  const badgeEl = document.getElementById('badge');
+  const zoomBtn = document.getElementById('zoom');
+
+  zoomBtn.addEventListener('click', () => {
+    autoZoom = !autoZoom;
+    zoomBtn.classList.toggle('active', autoZoom);
+    zoomBtn.setAttribute('aria-pressed', autoZoom ? 'true' : 'false');
+    applyView(); draw();
+  });
+
+  function setView(ncx, ncy, nhy) {
+    cx = ncx; cy = ncy; hy = nhy;
+    scale = H / (2 * hy);                    // equal pixels per unit on both axes
+    const xh = (W / scale) / 2;
+    xmin = cx - xh; xmax = cx + xh; ymin = cy - hy; ymax = cy + hy;
+  }
+
+  // Sutherland–Hodgman clip of a polygon against one half-plane
+  function clipPoly(poly, q) {
+    const sgn = (q.op === '<' || q.op === '<=') ? -1 : 1;
+    const f = p => sgn * (q.a * p[0] + q.b * p[1] - q.c);
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const P = poly[i], Q = poly[(i + 1) % poly.length];
+      const fp = f(P), fq = f(Q);
+      if (fp >= 0) out.push(P);
+      if ((fp > 0 && fq < 0) || (fp < 0 && fq > 0)) {
+        const t = fp / (fp - fq);
+        out.push([P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])]);
+      }
+    }
+    return out;
+  }
+
+  function commonRegion(qs) {
+    let poly = [[-BOX, -BOX], [BOX, -BOX], [BOX, BOX], [-BOX, BOX]];
+    for (const q of qs) {
+      poly = clipPoly(poly, q);
+      if (poly.length < 3) return null;
+    }
+    let A = 0;
+    for (let i = 0; i < poly.length; i++) {
+      const P = poly[i], Q = poly[(i + 1) % poly.length];
+      A += P[0] * Q[1] - Q[0] * P[1];
+    }
+    return Math.abs(A) / 2 < 1e-9 ? null : poly;
+  }
+
+  function applyView() {
+    let msg = '';
+    let v = null;
+    if (autoZoom && chosen.length === 3) {
+      const poly = commonRegion(chosen.map(qOf));
+      if (!poly) {
+        msg = 'No point satisfies all three inequalities';
+      } else {
+        const eps = 1e-6;
+        const fin = poly.filter(p => Math.abs(p[0]) < BOX - eps && Math.abs(p[1]) < BOX - eps);
+        const unbounded = fin.length < poly.length;
+        if (fin.length === 0) {
+          msg = 'The common region extends beyond the edges of the graph';
+        } else {
+          let x0 = Math.min(...fin.map(p => p[0])), x1 = Math.max(...fin.map(p => p[0]));
+          let y0 = Math.min(...fin.map(p => p[1])), y1 = Math.max(...fin.map(p => p[1]));
+          let pad;
+          if (unbounded) {
+            const dx = Y_HALF * (W / H);
+            x0 = Math.min(x0, -dx); x1 = Math.max(x1, dx);
+            y0 = Math.min(y0, -Y_HALF); y1 = Math.max(y1, Y_HALF);
+            pad = 1.08;
+            msg = 'The common region continues beyond the edges of the graph';
+          } else {
+            pad = 1.7;
+            msg = 'Zoomed to the region where all three hold';
+          }
+          const bw = Math.max(x1 - x0, 0.5), bh = Math.max(y1 - y0, 0.5);
+          const need = Math.max(bh * pad / 2, bw * pad / 2 * (H / W));
+          v = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, hy: Math.min(Math.max(need, 0.4), 150) };
+        }
+      }
+    }
+    if (v) setView(v.cx, v.cy, v.hy); else setView(0, 0, Y_HALF);
+    noteEl.textContent = msg;
+    noteEl.style.display = msg ? 'block' : 'none';
+  }
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    W = Math.max(1, Math.floor(r.width));
+    H = Math.max(1, Math.floor(r.height));
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    applyView();
+    draw();
+  }
+
+  const X = x => (x - xmin) * scale;
+  const Y = y => (ymax - y) * scale;
+
+  function fillPoly(poly, style) {
+    if (!poly || poly.length < 3) return;
+    ctx.beginPath();
+    poly.forEach((p, i) => { if (i) ctx.lineTo(X(p[0]), Y(p[1])); else ctx.moveTo(X(p[0]), Y(p[1])); });
+    ctx.closePath();
+    ctx.fillStyle = style;
+    ctx.fill();
+  }
+
+  function clipAll(poly, qs) {
+    for (const q of qs) {
+      poly = clipPoly(poly, q);
+      if (poly.length < 3) return null;
+    }
+    return poly;
+  }
+
+  function draw() {
+    if (!W) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = 'rgb(' + T.bg.join(',') + ')';
+    ctx.fillRect(0, 0, W, H);
+
+    const qs = chosen.map(qOf);
+    const view = [[xmin - 1, ymin - 1], [xmax + 1, ymin - 1], [xmax + 1, ymax + 1], [xmin - 1, ymax + 1]];
+
+    // each inequality: 5% of its own colour where it holds
+    qs.forEach((q, k) => fillPoly(clipAll(view, [q]), 'rgba(' + COLS[k].rgb.join(',') + ',0.05)'));
+    // all chosen holding together: 80% (shown once two or more are chosen)
+    if (qs.length >= 2) {
+      const common = clipAll(view, qs);
+      if (common) {
+        fillPoly(common, 'rgb(' + T.bg.join(',') + ')');
+        fillPoly(common, 'rgba(' + T.all.join(',') + ',0.8)');
+      }
+    }
+
+    drawGrid();
+    drawLines(qs);
+    badgeEl.textContent = '1 square = ' + fmt(gridStep);
+  }
+
+  // One unit per square and per marked tick wherever possible. Only when the view is
+  // very wide (units too close together) does it step up; only when zoomed in so far that
+  // fewer than four units would show does it step down to halves, fifths, tenths.
+  function pickStep() {
+    const up = [1, 2, 5, 10, 20, 50, 100];
+    for (const s of up) if (s * scale >= 24) return s;
+    return 100;
+  }
+  function pickStepFor() {
+    const base = pickStep();
+    if (base > 1) return base;
+    const span = Math.min(xmax - xmin, ymax - ymin);
+    for (const s of [1, 0.5, 0.2, 0.1, 0.05]) if (span / s >= 4) return s;
+    return 0.05;
+  }
+  function fmt(v) { return String(Number(v.toFixed(6))).replace('-', '\u2212'); }
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+
+  function drawGrid() {
+    const step = pickStepFor();
+    gridStep = step;
+    const kx0 = Math.ceil(xmin / step), kx1 = Math.floor(xmax / step);
+    const ky0 = Math.ceil(ymin / step), ky1 = Math.floor(ymax / step);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = T.grid;
+    ctx.beginPath();
+    for (let k = kx0; k <= kx1; k++) { const x = X(k * step); ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let k = ky0; k <= ky1; k++) { const y = Y(k * step); ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+
+    ctx.strokeStyle = T.axis;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0));
+    ctx.moveTo(X(0), 0); ctx.lineTo(X(0), H);
+    ctx.stroke();
+    // tick mark at every step on both axes
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let k = kx0; k <= kx1; k++) { const x = X(k * step); ctx.moveTo(x, Y(0) - 6); ctx.lineTo(x, Y(0) + 6); }
+    for (let k = ky0; k <= ky1; k++) { const y = Y(k * step); ctx.moveTo(X(0) - 6, y); ctx.lineTo(X(0) + 6, y); }
+    ctx.stroke();
+
+    const yAxisVisible = X(0) >= 0 && X(0) <= W;
+    const xAxisVisible = Y(0) >= 0 && Y(0) <= H;
+    const fs = Math.max(11, Math.min(18, scale * 0.32 + 4));
+    ctx.font = '600 ' + fs + 'px "Avenir Next", "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = T.text;
+
+    // x-axis numbers (pinned to the screen edge if the axis is off-screen)
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const ty = clamp(Y(0) + 4, 4, H - fs - 8);
+    for (let k = kx0; k <= kx1; k++) {
+      if (k === 0 && yAxisVisible) continue;
+      halo(fmt(k * step), X(k * step), ty);
+    }
+    // y-axis numbers
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    const tx = clamp(X(0) - 5, 54, W - 6);
+    for (let k = ky0; k <= ky1; k++) {
+      if (k === 0 && xAxisVisible) continue;
+      halo(fmt(k * step), tx, Y(k * step));
+    }
+    if (xAxisVisible && yAxisVisible) {
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      halo('0', X(0) - 5, Y(0) + 4);
+    }
+    // axis names
+    ctx.font = 'italic 700 ' + (fs + 3) + 'px Georgia, "Times New Roman", serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    halo('x', W - 18, clamp(Y(0) - 6, fs + 12, H - 10));
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    halo('y', clamp(X(0) + 8, 6, W - 24), 6);
+  }
+
+  function halo(text, x, y) {
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = T.halo;
+    ctx.strokeText(text, x, y);
+    ctx.restore();
+    ctx.fillText(text, x, y);
+  }
+
+  function drawLines(qs) {
+    // 1) every line first...
+    qs.forEach((q, k) => {
+      const strict = (q.op === '<' || q.op === '>');
+      let p1, p2;
+      if (q.b === 0) {
+        const x = q.c / q.a;
+        p1 = [X(x), 0]; p2 = [X(x), H];
+      } else {
+        const y1 = (q.c - q.a * xmin) / q.b, y2 = (q.c - q.a * xmax) / q.b;
+        p1 = [X(xmin), Y(y1)]; p2 = [X(xmax), Y(y2)];
+      }
+      ctx.save();
+      ctx.lineCap = 'butt';
+      ctx.setLineDash(strict ? [14, 10] : []);
+      // dark casing so the yellow line stays visible on white
+      ctx.strokeStyle = T.casing;
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+      ctx.strokeStyle = COLS[k].css;
+      ctx.lineWidth = 4.5;
+      ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+      ctx.restore();
+    });
+    // 2) ...then every label on top, so no line can cover a label
+    const placed = [];
+    qs.forEach((q, k) => drawLabel(q, k, placed));
+  }
+
+  function drawLabel(q, k, placed) {
+    const fs = Math.max(16, Math.min(22, scale * 0.5));
+    ctx.save();
+    ctx.font = '700 ' + fs + 'px "Avenir Next", "Segoe UI", system-ui, sans-serif';
+    const w = ctx.measureText(q.t).width + 16, h = fs + 10;
+    const clampX = v => Math.min(Math.max(v, 4), W - w - 4);
+    const clampY = v => Math.min(Math.max(v, 4), H - h - 4);
+
+    // candidate positions along the line, tried in turn until one is clear of other labels
+    const cands = [];
+    if (q.b === 0) {
+      const x = q.c / q.a;
+      for (let j = 0; j < 8; j++) {
+        cands.push({ rx: clampX(X(x) + 10), ry: clampY(H * (0.12 + 0.11 * ((k * 3 + j) % 8)) - h / 2) });
+      }
+    } else {
+      const fracs = [0.82, 0.66, 0.5, 0.34, 0.18, 0.92, 0.75, 0.58, 0.42, 0.26, 0.1];
+      for (let j = 0; j < fracs.length; j++) {
+        const f = fracs[(k + j) % fracs.length];
+        const x = xmin + (xmax - xmin) * f;
+        const y = (q.c - q.a * x) / q.b;
+        if (y > ymin + 30 / scale && y < ymax - 30 / scale) {
+          cands.push({ rx: clampX(X(x) - w / 2), ry: clampY(Y(y) - 16 - h / 2) });
+        }
+      }
+    }
+    if (!cands.length) { ctx.restore(); return; }
+    const clash = c => placed.some(r =>
+      c.rx < r.rx + r.w + 6 && c.rx + w + 6 > r.rx && c.ry < r.ry + r.h + 6 && c.ry + h + 6 > r.ry);
+    const pick = cands.find(c => !clash(c)) || cands[0];
+    placed.push({ rx: pick.rx, ry: pick.ry, w, h });
+
+    ctx.fillStyle = T.labelBg;
+    ctx.strokeStyle = COLS[k].css;
+    ctx.lineWidth = 3;
+    roundRect(pick.rx, pick.ry, w, h, 7);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = T.text;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(q.t, pick.rx + w / 2, pick.ry + h / 2 + 1);
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- Start ----------
+  setTheme('light');
+  new ResizeObserver(resize).observe(stage);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+  resize();
+})();
+</script>
+</body>
+</html>
