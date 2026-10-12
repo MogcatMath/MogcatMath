@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}html{color-scheme:light;-webkit-text-size-adjust:100%}</style>
+<title>Mechanics Modelling Assumptions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: tab strip over a two-column workbench. Live canvas on the left, controls and working on the right.
+   Look: squared exercise-book paper. Blue ink is the idealised model, red pen is reality with the assumption removed. */
+:root{
+ --paper:#eef2f7;--card:#ffffff;--ink:#13233b;--ink2:#51627a;--rule:#cdd6e3;
+ --grid:#e3e9f1;--gridM:#cbd5e3;--model:#1d5cc0;--real:#d3342a;--ok:#1c7a4b;
+ --chip:#e4ebf5;--chipOn:#13233b;--chipOnFg:#ffffff;--goFg:#ffffff;
+ --f-head:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+ --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+ --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+ --f-math:"Cambria Math","STIX Two Text",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --paper:#0e1829;--card:#15233a;--ink:#e7edf7;--ink2:#9aabc4;--rule:#2a3b57;
+ --grid:#1b2b44;--gridM:#26405f;--model:#74b3ff;--real:#ff8173;--ok:#62d29c;
+ --chip:#1d3050;--chipOn:#e7edf7;--chipOnFg:#0e1829;--goFg:#1d0b08;color-scheme:dark}}
+:root[data-theme="dark"]{
+ --paper:#0e1829;--card:#15233a;--ink:#e7edf7;--ink2:#9aabc4;--rule:#2a3b57;
+ --grid:#1b2b44;--gridM:#26405f;--model:#74b3ff;--real:#ff8173;--ok:#62d29c;
+ --chip:#1d3050;--chipOn:#e7edf7;--chipOnFg:#0e1829;--goFg:#1d0b08;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;padding-inline:clamp(16px,2.6vw,36px);padding-block:20px 44px;background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body)}
+.wrap{max-width:1280px;margin-inline:auto}
+header{display:flex;flex-wrap:wrap;gap:12px 32px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+h1{font:800 clamp(26px,3.6vw,40px)/1.05 var(--f-head);margin:0;letter-spacing:-.02em;text-wrap:balance}
+.sub{margin:8px 0 0;color:var(--ink2);max-width:62ch}
+.key{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
+.sw{display:inline-block;width:26px;border-top:3px solid;vertical-align:middle;margin-right:7px}
+.sw.m{border-color:var(--model);border-top-style:dashed}
+.sw.r{border-color:var(--real)}
+
+nav{display:flex;gap:4px;overflow-x:auto;margin-bottom:16px;border-bottom:1px solid var(--rule)}
+nav button{flex:none;min-height:46px;padding:0 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--ink2);font:600 15px var(--f-body);cursor:pointer}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+nav button:hover{color:var(--ink)}
+:focus-visible{outline:3px solid var(--model);outline-offset:2px}
+
+.panel{display:none}
+.panel.on{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:18px;align-items:start}
+@media (max-width:880px){.panel.on{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:10px}
+.stage{padding:10px}
+.cvwrap{position:relative;width:100%;aspect-ratio:var(--ar,16/10);overflow:hidden;border-radius:6px}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stagebar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-top:10px;color:var(--ink2);font-size:13px}
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.blk{padding:14px 16px}
+.term{font:500 11.5px var(--f-mono);color:var(--ink2);text-transform:uppercase;letter-spacing:.07em}
+h2{font:700 21px/1.2 var(--f-head);margin:4px 0 8px;letter-spacing:-.01em;text-wrap:balance}
+h3{font:600 13px var(--f-body);margin:0 0 2px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+p{margin:6px 0}
+var{font-family:var(--f-math);font-style:italic;font-size:1.06em}
+sub,sup{line-height:0}
+
+.ctl{display:grid;gap:2px;margin-block:8px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.ctl output{font:500 13.5px var(--f-mono);color:var(--ink)}
+input[type=range]{width:100%;height:34px;margin:0;accent-color:var(--real)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-block:8px}
+.btn{min-height:40px;padding:0 14px;border:1px solid var(--rule);background:var(--chip);color:var(--ink);border-radius:8px;font:500 14px var(--f-body);cursor:pointer}
+.btn.on{background:var(--chipOn);color:var(--chipOnFg);border-color:var(--chipOn)}
+.btn.go{background:var(--real);color:var(--goFg);border-color:var(--real);font-weight:600}
+.btn small{font:400 12px var(--f-mono);opacity:.75;margin-left:4px}
+
+.tw{overflow-x:auto;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font:500 11.5px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:4px 6px;color:var(--ink2)}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px;border-top:1px solid var(--rule);text-align:right;font:500 13.5px var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td:first-child{font:400 14px var(--f-body);color:var(--ink2);white-space:normal}
+.cm{color:var(--model)}.cr{color:var(--real)}
+th.cm,th.cr{font-weight:500}
+.verdict{margin:10px 0 0;font-weight:600}
+.ask{border:1px dashed var(--rule);border-radius:8px;padding:10px 12px;color:var(--ink2);font-size:14px}
+.ask b{color:var(--ink)}
+.ask p{margin:4px 0}
+
+.sumtab td,.sumtab th{white-space:normal;text-align:left;vertical-align:top;font:400 14px/1.45 var(--f-body);color:var(--ink);padding:10px 10px}
+.sumtab th{font:500 11.5px var(--f-mono);color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+.sumtab td:first-child{font-weight:600;min-width:150px}
+.sumtab td:first-child span{display:block;font:400 12px var(--f-mono);color:var(--ink2);font-weight:400;margin-top:2px}
+.sumwrap{grid-column:1/-1;padding:6px 8px 10px}
+.cycle{grid-column:1/-1;padding:14px 16px}
+.cycle ol{display:flex;flex-wrap:wrap;gap:8px 22px;list-style:none;margin:8px 0 0;padding:0;color:var(--ink2)}
+.cycle li b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+ <div>
+  <h1>Mechanics Modelling Assumptions</h1>
+  <p class="sub">Every A-level mechanics question quietly says "light", "smooth", "uniform" or "ignore air resistance". Switch each assumption off and see what the model was hiding.</p>
+ </div>
+ <div class="key" aria-label="Key"><span><i class="sw m"></i>Model: assumption made</span><span><i class="sw r"></i>Reality: assumption removed</span></div>
+</header>
+
+<nav role="tablist" aria-label="Assumptions">
+ <button role="tab" data-tab="air" aria-selected="true">Air resistance</button>
+ <button role="tab" data-tab="beam" aria-selected="false">Uniform body</button>
+ <button role="tab" data-tab="str" aria-selected="false">Inextensible string</button>
+ <button role="tab" data-tab="fric" aria-selected="false">Smooth surface</button>
+ <button role="tab" data-tab="pul" aria-selected="false">Smooth pulley</button>
+ <button role="tab" data-tab="sum" aria-selected="false">Summary</button>
+</nav>
+
+<!-- AIR -->
+<section class="panel on" id="p-air">
+ <div class="card stage">
+  <div class="cvwrap" style="--ar:16/10"><canvas id="c-air" role="img" aria-label="Paths of a ball thrown with and without air resistance"></canvas></div>
+  <div class="stagebar"><button class="btn go" id="air-replay">Throw again</button><span>Same speed and angle for both balls. Grid squares are equal in both directions.</span></div>
+ </div>
+ <div class="side">
+  <div class="card blk">
+   <div class="term">Projectile model</div>
+   <h2>Air resistance is negligible</h2>
+   <p>The ball is a particle with gravity as the only force. The horizontal velocity never changes, so <var>R</var> = <var>u</var>² sin 2<var>θ</var> / <var>g</var> and the path is a symmetric parabola.</p>
+   <p>Remove the assumption and drag acts against the velocity. Here it is modelled as <var>c</var><var>v</var>² per unit mass, so it opposes both the horizontal and the vertical motion.</p>
+  </div>
+  <div class="card blk">
+   <div class="ctl"><div class="row"><label for="air-u">Launch speed <var>u</var></label><output id="air-u-o"></output></div><input id="air-u" type="range" min="5" max="40" step="1" value="22"></div>
+   <div class="ctl"><div class="row"><label for="air-th">Launch angle <var>θ</var></label><output id="air-th-o"></output></div><input id="air-th" type="range" min="10" max="80" step="1" value="40"></div>
+   <div class="ctl"><div class="row"><label for="air-c">Drag per unit mass, <var>c</var></label><output id="air-c-o"></output></div><input id="air-c" type="range" min="0" max="0.15" step="0.0005" value="0.013"></div>
+   <div class="chips" id="air-chips"><button class="btn" data-c="0.0005">Shot put</button><button class="btn" data-c="0.006">Cricket ball</button><button class="btn on" data-c="0.013">Football</button><button class="btn" data-c="0.14">Table-tennis ball</button></div>
+   <div class="tw"><table><thead><tr><th></th><th class="cm">Model</th><th class="cr">Reality</th></tr></thead><tbody id="air-ro"></tbody></table></div>
+   <p class="verdict" id="air-v"></p>
+  </div>
+  <div class="ask"><p><b>Ask the class.</b> Which of the five SUVAT equations stops working once drag is included, and why?</p><p><b>When is it fair?</b> A shot put loses under 1% of its range. A football or cricket ball loses over a quarter at match speeds.</p></div>
+ </div>
+</section>
+
+<!-- BEAM -->
+<section class="panel" id="p-beam">
+ <div class="card stage">
+  <div class="cvwrap" style="--ar:16/10"><canvas id="c-beam" role="img" aria-label="A beam on two supports, uniform and non-uniform"></canvas></div>
+  <div class="stagebar"><span>Shading shows where the mass is concentrated. <b>G</b> is the centre of mass, <b>M</b> is the midpoint.</span></div>
+ </div>
+ <div class="side">
+  <div class="card blk">
+   <div class="term">Rods, beams and ladders</div>
+   <h2>The body is uniform</h2>
+   <p>A uniform beam has its weight acting at the midpoint, so we can place <var>W</var> in the centre and use symmetry. On two supports each carries half the weight.</p>
+   <p>A real plank, tapered pole or loaded ladder is heavier at one end. Its centre of mass <var>G</var> moves, and moments about each support no longer cancel.</p>
+  </div>
+  <div class="card blk">
+   <div class="ctl"><div class="row"><label for="beam-x">Centre of mass, from left end</label><output id="beam-x-o"></output></div><input id="beam-x" type="range" min="0.2" max="3.8" step="0.05" value="1.2"></div>
+   <div class="chips"><button class="btn" id="beam-uni">Make it uniform</button></div>
+   <div class="tw"><table><thead><tr><th></th><th class="cm">Model</th><th class="cr">Reality</th></tr></thead><tbody id="beam-ro"></tbody></table></div>
+   <p class="verdict" id="beam-v"></p>
+  </div>
+  <div class="ask"><p><b>Ask the class.</b> Beam length 4 m, mass 20 kg, supports 0.5 m from each end. How far from the left end can <var>G</var> be before the beam tips?</p><p><b>When is it fair?</b> A plank cut from one piece of timber, a metal bar, a ruler. Not a ladder with a person on it.</p></div>
+ </div>
+</section>
+
+<!-- STRING -->
+<section class="panel" id="p-str">
+ <div class="card stage">
+  <div class="cvwrap" style="--ar:4/3"><canvas id="c-str" role="img" aria-label="Two masses on a string over a pulley, with and without stretch, and a graph of tension"></canvas></div>
+  <div class="stagebar"><button class="btn go" id="str-replay">Release again</button><label for="str-speed">Slow motion</label><input id="str-speed" type="range" min="0.05" max="1" step="0.05" value="0.25" style="width:140px"><span>Dashed outline: where the model puts each mass.</span></div>
+ </div>
+ <div class="side">
+  <div class="card blk">
+   <div class="term">Connected particles</div>
+   <h2>The string is inextensible</h2>
+   <p>An inextensible string keeps both masses moving together at the same speed. The tension is one steady value, <var>T</var> = 2<var>m</var><sub>1</sub><var>m</var><sub>2</sub><var>g</var> / (<var>m</var><sub>1</sub> + <var>m</var><sub>2</sub>).</p>
+   <p>A real string stretches, like a spring with modulus <var>k</var>. Released from rest it is first slack in effect, then overshoots: the tension swings from 0 up to twice the model value.</p>
+  </div>
+  <div class="card blk">
+   <div class="ctl"><div class="row"><label for="str-m1">Left mass <var>m</var><sub>1</sub></label><output id="str-m1-o"></output></div><input id="str-m1" type="range" min="0.5" max="3" step="0.1" value="1.2"></div>
+   <div class="ctl"><div class="row"><label for="str-m2">Right mass <var>m</var><sub>2</sub></label><output id="str-m2-o"></output></div><input id="str-m2" type="range" min="0.5" max="3" step="0.1" value="1"></div>
+   <div class="ctl"><div class="row"><label for="str-k">String stiffness <var>k</var></label><output id="str-k-o"></output></div><input id="str-k" type="range" min="0" max="100" step="0.5" value="16"></div>
+   <div class="chips" id="str-chips"><button class="btn" data-k="20">Bungee cord</button><button class="btn on" data-k="60">Elastic cord</button><button class="btn" data-k="2000">Rope</button><button class="btn" data-k="20000">Nylon cord</button></div>
+   <div class="tw"><table><thead><tr><th></th><th class="cm">Model</th><th class="cr">Reality</th></tr></thead><tbody id="str-ro"></tbody></table></div>
+   <p class="verdict" id="str-v"></p>
+  </div>
+  <div class="ask"><p><b>Ask the class.</b> Why is a stiff rope still "inextensible" even though it stretches a little?</p><p><b>When is it fair?</b> When the stretch is tiny against the distances moved. A nylon cord stretches about a millimetre here, far too small to see.</p></div>
+ </div>
+</section>
+
+<!-- FRICTION -->
+<section class="panel" id="p-fric">
+ <div class="card stage">
+  <div class="cvwrap" style="--ar:4/3"><canvas id="c-fric" role="img" aria-label="A block on a smooth surface and on a rough surface"></canvas></div>
+  <div class="stagebar"><button class="btn go" id="fr-replay">Release again</button><span>Arrows: <b>mg</b> weight, <b>R</b> normal reaction, <b>F</b> friction. Block mass 2 kg.</span></div>
+ </div>
+ <div class="side">
+  <div class="card blk">
+   <div class="term">Surfaces</div>
+   <h2>The surface is smooth</h2>
+   <p>With no friction the only force along a slope is the weight component, so <var>a</var> = <var>g</var> sin <var>θ</var>. On the flat, a moving block keeps its speed for ever.</p>
+   <p>With friction, <var>F</var> ≤ <var>μR</var> acts against the motion. Down a slope <var>a</var> = <var>g</var>(sin <var>θ</var> − <var>μ</var> cos <var>θ</var>), and below a critical angle the block does not move at all.</p>
+  </div>
+  <div class="card blk">
+   <div class="chips" id="fr-mode"><button class="btn on" data-mode="slope">Block on a slope</button><button class="btn" data-mode="flat">Block sliding on the flat</button></div>
+   <div class="ctl" id="fr-th-w"><div class="row"><label for="fr-th">Slope angle <var>θ</var></label><output id="fr-th-o"></output></div><input id="fr-th" type="range" min="5" max="60" step="1" value="30"></div>
+   <div class="ctl" id="fr-u-w" hidden><div class="row"><label for="fr-u">Starting speed</label><output id="fr-u-o"></output></div><input id="fr-u" type="range" min="2" max="10" step="0.5" value="6"></div>
+   <div class="ctl"><div class="row"><label for="fr-mu">Coefficient of friction <var>μ</var></label><output id="fr-mu-o"></output></div><input id="fr-mu" type="range" min="0" max="1" step="0.01" value="0.35"></div>
+   <div class="tw"><table><thead><tr><th></th><th class="cm">Smooth</th><th class="cr">Rough</th></tr></thead><tbody id="fr-ro"></tbody></table></div>
+   <p class="verdict" id="fr-v"></p>
+  </div>
+  <div class="ask"><p><b>Ask the class.</b> The mass cancels in both answers. Why does it still matter for the size of the friction force?</p><p><b>When is it fair?</b> Ice, a lubricated track or an air table. Not rubber on tarmac, where <var>μ</var> is near 1.</p></div>
+ </div>
+</section>
+
+<!-- PULLEY -->
+<section class="panel" id="p-pul">
+ <div class="card stage">
+  <div class="cvwrap" style="--ar:4/3"><canvas id="c-pul" role="img" aria-label="Two masses over a smooth light pulley and over a pulley with friction"></canvas></div>
+  <div class="stagebar"><button class="btn go" id="pu-replay">Release again</button><label for="pu-speed">Slow motion</label><input id="pu-speed" type="range" min="0.1" max="1" step="0.05" value="0.5" style="width:140px"><span>Arrows show weight (down) and tension (up) on each mass.</span></div>
+ </div>
+ <div class="side">
+  <div class="card blk">
+   <div class="term">Pulleys and pegs</div>
+   <h2>The pulley is smooth</h2>
+   <p>A smooth pulley changes the direction of the string without changing the tension, so <var>T</var><sub>1</sub> = <var>T</var><sub>2</sub> and one equation covers the whole string.</p>
+   <p>Friction at the axle resists the turning. The tensions differ by the friction force, <var>T</var><sub>1</sub> − <var>T</var><sub>2</sub> = <var>f</var>, and a small difference in mass may not be enough to start any motion.</p>
+  </div>
+  <div class="card blk">
+   <div class="ctl"><div class="row"><label for="pu-m1">Left mass <var>m</var><sub>1</sub></label><output id="pu-m1-o"></output></div><input id="pu-m1" type="range" min="0.5" max="5" step="0.1" value="3"></div>
+   <div class="ctl"><div class="row"><label for="pu-m2">Right mass <var>m</var><sub>2</sub></label><output id="pu-m2-o"></output></div><input id="pu-m2" type="range" min="0.5" max="5" step="0.1" value="2"></div>
+   <div class="ctl"><div class="row"><label for="pu-f">Friction at the pulley <var>f</var></label><output id="pu-f-o"></output></div><input id="pu-f" type="range" min="0" max="20" step="0.5" value="4"></div>
+   <div class="ctl"><div class="row"><label for="pu-M">Also not light: pulley mass <var>M</var></label><output id="pu-M-o"></output></div><input id="pu-M" type="range" min="0" max="4" step="0.1" value="0"></div>
+   <div class="tw"><table><thead><tr><th></th><th class="cm">Model</th><th class="cr">Reality</th></tr></thead><tbody id="pu-ro"></tbody></table></div>
+   <p class="verdict" id="pu-v"></p>
+  </div>
+  <div class="ask"><p><b>Ask the class.</b> Set the masses to 2.5 kg and 2.0 kg, then slide the friction up. At what value does the system stop moving?</p><p><b>When is it fair?</b> A well-oiled bearing on a light wheel. Not a rope dragged over a rough fixed peg.</p></div>
+ </div>
+</section>
+
+<!-- SUMMARY -->
+<section class="panel" id="p-sum">
+ <div class="card cycle"><div class="term">The modelling cycle</div>
+  <ol><li><b>Real problem</b></li><li><b>State assumptions</b></li><li><b>Solve the model</b></li><li><b>Compare with reality</b></li><li><b>Refine the assumptions</b></li></ol>
+ </div>
+ <div class="card sumwrap"><div class="tw"><table class="sumtab"><thead><tr><th>Assumption</th><th>What it lets us do</th><th>What happens without it</th><th>When it is fair</th></tr></thead><tbody>
+  <tr><td>No air resistance<span>projectile</span></td><td>Constant horizontal velocity. Constant acceleration <var>g</var>. SUVAT works.</td><td>Acceleration depends on velocity, so SUVAT fails. Range falls by about 30% for a football struck at 22 m/s. The path is steeper on the way down.</td><td>Heavy, compact objects at modest speed. A shot put loses under 1%.</td></tr>
+  <tr><td>Uniform body<span>rod, beam, lamina</span></td><td>Weight acts at the midpoint. Symmetry gives equal reactions.</td><td>The centre of mass moves. Reactions become unequal and the body can tip when <var>G</var> passes a support.</td><td>Single-material bars and planks. Not loaded ladders or tapered poles.</td></tr>
+  <tr><td>Inextensible string<span>connected particles</span></td><td>Both particles share one speed and acceleration. Tension is one steady value.</td><td>The string behaves as a spring. Tension oscillates between 0 and twice the model value, and the particles move at different speeds.</td><td>Stiff cord or rope, where the stretch is far smaller than the distances moved.</td></tr>
+  <tr><td>Smooth surface<span>friction ignored</span></td><td>No friction force. Acceleration along a slope is <var>g</var> sin <var>θ</var>. Moving blocks never slow.</td><td>Friction <var>F</var> ≤ <var>μR</var> opposes motion. Acceleration falls, and below tan <var>θ</var> = <var>μ</var> a block on a slope stays at rest.</td><td>Ice, air tracks, lubricated surfaces.</td></tr>
+  <tr><td>Smooth pulley<span>and light pulley</span></td><td>Tension is the same on both sides. One equation of motion for the whole string.</td><td>Tensions differ by the friction force. A mass difference smaller than <var>f</var>/<var>g</var> gives no motion. A heavy pulley also needs <var>I</var><var>α</var>.</td><td>A light wheel on a good bearing. Not a rope over a rough peg.</td></tr>
+ </tbody></table></div></div>
+</section>
+</div>
+<script>
+"use strict";
+const g=9.8,TAU=Math.PI*2,DEG=Math.PI/180;
+const $=id=>document.getElementById(id);
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const colors=()=>({ink:cssv("--ink"),ink2:cssv("--ink2"),grid:cssv("--grid"),gridM:cssv("--gridM"),model:cssv("--model"),real:cssv("--real"),card:cssv("--card"),chip:cssv("--chip"),rule:cssv("--rule"),ok:cssv("--ok")});
+const MONO='"IBM Plex Mono",ui-monospace,Menlo,monospace',SANS='"Instrument Sans",system-ui,sans-serif';
+
+function fit(cv){
+ const r=cv.getBoundingClientRect();if(r.width<10||r.height<10)return null;
+ const d=window.devicePixelRatio||1,W=Math.round(r.width*d),H=Math.round(r.height*d);
+ if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
+ const ctx=cv.getContext("2d");ctx.setTransform(d,0,0,d,0,0);return{ctx,w:r.width,h:r.height};
+}
+function paper(ctx,w,h,C,step=24){
+ ctx.fillStyle=C.card;ctx.fillRect(0,0,w,h);ctx.lineWidth=1;
+ for(let i=0,x=0;x<=w;x+=step,i++){ctx.strokeStyle=i%5?C.grid:C.gridM;ctx.beginPath();ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,h);ctx.stroke();}
+ for(let i=0,y=0;y<=h;y+=step,i++){ctx.strokeStyle=i%5?C.grid:C.gridM;ctx.beginPath();ctx.moveTo(0,y+.5);ctx.lineTo(w,y+.5);ctx.stroke();}
+}
+function text(ctx,s,x,y,color,size=12,align="left",sans=false,weight=500){
+ ctx.fillStyle=color;ctx.font=`${weight} ${size}px ${sans?SANS:MONO}`;ctx.textAlign=align;ctx.textBaseline="alphabetic";ctx.fillText(s,x,y);
+}
+function arrow(ctx,x0,y0,x1,y1,color,lw=2.5){
+ const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy);if(L<2)return;
+ const ux=dx/L,uy=dy/L,hs=Math.min(10,L*.6);
+ ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw;ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1-ux*hs*.6,y1-uy*hs*.6);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1-ux*hs-uy*hs*.5,y1-uy*hs+ux*hs*.5);ctx.lineTo(x1-ux*hs+uy*hs*.5,y1-uy*hs-ux*hs*.5);ctx.closePath();ctx.fill();ctx.lineCap="butt";
+}
+function rows(id,list){$(id).innerHTML=list.map(r=>`<tr><td>${r[0]}</td><td class="cm">${r[1]}</td><td class="cr">${r[2]}</td></tr>`).join("");}
+function bind(id,fn,fmt){
+ const el=$(id),out=$(id+"-o");
+ const f=()=>{const v=parseFloat(el.value);if(out)out.textContent=fmt?fmt(v):String(v);fn(v);};
+ el.addEventListener("input",f);return f;
+}
+function chipGroup(id,attr,fn){
+ const box=$(id);
+ box.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;fn(b.dataset[attr]);});
+ return v=>{[...box.children].forEach(b=>b.classList.toggle("on",String(b.dataset[attr])===String(v)));};
+}
+
+const sims={};let active="air";
+function show(id){
+ active=id;
+ document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on",p.id==="p-"+id));
+ document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===id)));
+ if(sims[id]&&sims[id].enter)sims[id].enter();
+}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>show(b.dataset.tab)));
+
+/* ---------- 1. Air resistance ---------- */
+sims.air=(()=>{
+ const cv=$("c-air");let u=22,th=40,c=0.013,t=0,tEnd=1,play=true,M,RL;const dtn=0.002;
+ const acc=(vx,vy)=>{const v=Math.hypot(vx,vy);return[-c*v*vx,-g-c*v*vy];};
+ function compute(){
+  const a=th*DEG,vx=u*Math.cos(a),vy=u*Math.sin(a),T=2*vy/g;
+  M={vx,vy,T,R:vx*T,H:vy*vy/(2*g),vi:u,ang:th};
+  let x=0,y=0,px=vx,py=vy,tt=0,hmax=0,xh=0;const pts=[[0,0,0]];
+  while(tt<80){
+   const k1=acc(px,py),k2=acc(px+k1[0]*dtn/2,py+k1[1]*dtn/2),k3=acc(px+k2[0]*dtn/2,py+k2[1]*dtn/2),k4=acc(px+k3[0]*dtn,py+k3[1]*dtn);
+   const nvx=px+(k1[0]+2*k2[0]+2*k3[0]+k4[0])*dtn/6,nvy=py+(k1[1]+2*k2[1]+2*k3[1]+k4[1])*dtn/6;
+   const nx=x+(px+nvx)/2*dtn,ny=y+(py+nvy)/2*dtn;
+   if(ny<0){const f=y/(y-ny);pts.push([tt+f*dtn,x+(nx-x)*f,0]);px=nvx;py=nvy;break;}
+   tt+=dtn;x=nx;y=ny;px=nvx;py=nvy;pts.push([tt,x,y]);if(y>hmax){hmax=y;xh=x;}
+  }
+  const last=pts[pts.length-1];
+  RL={pts,T:last[0],R:last[1],H:hmax,xh,vi:Math.hypot(px,py),ang:Math.atan2(Math.abs(py),px)/DEG};
+  tEnd=Math.max(M.T,RL.T)+.35;
+  readout();
+ }
+ function posReal(tm){
+  if(tm>=RL.T)return[RL.R,0];
+  const i=Math.min(RL.pts.length-2,Math.floor(tm/dtn)),p=RL.pts[i],q=RL.pts[i+1],f=(tm-p[0])/((q[0]-p[0])||1);
+  return[p[1]+(q[1]-p[1])*f,p[2]+(q[2]-p[2])*f];
+ }
+ function readout(){
+  rows("air-ro",[
+   ["Range",M.R.toFixed(1)+" m",RL.R.toFixed(1)+" m"],
+   ["Greatest height",M.H.toFixed(1)+" m",RL.H.toFixed(1)+" m"],
+   ["Time of flight",M.T.toFixed(2)+" s",RL.T.toFixed(2)+" s"],
+   ["Apex, as % of range","50 %",(100*RL.xh/RL.R).toFixed(0)+" %"],
+   ["Landing speed",M.vi.toFixed(1)+" m/s",RL.vi.toFixed(1)+" m/s"],
+   ["Landing angle",M.ang.toFixed(0)+"° below horizontal",RL.ang.toFixed(0)+"°"]]);
+  const loss=100*(1-RL.R/M.R);
+  $("air-v").innerHTML=c<0.0002?"With no drag the two paths are identical.":`Range is <b>${loss.toFixed(0)}% shorter</b>. The apex moves towards the thrower and the ball lands slower and steeper.`;
+ }
+ function restart(){t=reduce?tEnd:0;play=!reduce;}
+ function draw(){
+  const f=fit(cv);if(!f)return;const{ctx,w,h}=f,C=colors();
+  ctx.fillStyle=C.card;ctx.fillRect(0,0,w,h);
+  const L=44,B=h-34,Tp=22,Rg=20;
+  const xmax=Math.max(M.R,RL.R)*1.06,ymax=Math.max(M.H,RL.H)*1.2;
+  const s=Math.min((w-L-Rg)/xmax,(B-Tp)/ymax);
+  const step=[1,2,5,10,20,50,100,200].find(k=>k*s>=34)||200;
+  ctx.lineWidth=1;
+  for(let x=0;x*s<=w-L-Rg+.5;x+=step){const px=L+x*s;ctx.strokeStyle=x%(step*5)===0?C.gridM:C.grid;ctx.beginPath();ctx.moveTo(px,B);ctx.lineTo(px,Tp);ctx.stroke();text(ctx,String(x),px,B+17,C.ink2,11,"center");}
+  for(let y=0;y*s<=B-Tp+.5;y+=step){const py=B-y*s;ctx.strokeStyle=y%(step*5)===0?C.gridM:C.grid;ctx.beginPath();ctx.moveTo(L,py);ctx.lineTo(w-Rg,py);ctx.stroke();if(y>0)text(ctx,String(y),L-7,py+4,C.ink2,11,"right");}
+  ctx.strokeStyle=C.ink;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(L,B);ctx.lineTo(w-Rg,B);ctx.stroke();
+  text(ctx,"metres",w-Rg,B+31,C.ink2,11,"right");
+  ctx.setLineDash([8,6]);ctx.strokeStyle=C.model;ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=120;i++){const tt=M.T*i/120,px=L+M.vx*tt*s,py=B-(M.vy*tt-.5*g*tt*tt)*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
+  ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=C.real;ctx.lineWidth=2.5;ctx.beginPath();
+  RL.pts.forEach((p,i)=>{if(i%6&&i<RL.pts.length-1)return;const px=L+p[1]*s,py=B-p[2]*s;i?ctx.lineTo(px,py):ctx.moveTo(px,py);});ctx.stroke();
+  // landing labels
+  const lm=L+M.R*s,lr=L+RL.R*s;
+  ctx.fillStyle=C.model;ctx.beginPath();ctx.arc(lm,B,4,0,TAU);ctx.fill();
+  text(ctx,"R = "+M.R.toFixed(1)+" m",lm+4,B-30,C.model,12,"right");
+  if(RL.R<M.R-.05){ctx.fillStyle=C.real;ctx.beginPath();ctx.arc(lr,B,4,0,TAU);ctx.fill();text(ctx,"R = "+RL.R.toFixed(1)+" m",lr+4,B-12,C.real,12,"right");}
+  // apex dots
+  ctx.fillStyle=C.model;ctx.beginPath();ctx.arc(L+M.R/2*s,B-M.H*s,3.5,0,TAU);ctx.fill();
+  ctx.fillStyle=C.real;ctx.beginPath();ctx.arc(L+RL.xh*s,B-RL.H*s,3.5,0,TAU);ctx.fill();
+  // balls
+  const tm=Math.min(t,M.T),bm=[M.vx*tm,M.vy*tm-.5*g*tm*tm],br=posReal(Math.min(t,RL.T));
+  [[bm,C.model],[br,C.real]].forEach(([p,col])=>{ctx.fillStyle=col;ctx.strokeStyle=C.card;ctx.lineWidth=2;ctx.beginPath();ctx.arc(L+p[0]*s,B-p[1]*s,7,0,TAU);ctx.fill();ctx.stroke();});
+ }
+ function step(dt){if(play){t+=dt;if(t>=tEnd){t=tEnd;play=false;}}}
+ const setChip=chipGroup("air-chips","c",v=>{$("air-c").value=v;fc();});
+ const fu=bind("air-u",v=>{u=v;compute();restart();},v=>v+" m/s");
+ const fa=bind("air-th",v=>{th=v;compute();restart();},v=>v+"°");
+ const fc=bind("air-c",v=>{c=v;setChip(v);compute();restart();},v=>v.toFixed(4)+" per m");
+ $("air-replay").addEventListener("click",()=>{t=0;play=true;});
+ fu();fa();fc();
+ return{step,draw,enter:restart};
+})();
+
+/* ---------- 2. Non-uniform body ---------- */
+sims.beam=(()=>{
+ const cv=$("c-beam"),L=4,A=.5,B=3.5,Wt=20*g;let gx=1.2,tilt=0,tiltR=0;
+ const react=x=>({ra:Wt*(B-x)/(B-A),rb:Wt*(x-A)/(B-A),tip:x<A?-1:x>B?1:0});
+ function readout(){
+  const r=react(gx),ru=react(L/2);
+  const ra=r.tip<0?Wt:r.tip>0?0:r.ra,rb=r.tip>0?Wt:r.tip<0?0:r.rb;
+  rows("beam-ro",[
+   ["Centre of mass, from left",(L/2).toFixed(2)+" m",gx.toFixed(2)+" m"],
+   ["Reaction at A",ru.ra.toFixed(0)+" N",ra.toFixed(0)+" N"],
+   ["Reaction at B",ru.rb.toFixed(0)+" N",rb.toFixed(0)+" N"],
+   ["Beam","stays level",r.tip?"tips":"stays level"]]);
+  $("beam-v").innerHTML=r.tip<0?"G is beyond support A. The beam lifts off B and tips about A.":r.tip>0?"G is beyond support B. The beam lifts off A and tips about B.":Math.abs(gx-L/2)<.04?"Uniform: equal reactions, W/2 at each support.":`Reactions are unequal: A carries ${(100*r.ra/Wt).toFixed(0)}% of the weight, B carries ${(100*r.rb/Wt).toFixed(0)}%.`;
+ }
+ function row(ctx,C,w,top,rh,x,ang,label,color,uniform){
+  const px=m=>40+m*(w-80)/L,by=top+rh*.5,th=18,r=react(x);
+  text(ctx,label,14,top+22,color,13,"left",true,600);
+  [A,B].forEach((m,i)=>{const sx=px(m);ctx.fillStyle=C.ink2;ctx.beginPath();ctx.moveTo(sx,by+th/2);ctx.lineTo(sx-12,by+th/2+22);ctx.lineTo(sx+12,by+th/2+22);ctx.closePath();ctx.fill();text(ctx,i?"B":"A",sx,by+th/2+38,C.ink2,12,"center");});
+  const pv=r.tip<0?px(A):px(B),pvY=by+th/2,cs=Math.cos(ang),sn=Math.sin(ang);
+  const rot=(x,y)=>{const dx=x-pv,dy=y-pvY;return[pv+dx*cs-dy*sn,pvY+dx*sn+dy*cs];};
+  ctx.save();ctx.translate(pv,pvY);ctx.rotate(ang);ctx.translate(-pv,-pvY);
+  ctx.fillStyle=C.chip;ctx.fillRect(px(0),by-th/2,px(L)-px(0),th);
+  const n=90,sw=(px(L)-px(0))/n;ctx.fillStyle=color;
+  for(let i=0;i<n;i++){const m=(i+.5)/n*L;ctx.globalAlpha=uniform?.22:.08+.6*Math.exp(-Math.pow((m-x)/.45,2));ctx.fillRect(px(0)+i*sw,by-th/2,sw+.6,th);}
+  ctx.globalAlpha=1;ctx.strokeStyle=C.ink;ctx.lineWidth=2;ctx.strokeRect(px(0),by-th/2,px(L)-px(0),th);ctx.restore();
+  const arm=rh*.34/Wt;
+  const ra=r.tip<0?Wt:r.tip>0?0:r.ra,rb=r.tip>0?Wt:r.tip<0?0:r.rb;
+  [[A,ra],[B,rb]].forEach(([m,R])=>{const p=rot(px(m),by-th/2);if(R>1){arrow(ctx,p[0],p[1],p[0],p[1]-R*arm,C.ok);text(ctx,R.toFixed(0)+" N",p[0],p[1]-R*arm-6,C.ok,12,"center");}});
+  const gp=rot(px(x),by);
+  arrow(ctx,gp[0],gp[1],gp[0],gp[1]+rh*.34,C.ink);text(ctx,"W = "+Wt.toFixed(0)+" N",gp[0]+8,gp[1]+rh*.34+4,C.ink,12,"left");
+  ctx.fillStyle=C.ink;ctx.strokeStyle=C.card;ctx.lineWidth=2;ctx.beginPath();ctx.arc(gp[0],gp[1],5.5,0,TAU);ctx.fill();ctx.stroke();
+  text(ctx,"G",gp[0],gp[1]-10,C.ink,12,"center",false,600);
+  if(Math.abs(x-L/2)>.06){const mp=rot(px(L/2),by-th/2);ctx.strokeStyle=C.ink2;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(mp[0],mp[1]-6);ctx.lineTo(mp[0],mp[1]);ctx.stroke();text(ctx,"M",mp[0],mp[1]-10,C.ink2,11,"center");}
+  if(r.tip)text(ctx,"tips",w-16,top+22,color,13,"right",true,600);
+ }
+ function draw(){
+  const f=fit(cv);if(!f)return;const{ctx,w,h}=f,C=colors();paper(ctx,w,h,C);
+  const rh=h/2;
+  row(ctx,C,w,0,rh,L/2,0,"Model: uniform beam, G at the midpoint",C.model,true);
+  ctx.strokeStyle=C.rule;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,rh);ctx.lineTo(w,rh);ctx.stroke();
+  row(ctx,C,w,rh,rh,gx,tilt,"Reality: non-uniform beam",C.real,false);
+ }
+ function step(dt){const r=react(gx).tip;tilt+=(r*.2-tilt)*Math.min(1,dt*6);}
+ const fx=bind("beam-x",v=>{gx=v;readout();},v=>v.toFixed(2)+" m");
+ $("beam-uni").addEventListener("click",()=>{$("beam-x").value=L/2;fx();});
+ fx();
+ return{step,draw};
+})();
+
+/* ---------- shared drawing: two masses over a pulley ---------- */
+function atwood(ctx,C,o){
+ const cx=o.x+o.w/2,top=o.y+4,py=o.y+30,sc=(o.h-44)/o.depth,rp=20;
+ const side=m=>14+9*Math.cbrt(m);
+ const y1=py+o.s1*sc,y2=py+o.s2*sc,sd1=side(o.m1),sd2=side(o.m2);
+ ctx.strokeStyle=C.ink2;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx-34,top);ctx.lineTo(cx+34,top);ctx.stroke();
+ ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,top);ctx.lineTo(cx,py);ctx.stroke();
+ if(o.ghost){ctx.setLineDash([5,4]);ctx.strokeStyle=C.model;ctx.lineWidth=2;
+  ctx.strokeRect(cx-rp-sd1/2,py+o.ghost.s1*sc,sd1,sd1);ctx.strokeRect(cx+rp-sd2/2,py+o.ghost.s2*sc,sd2,sd2);ctx.setLineDash([]);}
+ ctx.strokeStyle=o.color;ctx.lineWidth=o.sw||2;
+ ctx.beginPath();ctx.moveTo(cx-rp,py);ctx.lineTo(cx-rp,y1);ctx.moveTo(cx+rp,py);ctx.lineTo(cx+rp,y2);ctx.stroke();
+ ctx.beginPath();ctx.arc(cx,py,rp,Math.PI,0);ctx.stroke();
+ ctx.fillStyle=C.card;ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(cx,py,rp,0,TAU);ctx.fill();ctx.stroke();
+ ctx.lineWidth=1.5;for(let k=0;k<3;k++){const a=(o.ang||0)+k*Math.PI/3;ctx.beginPath();ctx.moveTo(cx-Math.cos(a)*(rp-3),py-Math.sin(a)*(rp-3));ctx.lineTo(cx+Math.cos(a)*(rp-3),py+Math.sin(a)*(rp-3));ctx.stroke();}
+ ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(cx,py,3,0,TAU);ctx.fill();
+ ctx.fillStyle=o.fill||C.chip;ctx.strokeStyle=o.color;ctx.lineWidth=3;
+ ctx.fillRect(cx-rp-sd1/2,y1,sd1,sd1);ctx.strokeRect(cx-rp-sd1/2,y1,sd1,sd1);
+ ctx.fillRect(cx+rp-sd2/2,y2,sd2,sd2);ctx.strokeRect(cx+rp-sd2/2,y2,sd2,sd2);
+ text(ctx,o.m1.toFixed(1)+" kg",cx-rp,y1+sd1/2+4,C.ink,11,"center");
+ text(ctx,o.m2.toFixed(1)+" kg",cx+rp,y2+sd2/2+4,C.ink,11,"center");
+ return{cx,py,sc,rp,y1,y2,sd1,sd2};
+}
+function niceStep(range,target){const raw=range/target,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;return(m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+
+/* ---------- 3. Extensible string ---------- */
+sims.str=(()=>{
+ const cv=$("c-str"),S0=1.8,LEN=3.6,dt=.0005;
+ let m1=1.2,m2=1,k=60,sp=.25,t=0,tEnd=2,play=true,hold=0,D=null;
+ const kOf=v=>20*Math.pow(1000,v/100),vOf=kk=>100*Math.log(kk/20)/Math.log(1000);
+ const fmtK=kk=>kk>=1000?(kk/1000).toFixed(kk>=10000?0:1)+" kN/m":kk.toFixed(0)+" N/m";
+ function compute(){
+  const mu=m1*m2/(m1+m2),b=2*.05*Math.sqrt(k*mu),am=(m1-m2)*g/(m1+m2),Tm=2*g*m1*m2/(m1+m2);
+  tEnd=clamp(Math.abs(am)>1e-6?Math.sqrt(2*1.2/Math.abs(am)):2.5,.7,2.6);
+  const N=Math.ceil(tEnd/dt)+1,A1=new Float32Array(N),A2=new Float32Array(N),TT=new Float32Array(N);
+  let s1=S0,s2=S0,v1=0,v2=0,pk=0,ext=0;
+  for(let i=0;i<N;i++){
+   const e=s1+s2-LEN,T=Math.max(0,k*e+b*(v1+v2));
+   A1[i]=s1;A2[i]=s2;TT[i]=T;if(T>pk)pk=T;if(e>ext)ext=e;
+   v1+=(g-T/m1)*dt;v2+=(g-T/m2)*dt;s1+=v1*dt;s2+=v2*dt;
+  }
+  D={A1,A2,TT,N,pk,ext,mu,am,Tm,vEnd:Math.abs(v1)};
+  const per=TAU*Math.sqrt(mu/k);
+  rows("str-ro",[
+   ["Tension","steady, "+Tm.toFixed(1)+" N","swings 0 to "+pk.toFixed(1)+" N"],
+   ["Peak tension",Tm.toFixed(1)+" N",pk.toFixed(1)+" N"],
+   ["Stretch of string","none",(ext*1000).toFixed(ext<.01?1:0)+" mm at most"],
+   ["Time of one bounce","none",(per*1000).toFixed(0)+" ms"],
+   ["Speed after "+tEnd.toFixed(1)+" s",Math.abs(am*tEnd).toFixed(2)+" m/s",Math.abs(v1).toFixed(2)+" m/s"]]);
+  $("str-v").innerHTML=ext<.004?`The string stretches only ${(ext*1000).toFixed(1)} mm. Here the model is excellent.`:`Peak tension is <b>${(pk/Tm).toFixed(1)}×</b> the model value, although the average stays close to it.`;
+ }
+ function restart(){t=reduce?tEnd:0;play=!reduce;hold=0;}
+ function draw(){
+  const f=fit(cv);if(!f)return;const{ctx,w,h}=f,C=colors();paper(ctx,w,h,C);
+  const hw=w/2,ah=h*.58,gap=6,i=Math.min(D.N-1,Math.floor(t/dt)),am=D.am;
+  const sM=.5*am*t*t;
+  atwood(ctx,C,{x:0,y:0,w:hw-gap,h:ah,s1:S0+sM,s2:S0-sM,m1,m2,depth:3.9,color:C.model});
+  atwood(ctx,C,{x:hw+gap,y:0,w:hw-gap,h:ah,s1:D.A1[i],s2:D.A2[i],m1,m2,depth:3.9,color:C.real,ghost:{s1:S0+sM,s2:S0-sM},sw:1.5+2.5*D.TT[i]/Math.max(D.pk,1)});
+  text(ctx,"Model: inextensible",12,22,C.model,13,"left",true,600);text(ctx,"Reality: stretches",hw+gap+12,22,C.real,13,"left",true,600);
+  ctx.strokeStyle=C.rule;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hw,0);ctx.lineTo(hw,ah);ctx.stroke();
+  // tension graph
+  const gx0=52,gx1=w-16,gy0=h-30,gy1=ah+34,Tmax=Math.max(D.pk,D.Tm)*1.15,sy=T=>gy0-(gy0-gy1)*T/Tmax,sx=tt=>gx0+(gx1-gx0)*tt/tEnd;
+  ctx.fillStyle=C.card;ctx.fillRect(0,ah+8,w,h-ah-8);
+  const ts=niceStep(Tmax,4);ctx.lineWidth=1;
+  for(let T=0;T<=Tmax;T+=ts){ctx.strokeStyle=C.grid;ctx.beginPath();ctx.moveTo(gx0,sy(T));ctx.lineTo(gx1,sy(T));ctx.stroke();text(ctx,String(+T.toFixed(2)),gx0-7,sy(T)+4,C.ink2,11,"right");}
+  const xs=niceStep(tEnd,5);for(let tt=0;tt<=tEnd+1e-9;tt+=xs){ctx.strokeStyle=C.grid;ctx.beginPath();ctx.moveTo(sx(tt),gy0);ctx.lineTo(sx(tt),gy1);ctx.stroke();text(ctx,String(+tt.toFixed(2)),sx(tt),gy0+16,C.ink2,11,"center");}
+  text(ctx,"Tension in the string (N)",gx0,gy1-8,C.ink2,12,"left",true);text(ctx,"time (s)",gx1,gy0+28,C.ink2,11,"right");
+  ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(gx0,gy1);ctx.lineTo(gx0,gy0);ctx.lineTo(gx1,gy0);ctx.stroke();
+  ctx.setLineDash([8,6]);ctx.strokeStyle=C.model;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(gx0,sy(D.Tm));ctx.lineTo(gx1,sy(D.Tm));ctx.stroke();ctx.setLineDash([]);
+  const stp=Math.max(1,Math.floor(D.N/((gx1-gx0)*2)));
+  ctx.globalAlpha=.22;ctx.strokeStyle=C.real;ctx.lineWidth=2;ctx.beginPath();for(let j=0;j<D.N;j+=stp){const X=sx(j*dt),Y=sy(D.TT[j]);j?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}ctx.stroke();ctx.globalAlpha=1;
+  ctx.lineWidth=2.5;ctx.beginPath();for(let j=0;j<=i;j+=stp){const X=sx(j*dt),Y=sy(D.TT[j]);j?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}ctx.stroke();
+  ctx.fillStyle=C.real;ctx.beginPath();ctx.arc(sx(i*dt),sy(D.TT[i]),5,0,TAU);ctx.fill();
+ }
+ function step(dtt){
+  if(play){t+=dtt*sp;if(t>=tEnd){t=tEnd;play=false;hold=1.4;}}
+  else if(hold>0&&!reduce){hold-=dtt;if(hold<=0){t=0;play=true;}}
+ }
+ const setChip=chipGroup("str-chips","k",v=>{k=+v;$("str-k").value=vOf(k);fk();});
+ const f1=bind("str-m1",v=>{m1=v;compute();restart();},v=>v.toFixed(1)+" kg");
+ const f2=bind("str-m2",v=>{m2=v;compute();restart();},v=>v.toFixed(1)+" kg");
+ const fk=(()=>{const el=$("str-k"),out=$("str-k-o");return()=>{k=kOf(parseFloat(el.value));out.textContent=fmtK(k);setChip(Math.round(k));compute();restart();};})();
+ $("str-k").addEventListener("input",fk);
+ $("str-k").value=vOf(60);
+ $("str-speed").addEventListener("input",e=>{sp=parseFloat(e.target.value);});
+ $("str-replay").addEventListener("click",()=>{t=0;play=true;hold=0;});
+ f1();f2();fk();
+ return{step,draw,enter:restart};
+})();
+
+/* ---------- 4. Smooth surface ---------- */
+sims.fric=(()=>{
+ const cv=$("c-fric"),D=2.6,MS=2;
+ let mode="slope",th=30,mu=.35,u0=6,t=0,tEnd=3,play=true,hold=0;
+ const FLAT_END=5;
+ function slopeCalc(){const a=th*DEG,s=Math.sin(a),c=Math.cos(a),stuck=Math.tan(a)<=mu;return{s,c,stuck,aM:g*s,aR:stuck?0:g*(s-mu*c),F:stuck?MS*g*s:mu*MS*g*c,Fmax:mu*MS*g*c};}
+ const tBot=a=>a>1e-9?Math.sqrt(2*D/a):Infinity;
+ function compute(){
+  if(mode==="slope"){
+   const k=slopeCalc(),tm=tBot(k.aM),tr=tBot(k.aR);
+   tEnd=Math.min(4,Math.max(tm,isFinite(tr)?tr:0,1.5));
+   rows("fr-ro",[
+    ["Acceleration",k.aM.toFixed(2)+" m/s²",k.stuck?"0 (at rest)":k.aR.toFixed(2)+" m/s²"],
+    ["Time to slide "+D+" m",tm.toFixed(2)+" s",isFinite(tr)?tr.toFixed(2)+" s":"never moves"],
+    ["Speed at the bottom",Math.sqrt(2*k.aM*D).toFixed(2)+" m/s",k.stuck?"0":Math.sqrt(2*k.aR*D).toFixed(2)+" m/s"],
+    ["Friction force F","0 N",k.F.toFixed(1)+" N"],
+    ["Most friction can give, μR","0 N",k.Fmax.toFixed(1)+" N"]]);
+   $("fr-v").innerHTML=k.stuck?`Here tan <var>θ</var> ≤ <var>μ</var>, so friction holds the block. It needs only <var>F</var> = <var>mg</var> sin <var>θ</var> = ${k.F.toFixed(1)} N, less than the ${k.Fmax.toFixed(1)} N available.`:mu<.005?"With μ = 0 the two blocks move identically.":`Friction removes <b>${(100*(1-k.aR/k.aM)).toFixed(0)}%</b> of the acceleration. The mass cancels, so the heavier block is no faster.`;
+  }else{
+   const ts=mu>0?u0/(mu*g):Infinity,xs=mu>0?u0*u0/(2*mu*g):Infinity;
+   tEnd=FLAT_END;
+   rows("fr-ro",[
+    ["Deceleration","0",(mu*g).toFixed(2)+" m/s²"],
+    ["Time to stop","never",isFinite(ts)?ts.toFixed(2)+" s":"never"],
+    ["Distance to stop","never",isFinite(xs)?xs.toFixed(1)+" m":"never"],
+    ["Speed after "+tEnd+" s",u0.toFixed(1)+" m/s",Math.max(0,u0-mu*g*tEnd).toFixed(1)+" m/s"]]);
+   $("fr-v").innerHTML=mu<.005?"With μ = 0 nothing slows either block. Newton's first law.":`Without friction the block never stops. With it, the block stops after <b>${xs.toFixed(1)} m</b>.`;
+  }
+ }
+ function restart(){t=reduce?tEnd:0;play=!reduce;hold=0;}
+ function flatX(m,tm){if(!m||mu<=0)return u0*tm;const ts=u0/(mu*g);return tm<ts?u0*tm-.5*mu*g*tm*tm:u0*u0/(2*mu*g);}
+ function slopeScene(ctx,C,x0,w0,h,rough,color,title){
+  const k=slopeCalc(),cs=Math.cos(th*DEG),sn=Math.sin(th*DEG),top=52,bot=h-34;
+  const ell=Math.min((w0-40)/cs,(bot-top)/sn),px=ell/3,left=x0+(w0-ell*cs)/2;
+  const Ax=left,Ay=bot-ell*sn,Bx=left+ell*cs;
+  ctx.fillStyle=C.chip;ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(Ax,Ay);ctx.lineTo(Bx,bot);ctx.lineTo(Ax,bot);ctx.closePath();ctx.fill();ctx.stroke();
+  if(rough){ctx.strokeStyle=color;ctx.lineWidth=1.5;for(let i=0;i<=24;i++){const q=i/24,sx=Ax+(Bx-Ax)*q,sy=Ay+(bot-Ay)*q;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx-3*sn,sy+3*cs);ctx.lineTo(sx+3*cs-2*sn,sy+3*sn+2*cs);ctx.stroke();}}
+  ctx.strokeStyle=C.ink2;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(Bx,bot,34,Math.PI,Math.PI+th*DEG);ctx.stroke();text(ctx,th+"°",Bx-48,bot-5,C.ink2,12,"right");
+  const a=rough?k.aR:k.aM,s=.14+Math.min(D,.5*a*t*t),bs=Math.max(22,.3*px);
+  const cxp=Ax+cs*s*px+sn*bs/2,cyp=Ay+sn*s*px-cs*bs/2;
+  ctx.save();ctx.translate(cxp,cyp);ctx.rotate(th*DEG);ctx.fillStyle=C.card;ctx.strokeStyle=color;ctx.lineWidth=3;ctx.fillRect(-bs/2,-bs/2,bs,bs);ctx.strokeRect(-bs/2,-bs/2,bs,bs);ctx.restore();
+  const Fs=1.9,W=MS*g;
+  arrow(ctx,cxp,cyp,cxp,cyp+W*Fs,C.ink);text(ctx,"mg",cxp+7,cyp+W*Fs,C.ink,12,"left");
+  arrow(ctx,cxp,cyp,cxp+sn*W*k.c*Fs,cyp-cs*W*k.c*Fs,C.ok);text(ctx,"R",cxp+sn*W*k.c*Fs+6,cyp-cs*W*k.c*Fs-4,C.ok,12,"left");
+  if(rough&&k.F>.2){const moving=!k.stuck,F=moving?k.F:k.F;arrow(ctx,cxp,cyp,cxp-cs*F*Fs,cyp-sn*F*Fs,color);text(ctx,"F",cxp-cs*F*Fs-6,cyp-sn*F*Fs-6,color,12,"right");}
+  text(ctx,title,x0+14,24,color,13,"left",true,600);
+  text(ctx,rough?(k.stuck?"stays at rest":"a = "+k.aR.toFixed(2)+" m/s²"):"a = "+k.aM.toFixed(2)+" m/s²",x0+14,42,C.ink2,12,"left");
+ }
+ function flatScene(ctx,C,x0,w0,h,rough,color,title){
+  const gy=h*.62,bs=34,bx=x0+w0*.32,scl=34,W=MS*g,Fs=1.6;
+  const xw=flatX(rough,Math.min(t,tEnd)),v=rough&&mu>0?Math.max(0,u0-mu*g*t):u0;
+  ctx.save();ctx.beginPath();ctx.rect(x0,0,w0,h);ctx.clip();
+  ctx.fillStyle=C.chip;ctx.fillRect(x0,gy,w0,h-gy);ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x0,gy);ctx.lineTo(x0+w0,gy);ctx.stroke();
+  const off=bx-xw*scl;
+  for(let m=Math.floor((x0-off)/scl);m<=Math.ceil((x0+w0-off)/scl);m++){if(m<0)continue;const X=off+m*scl;ctx.strokeStyle=C.ink2;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(X,gy);ctx.lineTo(X,gy+(m%5?8:16));ctx.stroke();if(m%5===0)text(ctx,m+" m",X,gy+32,C.ink2,11,"center");}
+  if(rough){ctx.strokeStyle=color;ctx.lineWidth=1.5;for(let X=x0+((off%10)+10)%10;X<x0+w0;X+=10){ctx.beginPath();ctx.moveTo(X,gy);ctx.lineTo(X-3,gy+4);ctx.stroke();}}
+  ctx.fillStyle=C.card;ctx.strokeStyle=color;ctx.lineWidth=3;ctx.fillRect(bx-bs/2,gy-bs,bs,bs);ctx.strokeRect(bx-bs/2,gy-bs,bs,bs);
+  const cy=gy-bs/2;arrow(ctx,bx,cy,bx,cy+W*Fs*.7,C.ink);text(ctx,"mg",bx+7,cy+W*Fs*.7,C.ink,12,"left");
+  arrow(ctx,bx,cy,bx,cy-W*Fs*.7,C.ok);text(ctx,"R",bx+7,cy-W*Fs*.7+8,C.ok,12,"left");
+  if(rough&&mu>0&&v>0){const F=mu*W;arrow(ctx,bx,cy,bx-F*Fs*.7,cy,color);text(ctx,"F",bx-F*Fs*.7-6,cy-6,color,12,"right");}
+  ctx.restore();
+  text(ctx,title,x0+14,24,color,13,"left",true,600);
+  text(ctx,"v = "+v.toFixed(1)+" m/s   x = "+xw.toFixed(1)+" m",x0+14,42,C.ink2,12,"left");
+ }
+ function draw(){
+  const f=fit(cv);if(!f)return;const{ctx,w,h}=f,C=colors();paper(ctx,w,h,C);
+  const hw=w/2,fn=mode==="slope"?slopeScene:flatScene;
+  fn(ctx,C,0,hw,h,false,C.model,"Smooth: μ = 0");
+  fn(ctx,C,hw,hw,h,true,C.real,"Rough: μ = "+mu.toFixed(2));
+  ctx.strokeStyle=C.ink2;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hw,0);ctx.lineTo(hw,h);ctx.stroke();
+ }
+ function step(dt){
+  if(play){t+=dt;if(t>=tEnd){t=tEnd;play=false;hold=1;}}
+  else if(hold>0&&!reduce){hold-=dt;if(hold<=0){t=0;play=true;}}
+ }
+ const setMode=chipGroup("fr-mode","mode",v=>{mode=v;setMode(v);$("fr-th-w").hidden=mode!=="slope";$("fr-u-w").hidden=mode!=="flat";compute();restart();});
+ const fth=bind("fr-th",v=>{th=v;compute();restart();},v=>v+"°");
+ const fmu=bind("fr-mu",v=>{mu=v;compute();restart();},v=>v.toFixed(2));
+ const fu=bind("fr-u",v=>{u0=v;compute();restart();},v=>v.toFixed(1)+" m/s");
+ $("fr-replay").addEventListener("click",()=>{t=0;play=true;hold=0;});
+ fth();fmu();fu();
+ return{step,draw,enter:restart};
+})();
+
+/* ---------- 5. Smooth pulley ---------- */
+sims.pul=(()=>{
+ const cv=$("c-pul"),S0=1.9,LIM=1.1,RW=.25;
+ let m1=3,m2=2,fr=4,Mp=0,sp=.5,t=0,play=true,hold=0,R=null;
+ const CYC=3;
+ function compute(){
+  const d=(m1-m2)*g,Tm=2*g*m1*m2/(m1+m2),aM=d/(m1+m2);
+  const still=Math.abs(d)<=fr,meff=m1+m2+Mp/2,aR=still?0:(d-Math.sign(d)*fr)/meff;
+  const T1=still?m1*g:m1*(g-aR),T2=still?m2*g:m2*(g+aR);
+  R={d,Tm,aM,aR,still,T1,T2};
+  const tM=Math.abs(aM)>1e-9?Math.sqrt(2*LIM/Math.abs(aM)):Infinity,tR=Math.abs(aR)>1e-9?Math.sqrt(2*LIM/Math.abs(aR)):Infinity;
+  rows("pu-ro",[
+   ["Acceleration",aM.toFixed(2)+" m/s²",still?"0 (at rest)":aR.toFixed(2)+" m/s²"],
+   ["Tension, left string",Tm.toFixed(1)+" N",T1.toFixed(1)+" N"],
+   ["Tension, right string",Tm.toFixed(1)+" N",T2.toFixed(1)+" N"],
+   ["Difference T₁ − T₂","0",(T1-T2).toFixed(1)+" N"],
+   ["Time to move "+LIM+" m",isFinite(tM)?tM.toFixed(2)+" s":"balanced",isFinite(tR)?tR.toFixed(2)+" s":"never moves"]]);
+  $("pu-v").innerHTML=still&&Math.abs(d)>1e-9?`The mass difference gives only ${Math.abs(d).toFixed(1)} N, which the ${fr.toFixed(1)} N of friction can hold. <b>The system stays still.</b>`:Math.abs(d)<1e-9?"Equal masses balance with or without friction.":`The tensions differ by ${(T1-T2).toFixed(1)} N, so one equation for the whole string is no longer enough. Acceleration falls from ${Math.abs(aM).toFixed(2)} to ${Math.abs(aR).toFixed(2)} m/s².`;
+ }
+ function restart(){t=reduce?CYC:0;play=!reduce;hold=0;}
+ function panel(ctx,C,x0,w0,h,a,T1,T2,color,title,sub,pulleyNote){
+  const s=clamp(.5*a*t*t,-LIM,LIM),hh=h-0;
+  const G=atwood(ctx,C,{x:x0,y:0,w:w0,h:hh,s1:S0+s,s2:S0-s,m1,m2,depth:4,color,ang:s/RW});
+  const as=Math.min(1.6,70/(Math.max(m1,m2)*g));
+  [[G.cx-G.rp,G.y1,G.sd1,m1,T1],[G.cx+G.rp,G.y2,G.sd2,m2,T2]].forEach(([X,Y,sd,m,T],i)=>{
+   const dx=i?sd/2+10:-sd/2-10;
+   arrow(ctx,X+dx,Y+sd/2,X+dx,Y+sd/2+m*g*as,C.ink);
+   arrow(ctx,X+dx,Y+sd/2,X+dx,Y+sd/2-T*as,C.ok);
+   text(ctx,"T = "+T.toFixed(1)+" N",X+dx+(i?6:-6),Y+sd/2-T*as-6,C.ok,12,i?"left":"right");
+  });
+  text(ctx,title,x0+12,22,color,13,"left",true,600);text(ctx,sub,x0+12,40,C.ink2,12,"left");
+  if(pulleyNote)text(ctx,pulleyNote,G.cx,G.py-G.rp-12,color,12,"center");
+ }
+ function draw(){
+  const f=fit(cv);if(!f)return;const{ctx,w,h}=f,C=colors();paper(ctx,w,h,C);
+  const hw=w/2;
+  panel(ctx,C,0,hw,h,R.aM,R.Tm,R.Tm,C.model,"Model: smooth, light pulley","T₁ = T₂","");
+  panel(ctx,C,hw,hw,h,R.aR,R.T1,R.T2,C.real,"Reality: friction"+(Mp>0?" and a heavy pulley":""),"T₁ − T₂ = "+(R.T1-R.T2).toFixed(1)+" N","f = "+fr.toFixed(1)+" N");
+  ctx.strokeStyle=C.ink2;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hw,0);ctx.lineTo(hw,h);ctx.stroke();
+ }
+ function step(dt){
+  if(play){t+=dt*sp;if(t>=CYC){t=CYC;play=false;hold=1.2;}}
+  else if(hold>0&&!reduce){hold-=dt;if(hold<=0){t=0;play=true;}}
+ }
+ const a1=bind("pu-m1",v=>{m1=v;compute();restart();},v=>v.toFixed(1)+" kg");
+ const a2=bind("pu-m2",v=>{m2=v;compute();restart();},v=>v.toFixed(1)+" kg");
+ const a3=bind("pu-f",v=>{fr=v;compute();restart();},v=>v.toFixed(1)+" N");
+ const a4=bind("pu-M",v=>{Mp=v;compute();restart();},v=>v.toFixed(1)+" kg");
+ $("pu-speed").addEventListener("input",e=>{sp=parseFloat(e.target.value);});
+ $("pu-replay").addEventListener("click",()=>{t=0;play=true;hold=0;});
+ a1();a2();a3();a4();
+ return{step,draw,enter:restart};
+})();
+
+/* ---------- loop ---------- */
+let last=performance.now();
+function frame(now){
+ const dt=Math.min(.05,(now-last)/1000);last=now;
+ const s=sims[active];if(s){if(s.step)s.step(dt);if(s.draw)s.draw();}
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
