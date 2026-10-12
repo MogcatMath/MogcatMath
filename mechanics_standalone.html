@@ -12,19 +12,38 @@ html,body{background:#f8f7f2;font-family:sans-serif;width:100%;height:100%;overf
 #right{flex:0 0 38%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px 20px;border-left:1px solid #ddd;overflow-y:auto}
 h1{font-size:18px;color:#444;text-align:center;margin-bottom:10px}
 #cv{display:block;width:100%}
-#controls{display:flex;justify-content:center;gap:20px;margin-top:10px}
-.ctrl{display:flex;flex-direction:column;align-items:center;gap:4px}
-.ctrl label{font-size:13px;color:#888}
-.ctrl input{width:80px;text-align:center;font-size:18px;font-weight:600;padding:6px 4px;border:1.5px solid #ccc;border-radius:8px;background:#fff}
-#toolbar{margin-top:10px}
-#showF{font-size:16px;padding:7px 22px;border:1.5px solid #ccc;border-radius:8px;background:#fff;cursor:pointer}
-#showF.on{background:#eee}
+#controls{display:flex;justify-content:center;gap:28px;margin-top:12px}
+.ctrl{display:flex;flex-direction:column;align-items:center;gap:5px}
+.ctrl label{font-size:13px;color:#888;font-weight:600;letter-spacing:0.02em}
+.stepper{display:flex;flex-direction:column;align-items:center}
+.stepper .sbtn{
+  width:72px;height:40px;font-size:26px;line-height:1;
+  border:1.5px solid #ccc;background:#fff;cursor:pointer;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  color:#444;display:flex;align-items:center;justify-content:center;
+}
+.stepper .sbtn.sup{border-radius:8px 8px 0 0;border-bottom:none;}
+.stepper .sbtn.sdn{border-radius:0 0 8px 8px;border-top:none;}
+.stepper .sbtn:active{background:#e8e8e8;}
+.stepper .sval{
+  width:72px;height:48px;text-align:center;font-size:20px;font-weight:700;
+  border:1.5px solid #ccc;border-top:none;border-bottom:none;
+  background:#fff;color:#333;display:flex;align-items:center;justify-content:center;
+}
+#toolbar{margin-top:12px}
+#showF{font-size:15px;padding:8px 18px;border:1.5px solid #534ab7;border-radius:8px;background:#eeedfe;color:#534ab7;font-weight:600;cursor:pointer;touch-action:manipulation}
+#showF.on{background:#534ab7;color:#fff}
 #info{font-size:13px;color:#555;text-align:center;margin-top:8px;line-height:1.6;min-height:32px}
 .warn{color:#c00}
-#fpwrap{width:100%;margin-top:8px;opacity:0;transition:opacity 0.4s ease;display:none}
+#fpwrap{width:100%;margin-top:4px;opacity:0;transition:opacity 0.4s ease;display:none}
 #fpwrap.visible{display:block;opacity:1}
 #fp{display:block;width:100%}
-#fplabels{font-size:12px;color:#888;text-align:center;margin-top:6px;line-height:1.8}
+#fplabels{font-size:12px;color:#555;text-align:center;margin-top:6px;line-height:1.9;padding:0 4px}
+#assumptions{width:100%;margin-top:14px;border-collapse:collapse;font-size:12px}
+#assumptions caption{font-size:12px;font-weight:700;color:#534ab7;text-align:left;padding:4px 6px 6px;letter-spacing:0.03em;text-transform:uppercase}
+#assumptions th{background:#eeedfe;color:#534ab7;font-size:11px;font-weight:700;padding:5px 8px;border:1px solid #d0cff5;text-align:left}
+#assumptions td{padding:5px 8px;border:1px solid #e0e0e0;vertical-align:top;color:#444;line-height:1.4}
+#assumptions tr:nth-child(even) td{background:#f9f9f9}
 </style>
 </head>
 <body>
@@ -33,16 +52,52 @@ h1{font-size:18px;color:#444;text-align:center;margin-bottom:10px}
     <h1>Equilibrium of Forces</h1>
     <canvas id="cv"></canvas>
     <div id="controls">
-      <div class="ctrl"><label>Left (g)</label><input id="wL" type="number" min="1" value="150"></div>
-      <div class="ctrl"><label>Centre (g)</label><input id="wC" type="number" min="1" value="200"></div>
-      <div class="ctrl"><label>Right (g)</label><input id="wR" type="number" min="1" value="150"></div>
+      <div class="ctrl">
+        <label>Left (g)</label>
+        <div class="stepper">
+          <div class="sbtn sup" data-id="wL" data-dir="1">▲</div>
+          <div class="sval" id="wL-disp">150</div>
+          <div class="sbtn sdn" data-id="wL" data-dir="-1">▼</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>Centre (g)</label>
+        <div class="stepper">
+          <div class="sbtn sup" data-id="wC" data-dir="1">▲</div>
+          <div class="sval" id="wC-disp">200</div>
+          <div class="sbtn sdn" data-id="wC" data-dir="-1">▼</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>Right (g)</label>
+        <div class="stepper">
+          <div class="sbtn sup" data-id="wR" data-dir="1">▲</div>
+          <div class="sval" id="wR-disp">150</div>
+          <div class="sbtn sdn" data-id="wR" data-dir="-1">▼</div>
+        </div>
+      </div>
     </div>
-    <div id="toolbar"><button id="showF">Show forces</button></div>
+    <div id="toolbar"><button id="showF">Show Forces &amp; Assumptions</button></div>
     <div id="info"></div>
   </div>
   <div id="right">
-    <div id="fpwrap"><canvas id="fp"></canvas><div id="fplabels"></div></div>
-    <div id="rplaceholder" style="color:#bbb;font-size:14px;margin-top:40px;text-align:center">Press <em>Show forces</em><br>to see the force diagram</div>
+    <div id="fpwrap">
+      <canvas id="fp"></canvas>
+      <div id="fplabels"></div>
+      <table id="assumptions">
+        <caption>Modelling Assumptions</caption>
+        <thead><tr><th>Assumption</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Frictionless pulleys</td><td>The pulleys change the direction of the string without adding any resistive force — tension is the same throughout each string.</td></tr>
+          <tr><td>Inextensible strings</td><td>The strings do not stretch, so the total length of each string remains constant as the system moves.</td></tr>
+          <tr><td>Light strings</td><td>The mass of the strings is negligible, so they contribute no weight to the system.</td></tr>
+          <tr><td>Particle model</td><td>Each weight is treated as a point mass — its size and shape are ignored.</td></tr>
+          <tr><td>Static equilibrium</td><td>The system is at rest with zero acceleration; all forces on the central box are balanced.</td></tr>
+          <tr><td>Gravity uniform</td><td>g = 9.81 m s⁻² acts vertically downward on all masses.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="rplaceholder" style="color:#bbb;font-size:14px;margin-top:40px;text-align:center">Press <em>Show Forces &amp; Assumptions</em><br>to see the force diagram<br>and modelling assumptions</div>
   </div>
 </div>
 
@@ -58,34 +113,48 @@ var W,H,PLx,PRx,PYy;
 var PRAD=11,BW=80,BH=52,WW=91,WH=59;
 var SL=null,SR=null;
 
+var vals={wL:150,wC:200,wR:150};
+var STEP=10,MIN=10,MAX=990;
+
+function setVal(id,v){
+  v=Math.max(MIN,Math.min(MAX,Math.round(v/STEP)*STEP));
+  vals[id]=v;
+  document.getElementById(id+'-disp').textContent=v;
+  update();
+}
+
+var holdTimer=null,holdInterval=null;
+function startStep(id,dir){
+  setVal(id,vals[id]+dir*STEP);
+  holdTimer=setTimeout(function(){
+    holdInterval=setInterval(function(){setVal(id,vals[id]+dir*STEP);},80);
+  },400);
+}
+function stopStep(){clearTimeout(holdTimer);clearInterval(holdInterval);holdTimer=null;holdInterval=null;}
+document.querySelectorAll('.sbtn').forEach(function(btn){
+  btn.addEventListener('mousedown',function(e){e.preventDefault();startStep(this.dataset.id,parseInt(this.dataset.dir));});
+  btn.addEventListener('touchstart',function(e){e.preventDefault();startStep(this.dataset.id,parseInt(this.dataset.dir));},{passive:false});
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(function(ev){btn.addEventListener(ev,stopStep);});
+});
+
 function gToN(g){return (g*0.00981).toFixed(3)+' N';}
 
-// Draw T with subscript on any canvas context
 function drawTsub(ctx,x,y,sub,suffix,col,size){
-  ctx.save();
-  ctx.fillStyle=col;
-  ctx.textBaseline='middle';
-  var ms=size||17, ss=Math.round(ms*0.65), gap=1;
+  ctx.save();ctx.fillStyle=col;ctx.textBaseline='middle';
+  var ms=size||17,ss=Math.round(ms*0.65),gap=1;
   ctx.font='bold '+ms+'px sans-serif';
   var tW=ctx.measureText('T').width;
+  ctx.textAlign='left';ctx.fillText('T',x,y);
   ctx.font='bold '+ss+'px sans-serif';
-  ctx.font='bold '+ms+'px sans-serif';
-  ctx.textAlign='left';
-  ctx.fillText('T',x,y);
-  ctx.font='bold '+ss+'px sans-serif';
+  var sW=ctx.measureText(sub).width;
   ctx.fillText(sub,x+tW+gap,y+Math.round(ms*0.25));
-  if(suffix){
-    ctx.font='bold '+ms+'px sans-serif';
-    var sW=ctx.measureText(sub).width;
-    ctx.fillText(suffix,x+tW+gap+sW+gap,y);
-  }
+  if(suffix){ctx.font='bold '+ms+'px sans-serif';ctx.fillText(suffix,x+tW+gap+sW+gap,y);}
   ctx.restore();
 }
 
 function resize(){
   var wrap=document.getElementById('left');
-  W=wrap.clientWidth-24;
-  H=Math.round(W*0.72);
+  W=wrap.clientWidth-24;H=Math.round(W*0.72);
   cv.width=W*DPR;cv.height=H*DPR;
   cv.style.width=W+'px';cv.style.height=H+'px';
   gc.setTransform(DPR,0,0,DPR,0,0);
@@ -148,7 +217,6 @@ function rrect(ctx,x,y,w,h,r){
   ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
   ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
 }
-
 function arw(ctx,x1,y1,x2,y2,col,lbl,side){
   var dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);if(len<4)return;
   var ux=dx/len,uy=dy/len,s=14;
@@ -158,25 +226,20 @@ function arw(ctx,x1,y1,x2,y2,col,lbl,side){
   ctx.lineTo(x2-ux*s+uy*s*0.4,y2-uy*s-ux*s*0.4);
   ctx.lineTo(x2-ux*s-uy*s*0.4,y2-uy*s+ux*s*0.4);
   ctx.closePath();ctx.fill();
-  if(lbl){
-    ctx.font='bold 17px sans-serif';ctx.textBaseline='middle';
+  if(lbl){ctx.font='bold 17px sans-serif';ctx.textBaseline='middle';
     if(side==='l'){ctx.textAlign='right';ctx.fillText(lbl,x2-10,y2);}
     else if(side==='r'){ctx.textAlign='left';ctx.fillText(lbl,x2+10,y2);}
     else{ctx.textAlign='center';ctx.fillText(lbl,x2+uy*14,y2-ux*14);}
-  }
-  ctx.restore();
+  }ctx.restore();
 }
 
 function drawMain(){
   gc.clearRect(0,0,W,H);
-  var wLv=parseFloat(document.getElementById('wL').value)||0;
-  var wCv=parseFloat(document.getElementById('wC').value)||0;
-  var wRv=parseFloat(document.getElementById('wR').value)||0;
+  var wLv=vals.wL,wCv=vals.wC,wRv=vals.wR;
   var ax=cur.x,ay=cur.y,wy=weightYs(cur.aL,cur.aR);
 
   gc.fillStyle='#aaa';
-  gc.fillRect(PLx-28,PYy-PRAD-13,56,9);
-  gc.fillRect(PRx-28,PYy-PRAD-13,56,9);
+  gc.fillRect(PLx-28,PYy-PRAD-13,56,9);gc.fillRect(PRx-28,PYy-PRAD-13,56,9);
 
   gc.strokeStyle='#777';gc.lineWidth=1.8;gc.setLineDash([]);
   [[PLx,PYy,ax,ay],[PRx,PYy,ax,ay],[PLx,PYy+PRAD,PLx,wy.yL],[PRx,PYy+PRAD,PRx,wy.yR]]
@@ -188,7 +251,7 @@ function drawMain(){
     gc.beginPath();gc.arc(px,PYy,PRAD*0.3,0,Math.PI*2);gc.fillStyle='#888';gc.fill();
   });
 
-  [[PLx,wy.yL,wLv?wLv+'g':'?g',wy.cL],[PRx,wy.yR,wRv?wRv+'g':'?g',wy.cR]].forEach(function(e){
+  [[PLx,wy.yL,wLv+'g',wy.cL],[PRx,wy.yR,wRv+'g',wy.cR]].forEach(function(e){
     rrect(gc,e[0]-WW/2,e[1],WW,WH,5);
     gc.fillStyle=e[3]?'#fde':'#e1f5ee';gc.fill();
     gc.strokeStyle=e[3]?'#c00':'#0f6e56';gc.lineWidth=1.5;gc.stroke();
@@ -200,14 +263,14 @@ function drawMain(){
   rrect(gc,ax-BW/2,ay,BW,BH,6);
   gc.fillStyle='#eeedfe';gc.fill();gc.strokeStyle='#534ab7';gc.lineWidth=1.5;gc.stroke();
   gc.fillStyle='#534ab7';gc.font='bold 20px sans-serif';gc.textAlign='center';gc.textBaseline='middle';
-  gc.fillText(wCv?wCv+'g':'?g',ax,ay+BH/2);
+  gc.fillText(wCv+'g',ax,ay+BH/2);
 
   if(wLv&&wCv&&wRv){
     var sc=Math.min(50/Math.max(wLv,wCv,wRv),0.4);
     var dxL=PLx-ax,dyL=PYy-ay,lL=Math.hypot(dxL,dyL);
     var dxR=PRx-ax,dyR=PYy-ay,lR=Math.hypot(dxR,dyR);
-    var tLx2=ax+dxL/lL*wLv*sc, tLy2=ay+dyL/lL*wLv*sc;
-    var tRx2=ax+dxR/lR*wRv*sc, tRy2=ay+dyR/lR*wRv*sc;
+    var tLx2=ax+dxL/lL*wLv*sc,tLy2=ay+dyL/lL*wLv*sc;
+    var tRx2=ax+dxR/lR*wRv*sc,tRy2=ay+dyR/lR*wRv*sc;
     arw(gc,ax,ay,tLx2,tLy2,'#d85a30','','');
     arw(gc,ax,ay,tRx2,tRy2,'#d85a30','','');
     arw(gc,ax,ay+BH,ax,ay+BH+wCv*sc,'#1d9e75','W','');
@@ -217,10 +280,7 @@ function drawMain(){
 }
 
 function showInfo(){
-  var wLv=parseFloat(document.getElementById('wL').value)||0;
-  var wCv=parseFloat(document.getElementById('wC').value)||0;
-  var wRv=parseFloat(document.getElementById('wR').value)||0;
-  if(!wLv||!wCv||!wRv){infoEl.innerHTML='Enter all three weights to see equilibrium.';return;}
+  var wLv=vals.wL,wCv=vals.wC,wRv=vals.wR;
   var wy=weightYs(cur.aL,cur.aR);
   var aLd=(cur.aL*180/Math.PI).toFixed(1),aRd=(cur.aR*180/Math.PI).toFixed(1);
   var msg='Left: '+aLd+'° | Right: '+aRd+'° above horizontal<br>'
@@ -233,23 +293,21 @@ function showInfo(){
 }
 
 function renderForcePanel(){
-  var wLv=parseFloat(document.getElementById('wL').value)||0;
-  var wCv=parseFloat(document.getElementById('wC').value)||0;
-  var wRv=parseFloat(document.getElementById('wR').value)||0;
-  if(!wLv||!wCv||!wRv)return;
+  var wLv=vals.wL,wCv=vals.wC,wRv=vals.wR;
   var aL=cur.aL,aR=cur.aR;
   if(!isFinite(aL)||!isFinite(aR))return;
 
   var PW=fp.offsetWidth||360;
-  var PH=Math.round(PW*0.85);
+  var PH=Math.round(PW*0.9);
   fp.width=PW*DPR;fp.height=PH*DPR;fp.style.height=PH+'px';
   gp.setTransform(DPR,0,0,DPR,0,0);gp.clearRect(0,0,PW,PH);
 
-  var pcx=PW/2,pcy=PH*0.46;
+  var pcx=PW/2,pcy=PH*0.44;
   var bw=130,bh=68;
-  var sc=Math.min(90/Math.max(wLv,wCv,wRv),0.65);
+  var sc=Math.min(80/Math.max(wLv,wCv,wRv),0.58);
   var ax=pcx,ay=pcy-bh/2;
 
+  // box
   rrect(gp,pcx-bw/2,pcy-bh/2,bw,bh,6);
   gp.fillStyle='#eeedfe';gp.fill();gp.strokeStyle='#534ab7';gp.lineWidth=1.5;gp.stroke();
   gp.fillStyle='#534ab7';gp.font='bold 21px sans-serif';gp.textAlign='center';gp.textBaseline='middle';
@@ -263,57 +321,60 @@ function renderForcePanel(){
     gp.beginPath();gp.moveTo(x2,y2);
     gp.lineTo(x2-ux*s+uy*s*0.4,y2-uy*s-ux*s*0.4);
     gp.lineTo(x2-ux*s-uy*s*0.4,y2-uy*s+ux*s*0.4);
-    gp.closePath();gp.fill();
-    gp.restore();
+    gp.closePath();gp.fill();gp.restore();
   }
 
   var nL=(wLv*0.00981).toFixed(3),nR=(wRv*0.00981).toFixed(3),nC=(wCv*0.00981).toFixed(3);
-  var tLx2=ax-Math.cos(aL)*wLv*sc, tLy2=ay-Math.sin(aL)*wLv*sc;
-  var tRx2=ax+Math.cos(aR)*wRv*sc, tRy2=ay-Math.sin(aR)*wRv*sc;
+  var tLx2=ax-Math.cos(aL)*wLv*sc,tLy2=ay-Math.sin(aL)*wLv*sc;
+  var tRx2=ax+Math.cos(aR)*wRv*sc,tRy2=ay-Math.sin(aR)*wRv*sc;
 
   pa(ax,ay,tLx2,tLy2,'#d85a30');
   pa(ax,ay,tRx2,tRy2,'#d85a30');
   pa(ax,pcy+bh/2,ax,pcy+bh/2+wCv*sc,'#1d9e75');
 
-  // T_L label: right-aligned to arrowhead
+  // arrow labels — offset well clear of arrowheads
+  var labelOffset=28;
+  // T_L: measure full label width, place it ending labelOffset px before arrowhead
   gp.save();
   gp.font='bold 18px sans-serif';
   var tW=gp.measureText('T').width;
   gp.font='bold '+Math.round(18*0.65)+'px sans-serif';
-  var sW=gp.measureText('L').width;
+  var sWL=gp.measureText('L').width;
   gp.font='bold 18px sans-serif';
-  var sufW=gp.measureText(' = '+nL+' N').width;
+  var sufWL=gp.measureText(' = '+nL+' N').width;
   gp.restore();
-  var totalW=tW+1+sW+1+sufW;
-  drawTsub(gp,tLx2-totalW-8,tLy2,'L',' = '+nL+' N','#d85a30',18);
-
-  // T_R label: left-aligned from arrowhead
-  drawTsub(gp,tRx2+8,tRy2,'R',' = '+nR+' N','#d85a30',18);
+  var totalWL=tW+1+sWL+1+sufWL;
+  drawTsub(gp,tLx2-totalWL-labelOffset,tLy2,'L',' = '+nL+' N','#d85a30',18);
+  drawTsub(gp,tRx2+labelOffset,tRy2,'R',' = '+nR+' N','#d85a30',18);
 
   // W label
   gp.save();gp.fillStyle='#1d9e75';gp.font='bold 18px sans-serif';
   gp.textAlign='left';gp.textBaseline='middle';
-  gp.fillText('W = '+nC+' N',ax+10,pcy+bh/2+wCv*sc);
+  gp.fillText('W = '+nC+' N',ax+labelOffset,pcy+bh/2+wCv*sc);
   gp.restore();
 
-  // horizontal reference line
-  gp.save();gp.strokeStyle='#378add';gp.lineWidth=1;gp.setLineDash([4,3]);
-  gp.beginPath();gp.moveTo(ax-110,ay);gp.lineTo(ax+110,ay);gp.stroke();
+  // horizontal dashed reference line
+  gp.save();gp.strokeStyle='#378add';gp.lineWidth=1.2;gp.setLineDash([4,3]);
+  gp.beginPath();gp.moveTo(ax-120,ay);gp.lineTo(ax+120,ay);gp.stroke();
   gp.setLineDash([]);
 
-  var arcR=40;
+  // angle arcs
+  var arcR=44;
   var leftStrAng=-(Math.PI-aL),rightStrAng=-aR;
   gp.beginPath();gp.arc(ax,ay,arcR,-Math.PI,leftStrAng,false);
-  gp.strokeStyle='#378add';gp.lineWidth=1.5;gp.stroke();
+  gp.strokeStyle='#378add';gp.lineWidth=2;gp.stroke();
   gp.beginPath();gp.arc(ax,ay,arcR,rightStrAng,0,false);gp.stroke();
   gp.restore();
 
+  // angle labels — pushed well out from arc to avoid red labels
   var aLd=(aL*180/Math.PI).toFixed(1),aRd=(aR*180/Math.PI).toFixed(1);
-  gp.fillStyle='#185fa5';gp.font='bold 18px sans-serif';gp.textAlign='center';gp.textBaseline='middle';
   var midL=(-Math.PI+leftStrAng)/2,midR=rightStrAng/2;
-  gp.fillText(aLd+'°',ax+Math.cos(midL)*(arcR+24),ay+Math.sin(midL)*(arcR+24)-6);
-  gp.fillText(aRd+'°',ax+Math.cos(midR)*(arcR+24),ay+Math.sin(midR)*(arcR+24)-6);
+  var angleOffset=arcR+32;
+  gp.fillStyle='#185fa5';gp.font='bold 15px sans-serif';gp.textAlign='center';gp.textBaseline='middle';
+  gp.fillText(aLd+'°',ax+Math.cos(midL)*angleOffset,ay+Math.sin(midL)*angleOffset);
+  gp.fillText(aRd+'°',ax+Math.cos(midR)*angleOffset,ay+Math.sin(midR)*angleOffset);
 
+  // component equations as HTML
   fplabels.innerHTML=
     '<b>Vertical:</b> T<sub>L</sub> sinθ = '+(wLv*Math.sin(aL)*0.00981).toFixed(3)
     +' N &nbsp;+&nbsp; T<sub>R</sub> sinθ = '+(wRv*Math.sin(aR)*0.00981).toFixed(3)
@@ -323,10 +384,7 @@ function renderForcePanel(){
 }
 
 function update(){
-  var wLv=parseFloat(document.getElementById('wL').value)||0;
-  var wCv=parseFloat(document.getElementById('wC').value)||0;
-  var wRv=parseFloat(document.getElementById('wR').value)||0;
-  if(!wLv||!wCv||!wRv){drawMain();infoEl.textContent='Enter all three weights to see equilibrium.';return;}
+  var wLv=vals.wL,wCv=vals.wC,wRv=vals.wR;
   var sol=solveEq(wLv,wCv,wRv);
   if(!sol){
     var lo0=wLv>wRv?Math.acos(wRv/wLv):0;
@@ -343,10 +401,7 @@ function update(){
 
 function init(){
   resize();
-  var wLv=parseFloat(document.getElementById('wL').value)||150;
-  var wCv=parseFloat(document.getElementById('wC').value)||200;
-  var wRv=parseFloat(document.getElementById('wR').value)||150;
-  var sol=solveEq(wLv,wCv,wRv)||{aL:0.5,aR:0.5};
+  var sol=solveEq(vals.wL,vals.wC,vals.wR)||{aL:0.5,aR:0.5};
   var p=attachPt(sol.aL,sol.aR);
   cur={aL:sol.aL,aR:sol.aR,x:p.x,y:p.y};
   frm={aL:cur.aL,aR:cur.aR,x:cur.x,y:cur.y};
@@ -379,10 +434,6 @@ document.getElementById('showF').addEventListener('click',function(){
   } else {
     wrap.classList.remove('visible');ph.style.display='block';
   }
-});
-
-['wL','wC','wR'].forEach(function(id){
-  document.getElementById(id).addEventListener('input',update);
 });
 </script>
 </body>
