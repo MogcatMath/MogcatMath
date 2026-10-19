@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newton's Laws Answers</title>
+<style>
+/* Layout: slide-like card; tab strip of four problems; diagram left, worked steps right, stacking on narrow screens */
+:root{
+  --bg:#e9eef6; --surface:#ffffff; --panel:#f4f7fc; --ink:#1a2333; --muted:#566275; --line:#cbd5e4;
+  --accent:#2f5fb3; --accent-ink:#ffffff; --yellow:#f2c200; --blue:#4472c4;
+  --force:#cf3f2a; --pair:#7b3fb8; --good:#21804f; --good-bg:#e3f4ea; --warn-bg:#fdf1dc; --warn:#9a5b00;
+  --wood:#8a4a14;
+  --display:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif; --body:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10151e; --surface:#19212d; --panel:#1f2937; --ink:#e8edf5; --muted:#9eabbf; --line:#334055;
+  --accent:#7ea6ee; --accent-ink:#0f1520; --yellow:#f5cf3a; --blue:#6f98e0;
+  --force:#ff7a62; --pair:#c39af0; --good:#5cc48a; --good-bg:#16301f; --warn-bg:#33270f; --warn:#f0bb5c;
+  --wood:#b56a2c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151e; --surface:#19212d; --panel:#1f2937; --ink:#e8edf5; --muted:#9eabbf; --line:#334055;
+  --accent:#7ea6ee; --accent-ink:#0f1520; --yellow:#f5cf3a; --blue:#6f98e0;
+  --force:#ff7a62; --pair:#c39af0; --good:#5cc48a; --good-bg:#16301f; --warn-bg:#33270f; --warn:#f0bb5c;
+  --wood:#b56a2c; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{color-scheme:light}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;padding:20px 16px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+h1{font-family:var(--display);font-size:clamp(1.3rem,2.6vw,1.75rem);margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0;font-size:.95rem}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tab{font:inherit;cursor:pointer;text-align:left;border:2px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tab .law{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.tab .name{font-family:var(--display);font-weight:600;font-size:1.02rem}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tab[aria-selected="true"] .law{color:var(--accent-ink);opacity:.85}
+.tab:focus-visible,.btn:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+.card{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:20px}
+.qline{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:14px}
+.qline h2{font-family:var(--display);font-size:1.3rem;margin:0;text-wrap:balance}
+.lawbox{background:var(--panel);border-radius:10px;padding:10px 14px;font-size:.95rem;color:var(--muted);margin-bottom:16px}
+.lawbox b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+.fig{display:flex;flex-direction:column;gap:10px;min-width:0}
+.fig svg{width:100%;height:auto;background:var(--panel);border-radius:12px;display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:inherit;font-weight:700;cursor:pointer;border:2px solid var(--accent);background:transparent;color:var(--accent);
+  border-radius:999px;padding:6px 16px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:s;min-width:0}
+.steps li{display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);font-family:var(--display);font-weight:700;width:30px;height:30px;
+  border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:.95rem}
+.steps p{margin:0}
+.calc{font-family:var(--display);font-size:1.05rem;background:var(--panel);border-radius:8px;padding:6px 12px;margin-top:6px;display:inline-block;font-variant-numeric:tabular-nums}
+.answer{margin-top:16px;background:var(--good-bg);border:2px solid var(--good);border-radius:12px;padding:12px 16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.answer .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--good)}
+.answer .val{font-family:var(--display);font-weight:700;font-size:1.5rem}
+.tip{margin-top:12px;background:var(--warn-bg);border-radius:12px;padding:10px 14px;font-size:.95rem}
+.tip b{color:var(--warn)}
+.key{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.88rem;color:var(--muted)}
+.key span::before{content:"";display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--c)}
+.navrow{display:flex;justify-content:space-between;gap:8px;margin-top:18px}
+
+/* SVG tokens */
+.t{fill:var(--ink);font-family:var(--display);font-size:16px}
+.t.sm{font-size:13px;fill:var(--muted)}
+.t.b{font-weight:700}
+.t.f{fill:var(--force);font-weight:700}
+.t.p{fill:var(--pair);font-weight:700}
+.t.g{fill:var(--good);font-weight:700}
+.t.a{fill:var(--accent);font-weight:700}
+.ground{stroke:var(--muted);stroke-width:2}
+.yel{fill:var(--yellow);stroke:var(--ink);stroke-width:2}
+.blu{fill:var(--blue);stroke:var(--ink);stroke-width:2}
+.wood{fill:var(--wood)}
+.box{fill:#c4c7cc;stroke:var(--ink);stroke-width:2}
+.ink-on-light{fill:#1a2333;font-family:var(--display);font-weight:700;font-size:16px}
+.ink-on-dark{fill:#ffffff;font-family:var(--display);font-weight:700;font-size:16px}
+.ar-f{stroke:var(--force);stroke-width:4;fill:none}
+.ar-p{stroke:var(--pair);stroke-width:4;fill:none}
+.ar-a{stroke:var(--accent);stroke-width:4;fill:none}
+.ar-g{stroke:var(--good);stroke-width:4;fill:none}
+.ar-k{stroke:var(--ink);stroke-width:3;fill:none}
+.m-f{fill:var(--force)} .m-p{fill:var(--pair)} .m-a{fill:var(--accent)} .m-g{fill:var(--good)} .m-k{fill:var(--ink)}
+.dash{stroke:var(--ink);stroke-width:3;stroke-dasharray:10 8;fill:none}
+.ghost{stroke:var(--muted);stroke-width:2.5;stroke-dasharray:4 6;fill:none}
+.dot{fill:var(--muted);opacity:.55}
+.flame{fill:var(--yellow);stroke:var(--force);stroke-width:2}
+.hide{display:none}
+.qline{justify-content:space-between}
+.assume-btn{flex:none}
+.assume{border:2px solid var(--pair);border-radius:12px;padding:14px 18px;margin-bottom:16px;background:var(--surface)}
+.assume h3{font-family:var(--display);font-size:1.05rem;margin:0 0 10px;color:var(--pair)}
+.assume ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px 22px}
+.assume li{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start}
+.assume li::before{content:"✓";font-weight:700;color:var(--pair);font-family:var(--display)}
+.assume li b{display:block}
+.assume li span{color:var(--muted);font-size:.93rem}
+.assume .note{margin:12px 0 0;font-size:.9rem;color:var(--muted)}
+.card:not(.shown) .ans-only{display:none}
+.card.shown .q-only{display:none}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.tryit{border:2px dashed var(--accent);background:var(--panel);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.card.shown .tryit{border-style:solid}
+.tryit p{margin:0}
+.qtext{font-size:1.08rem}
+.tryit .btn{font-size:1.05rem;padding:10px 22px}
+
+@media (max-width:820px){
+  .grid{grid-template-columns:1fr}
+  .tabs{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Modelling in Mechanics: Newton's Laws</h1>
+    <p class="sub">A-Level Mechanics · Newton's laws · take g = 9.8 m/s²</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Problems">
+    <button class="tab" role="tab" id="tab-q1" aria-controls="q1" aria-selected="true"><span class="law">Third law</span><span class="name">1 · The collision</span></button>
+    <button class="tab" role="tab" id="tab-q2" aria-controls="q2" aria-selected="false"><span class="law">Third law</span><span class="name">2 · Block on a table</span></button>
+    <button class="tab" role="tab" id="tab-q3" aria-controls="q3" aria-selected="false"><span class="law">Second law</span><span class="name">3 · The rocket</span></button>
+    <button class="tab" role="tab" id="tab-q4" aria-controls="q4" aria-selected="false"><span class="law">First law</span><span class="name">4 · The thrown ball</span></button>
+  </nav>
+
+  <!-- ============ Q1 COLLISION ============ -->
+  <section class="card" role="tabpanel" id="q1" aria-labelledby="tab-q1">
+    <div class="qline"><h2>After the collision, how fast is the blue ball moving?</h2><button class="btn assume-btn" aria-expanded="false" aria-controls="as1">Show assumptions</button></div>
+    <div class="lawbox"><b>Newton's third law:</b> if two bodies exert forces on each other, the forces are equal in size and opposite in direction.</div>
+    <div class="assume" id="as1" hidden><h3>Modelling assumptions</h3><ul><li><div><b>The balls are particles</b><span>We ignore their size and any spin. Each ball is just a point with a mass.</span></div></li><li><div><b>The surface is smooth</b><span>There is no friction to slow the balls down before or after the hit.</span></div></li><li><div><b>No air resistance</b><span>Nothing else pushes on the balls while they move.</span></div></li><li><div><b>The collision is direct</b><span>Both balls move along the same straight line, before and after the hit.</span></div></li><li><div><b>No outside forces during the hit</b><span>Only the two balls push on each other, so total momentum is conserved.</span></div></li><li><div><b>The masses do not change</b><span>Nothing breaks off either ball in the collision.</span></div></li></ul><p class="note">These assumptions make the maths simpler. The answer is a good model of real life, but not a perfect one.</p></div>
+    <div class="grid">
+      <div class="fig">
+        <svg viewBox="0 0 600 330" role="img" aria-label="Animation of the 1 kg yellow ball hitting the 5 kg blue ball">
+          <defs>
+            <marker id="mk-k" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path class="m-k" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="mk-f" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path class="m-f" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+          <text class="t b" x="20" y="34" id="c-stage">Before</text>
+          <text class="t sm ans-only" x="20" y="56">Total momentum stays the same all the way through</text>
+          <line class="ground" x1="20" y1="200" x2="580" y2="200"/>
+          <g id="c-y"><circle class="yel" cx="0" cy="172" r="28"/><text class="ink-on-light" x="0" y="178" text-anchor="middle">1 kg</text></g>
+          <g id="c-b"><circle class="blu" cx="0" cy="155" r="45"/><text class="ink-on-dark" x="0" y="161" text-anchor="middle">5 kg</text></g>
+          <g id="c-forces" class="hide">
+            <line class="ar-f" x1="0" y1="110" x2="-60" y2="110" marker-end="url(#mk-f)" id="cf1"/>
+            <line class="ar-f" x1="0" y1="110" x2="60" y2="110" marker-end="url(#mk-f)" id="cf2"/>
+            <text class="t f" id="cft" x="0" y="96" text-anchor="middle">equal and opposite forces</text>
+          </g>
+          <text class="t b" id="c-yv" x="0" y="232" text-anchor="middle">10 m/s</text>
+          <text class="t b" id="c-bv" x="0" y="232" text-anchor="middle">0 m/s</text>
+          <g class="ans-only"><!-- momentum bars -->
+          <text class="t sm" x="20" y="272">Momentum (kg m/s)</text>
+          <rect x="20" y="282" width="0" height="24" rx="4" class="yel" id="c-py"/>
+          <rect x="20" y="282" width="0" height="24" rx="4" class="blu" id="c-pb"/>
+          <text class="t b" x="580" y="300" text-anchor="end" id="c-ptot">Total = 10</text></g>
+        </svg>
+        <div class="controls"><button class="btn primary" id="c-play">Play collision</button><button class="btn" id="c-reset">Reset</button></div>
+      </div>
+      <div class="side">
+        <div class="tryit">
+          <p class="qtext"><b>Question:</b> The two spheres start as shown. After they collide the yellow ball is stationary. What speed must the blue ball be travelling at?</p>
+          <p class="q-only">Have a go in your book first, then check your answer.</p>
+          <button class="btn primary reveal" aria-expanded="false">Click here to see the answer</button>
+        </div>
+        <div class="solution ans-only">
+        <ol class="steps">
+          <li><p>During the hit, the balls push on each other with <b>equal and opposite forces</b> (third law), for the <b>same length of time</b>.</p></li>
+          <li><p>So the momentum the yellow ball <b>loses</b> is exactly the momentum the blue ball <b>gains</b>. Total momentum is conserved.<br><span class="calc">momentum = mass × velocity</span></p></li>
+          <li><p>Before the collision:<br><span class="calc">1 × 10 + 5 × 0 = 10 kg m/s</span></p></li>
+          <li><p>After the collision (yellow stops, blue moves at <i>v</i>):<br><span class="calc">1 × 0 + 5 × <i>v</i> = 5<i>v</i></span></p></li>
+          <li><p>Before = after:<br><span class="calc">5<i>v</i> = 10 &nbsp;⇒&nbsp; <i>v</i> = 2</span></p></li>
+        </ol>
+        <div class="answer"><span class="lbl">Answer</span><span class="val">2 m/s</span><span>to the right</span></div>
+        <div class="tip"><b>Why so slow?</b> The blue ball has 5 times the mass, so the same momentum gives it only one fifth of the speed: 10 ÷ 5 = 2.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Q2 BLOCK ON TABLE ============ -->
+  <section class="card" role="tabpanel" id="q2" aria-labelledby="tab-q2" hidden>
+    <div class="qline"><h2>What forces act on a 4 kg weight sitting on a table?</h2><button class="btn assume-btn" aria-expanded="false" aria-controls="as2">Show assumptions</button></div>
+    <div class="lawbox"><b>Newton's third law:</b> if two bodies exert forces on each other, the forces are equal in size and opposite in direction.</div>
+    <div class="assume" id="as2" hidden><h3>Modelling assumptions</h3><ul><li><div><b>The block is a particle</b><span>We draw all forces acting at one point, ignoring its size and shape.</span></div></li><li><div><b>The table is rigid and horizontal</b><span>It does not bend or slope, so the reaction acts straight up.</span></div></li><li><div><b>The block is at rest</b><span>It is in equilibrium, so the forces on it balance.</span></div></li><li><div><b>g = 9.8 m/s²</b><span>Gravity is the same everywhere near the Earth's surface.</span></div></li><li><div><b>No other forces</b><span>No wind, no one pushing it, and no air resistance.</span></div></li></ul><p class="note">These assumptions make the maths simpler. The answer is a good model of real life, but not a perfect one.</p></div>
+    <div class="grid">
+      <div class="fig">
+        <svg viewBox="0 0 600 340" role="img" aria-label="Force diagram of a 4 kg block on a table">
+          <defs>
+            <marker id="mk-f2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="m-f" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="mk-g2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="m-g" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="mk-p2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="m-p" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+          <rect class="wood" x="60" y="200" width="480" height="28" rx="3"/>
+          <rect class="wood" x="90" y="228" width="18" height="90"/><rect class="wood" x="492" y="228" width="18" height="90"/>
+          <rect class="box" x="230" y="120" width="140" height="80" rx="3"/>
+          <text class="ink-on-light" x="300" y="166" text-anchor="middle">4 kg</text>
+          <g class="ans-only"><!-- R up, from contact -->
+          <line class="ar-g" x1="270" y1="160" x2="270" y2="40" marker-end="url(#mk-g2)"/>
+          <text class="t g" x="258" y="50" text-anchor="end">Reaction R</text>
+          <text class="t g" x="258" y="70" text-anchor="end">39.2 N</text>
+          <!-- W down, from centre -->
+          <line class="ar-f" x1="330" y1="160" x2="330" y2="300" marker-end="url(#mk-f2)" id="w-arrow"/>
+          <text class="t f" x="342" y="278">Weight W</text>
+          <text class="t f" x="342" y="298">39.2 N</text></g>
+          <!-- third law pair -->
+          <g id="pair" class="hide">
+            <line class="ar-p" x1="450" y1="196" x2="450" y2="290" marker-end="url(#mk-p2)"/>
+            <text class="t p" x="462" y="250">Block pushes</text>
+            <text class="t p" x="462" y="270">table down</text>
+            <text class="t p" x="462" y="290">39.2 N</text>
+            <text class="t p" x="400" y="70">Partner of R:</text>
+            <text class="t p" x="400" y="90">same size,</text>
+            <text class="t p" x="400" y="110">opposite way</text>
+          </g>
+        </svg>
+        <div class="controls ans-only"><button class="btn" id="pair-btn" aria-pressed="false">Show the third-law pair</button></div>
+        <div class="key ans-only"><span style="--c:var(--force)">force of gravity</span><span style="--c:var(--good)">contact force from table</span><span style="--c:var(--pair)">third-law pair</span></div>
+      </div>
+      <div class="side">
+        <div class="tryit">
+          <p class="qtext"><b>Question:</b> A 4 kg weight sits on a wooden table. Describe the forces acting on the object.</p>
+          <p class="q-only">Have a go in your book first, then check your answer.</p>
+          <button class="btn primary reveal" aria-expanded="false">Click here to see the answer</button>
+        </div>
+        <div class="solution ans-only">
+        <ol class="steps">
+          <li><p><b>Weight</b> pulls the block down. It is caused by gravity.<br><span class="calc">W = mg = 4 × 9.8 = 39.2 N</span></p></li>
+          <li><p>The block is not moving, so the forces on it must <b>balance</b>. The table pushes up with the <b>normal reaction</b> R.<br><span class="calc">R = W = 39.2 N</span></p></li>
+          <li><p><b>Third law:</b> the block pushes down on the table with 39.2 N, so the table pushes up on the block with 39.2 N. Tap the button to see this pair.</p></li>
+        </ol>
+        <div class="answer"><span class="lbl">Answer</span><span class="val">W = 39.2 N down, R = 39.2 N up</span></div>
+        <div class="tip"><b>Common mistake:</b> W and R are <i>not</i> a third-law pair. They act on the <i>same</i> object, and they are different kinds of force. A third-law pair acts on two <i>different</i> objects. The partner of the weight is the block pulling the Earth upwards by 39.2 N.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Q3 ROCKET ============ -->
+  <section class="card" role="tabpanel" id="q3" aria-labelledby="tab-q3" hidden>
+    <div class="qline"><h2>What thrust does the rocket produce?</h2><button class="btn assume-btn" aria-expanded="false" aria-controls="as3">Show assumptions</button></div>
+    <div class="lawbox"><b>Newton's second law:</b> the resultant force on a body equals its mass multiplied by its acceleration. <b>F = ma</b></div>
+    <div class="assume" id="as3" hidden><h3>Modelling assumptions</h3><ul><li><div><b>The rocket is a particle</b><span>We ignore its size and shape and treat it as a point.</span></div></li><li><div><b>The mass stays at 800 kg</b><span>A real rocket gets lighter as it burns fuel. We ignore this.</span></div></li><li><div><b>No gravity</b><span>In deep space it is far from any planet or star, so it has no weight.</span></div></li><li><div><b>No air resistance</b><span>Space is a vacuum, so there is nothing to push against it.</span></div></li><li><div><b>Thrust is constant</b><span>The engine pushes steadily in the direction of motion, so the acceleration is constant.</span></div></li></ul><p class="note">These assumptions make the maths simpler. The answer is a good model of real life, but not a perfect one.</p></div>
+    <div class="grid">
+      <div class="fig">
+        <svg viewBox="0 0 600 320" role="img" aria-label="Rocket accelerating at 16 metres per second squared">
+          <defs>
+            <marker id="mk-f3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="m-f" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="mk-k3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path class="m-k" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+          <text class="t sm" x="20" y="30">Deep space: no gravity, no air resistance</text>
+          <g id="rk">
+            <path class="flame" d="M0 95 L-30 75 L-18 92 L-50 88 L-22 102 L-56 112 L-20 114 L-36 130 L0 120Z"/>
+            <rect class="blu" x="0" y="80" width="150" height="60"/>
+            <path class="blu" d="M150 80 L210 110 L150 140Z"/>
+            <text class="ink-on-dark" x="75" y="116" text-anchor="middle">800 kg</text>
+          </g>
+          <line class="ar-f" x1="180" y1="190" x2="400" y2="190" marker-end="url(#mk-f3)"/>
+          <text class="t f ans-only" x="290" y="178" text-anchor="middle">Thrust F = 12 800 N</text>
+          <text class="t f q-only" x="290" y="178" text-anchor="middle">Thrust F = ?</text>
+          <line class="ar-k" x1="200" y1="226" x2="380" y2="226" marker-end="url(#mk-k3)"/>
+          <text class="t" x="290" y="250" text-anchor="middle">a = 16 m/s²</text>
+          <text class="t b" x="20" y="296" id="rk-t">Time: 0 s</text>
+          <text class="t a" x="580" y="296" text-anchor="end" id="rk-v">Speed gained: 0 m/s</text>
+        </svg>
+        <div class="controls"><button class="btn primary" id="rk-play">Fire the engine</button><button class="btn" id="rk-reset">Reset</button></div>
+        <p class="sub">Every second the rocket gets 16 m/s faster. That steady increase is what an acceleration of 16 m/s² means.</p>
+      </div>
+      <div class="side">
+        <div class="tryit">
+          <p class="qtext"><b>Question:</b> What is the thrust (force) generated by this rocket? Note: it is in deep space.</p>
+          <p class="q-only">Have a go in your book first, then check your answer.</p>
+          <button class="btn primary reveal" aria-expanded="false">Click here to see the answer</button>
+        </div>
+        <div class="solution ans-only">
+        <ol class="steps">
+          <li><p>In deep space there is <b>no gravity</b> and <b>no air resistance</b>, so the thrust is the <b>only</b> force. It is the resultant force.</p></li>
+          <li><p>Use Newton's second law:<br><span class="calc">F = ma</span></p></li>
+          <li><p>Put in the numbers:<br><span class="calc">F = 800 × 16 = 12 800</span></p></li>
+        </ol>
+        <div class="answer"><span class="lbl">Answer</span><span class="val">12 800 N</span><span>(12.8 kN)</span></div>
+        <div class="tip"><b>Why say "deep space"?</b> Near the Earth, weight would also act on the rocket. Then F = ma would give the <i>resultant</i> force, and the thrust would have to be bigger to make up for gravity.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Q4 THROWN BALL ============ -->
+  <section class="card" role="tabpanel" id="q4" aria-labelledby="tab-q4" hidden>
+    <div class="qline"><h2>Why does a thrown ball follow a curved path?</h2><button class="btn assume-btn" aria-expanded="false" aria-controls="as4">Show assumptions</button></div>
+    <div class="lawbox"><b>Newton's first law:</b> a body stays at rest, or moves at constant speed in a straight line, unless a force acts on it.</div>
+    <div class="assume" id="as4" hidden><h3>Modelling assumptions</h3><ul><li><div><b>The ball is a particle</b><span>We ignore its size and any spin on it.</span></div></li><li><div><b>No air resistance</b><span>After it leaves your hand, the only force on the ball is its weight.</span></div></li><li><div><b>Gravity is constant</b><span>g = 9.8 m/s² straight down, the same at every height the ball reaches.</span></div></li><li><div><b>The ground is flat</b><span>The Earth's curve and spin are too small to matter here.</span></div></li><li><div><b>Nothing else touches it</b><span>No wind or other objects push on the ball in flight.</span></div></li></ul><p class="note">These assumptions make the maths simpler. The answer is a good model of real life, but not a perfect one.</p></div>
+    <div class="grid">
+      <div class="fig">
+        <svg viewBox="0 0 600 340" role="img" aria-label="Path of a thrown ball compared with a straight line">
+          <defs>
+            <marker id="mk-f4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="m-f" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="mk-a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="m-a" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="mk-g4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path class="m-g" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+          <line class="ground" x1="20" y1="300" x2="580" y2="300"/>
+          <g id="nog" class="ans-only">
+            <line class="ghost" x1="60" y1="290" x2="258" y2="4"/>
+            <text class="t sm" x="262" y="40">No force: straight line</text>
+            <text class="t sm" x="262" y="57">(first law)</text>
+          </g>
+          <path class="dash" id="pp"/>
+          <g id="strobe" class="ans-only"></g>
+          <g id="pb">
+            <g class="ans-only"><line class="ar-a" id="vx" marker-end="url(#mk-a4)"/>
+            <line class="ar-g" id="vy" marker-end="url(#mk-g4)"/>
+            <line class="ar-f" id="wv" marker-end="url(#mk-f4)"/></g>
+            <circle class="blu" r="13" id="ball"/>
+          </g>
+          <text class="t sm ans-only" x="580" y="324" text-anchor="end">Dots are equal time steps: equal gaps sideways</text>
+        </svg>
+        <div class="controls"><button class="btn primary" id="p-play">Throw the ball</button><button class="btn ans-only" id="p-ghost" aria-pressed="true">Path with no gravity</button></div>
+        <div class="key ans-only"><span style="--c:var(--force)">weight (always down)</span><span style="--c:var(--accent)">sideways speed (never changes)</span><span style="--c:var(--good)">up/down speed (changes)</span></div>
+      </div>
+      <div class="side">
+        <div class="tryit">
+          <p class="qtext"><b>Question:</b> When a ball is thrown on Earth it travels in a parabolic curve. Explain this using Newton's first law.</p>
+          <p class="q-only">Have a go in your book first, then check your answer.</p>
+          <button class="btn primary reveal" aria-expanded="false">Click here to see the answer</button>
+        </div>
+        <div class="solution ans-only">
+        <ol class="steps">
+          <li><p>If <b>no force</b> acted, the first law says the ball would carry on in a <b>straight line at constant speed</b> (the faint line).</p></li>
+          <li><p>But on Earth a force <b>does</b> act: the ball's <b>weight</b>, pulling straight down all the time.</p></li>
+          <li><p><b>Sideways:</b> there is no force (ignoring air resistance), so by the first law the sideways speed <b>stays the same</b>.</p></li>
+          <li><p><b>Up and down:</b> the weight changes the vertical speed. The ball slows as it rises, stops at the top, then speeds up as it falls.</p></li>
+          <li><p>Steady sideways motion plus changing vertical motion bends the path into a <b>parabola</b>.</p></li>
+        </ol>
+        <div class="answer"><span class="lbl">Answer</span><span class="val">Weight acts, so the path can't stay straight</span></div>
+        <div class="tip"><b>Key idea:</b> a force is needed to <i>change</i> motion, not to keep it going. Nothing pushes the ball forward after it leaves your hand.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="navrow"><button class="btn" id="prev">← Previous</button><button class="btn" id="next">Next →</button></div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const ids=['q1','q2','q3','q4'];
+let cur=0;
+function show(i){
+  cur=(i+4)%4;
+  ids.forEach((id,k)=>{ $(id).hidden=k!==cur; $('tab-'+id).setAttribute('aria-selected',k===cur); });
+  try{history.replaceState(null,'','#'+ids[cur]);}catch(e){}
+}
+ids.forEach((id,k)=>$('tab-'+id).addEventListener('click',()=>show(k)));
+document.querySelectorAll('.reveal').forEach(btn=>btn.addEventListener('click',()=>{
+  const card=btn.closest('.card'); const on=card.classList.toggle('shown');
+  btn.textContent=on?'Hide the answer':'Click here to see the answer';
+  btn.setAttribute('aria-expanded',on);
+  if(card.id==='q1') drawC(lastC);
+}));
+document.querySelectorAll('.assume-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  const box=document.getElementById(btn.getAttribute('aria-controls')); box.hidden=!box.hidden;
+  btn.setAttribute('aria-expanded',!box.hidden); btn.textContent=box.hidden?'Show assumptions':'Hide assumptions';
+}));
+$('prev').onclick=()=>show(cur-1); $('next').onclick=()=>show(cur+1);
+const h=location.hash.slice(1); if(ids.includes(h)) show(ids.indexOf(h));
+
+// Animations are started by a button press and are the teaching content,
+// so they always play (even when the device has "Reduce Motion" switched on).
+function anim(dur,draw,done){
+  const start=performance.now(); let raf, stopped=false;
+  const step=()=>{ if(stopped) return;
+    const t=Math.min((performance.now()-start)/1000,dur);
+    draw(t);
+    if(t<dur) raf=requestAnimationFrame(step); else done&&done(); };
+  draw(0); raf=requestAnimationFrame(step);
+  return ()=>{stopped=true; cancelAnimationFrame(raf);};
+}
+
+/* ---------- Q1 collision ---------- */
+const Y0=90, B0=360, HIT=B0-45-28; // contact x for yellow centre
+const vY=150, vB=vY/5, tHit=(HIT-Y0)/vY, total=tHit+3.2;
+let stopC=()=>{}, lastC=0;
+const q1=$('q1');
+function drawC(t){
+  lastC=t;
+  let yx,bx,after=t>=tHit;
+  if(!after){yx=Y0+vY*t;bx=B0;} else {yx=HIT;bx=B0+vB*(t-tHit);}
+  $('c-y').setAttribute('transform',`translate(${yx},0)`);
+  $('c-b').setAttribute('transform',`translate(${bx},0)`);
+  $('c-yv').setAttribute('x',yx); $('c-bv').setAttribute('x',bx);
+  $('c-yv').textContent=after?'0 m/s':'10 m/s';
+  $('c-bv').textContent=after?(q1.classList.contains('shown')?'2 m/s':'? m/s'):'0 m/s';
+  $('c-stage').textContent=after?'After':'Before';
+  const near=after&&t<tHit+1.4;
+  $('c-forces').classList.toggle('hide',!near);
+  const cx=HIT+28;
+  $('cf1').setAttribute('x1',cx-6);$('cf1').setAttribute('x2',cx-70);
+  $('cf2').setAttribute('x1',cx+6);$('cf2').setAttribute('x2',cx+70);
+  $('cft').setAttribute('x',cx);
+  const unit=40; // px per kg m/s
+  $('c-py').setAttribute('width',after?0:10*unit);
+  $('c-pb').setAttribute('width',after?10*unit:0);
+}
+drawC(0);
+$('c-play').onclick=()=>{stopC();stopC=anim(total,drawC);};
+$('c-reset').onclick=()=>{stopC();drawC(0);};
+
+/* ---------- Q2 pair toggle ---------- */
+$('pair-btn').onclick=function(){const on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',on);$('pair').classList.toggle('hide',!on);this.textContent=on?'Hide the third-law pair':'Show the third-law pair';};
+
+/* ---------- Q3 rocket ---------- */
+let stopR=()=>{};
+const RX=70, pxPerM=1.1, dur3=4;
+function drawR(t){
+  const x=RX+0.5*16*t*t*pxPerM; // s = ½at²
+  const wrapW=600+60;
+  const xx=((x+60)%wrapW)-60;
+  $('rk').setAttribute('transform',`translate(${xx},0)`);
+  $('rk-t').textContent='Time: '+t.toFixed(1)+' s';
+  $('rk-v').textContent='Speed gained: '+Math.round(16*t)+' m/s';
+}
+drawR(0);
+$('rk-play').onclick=()=>{stopR();stopR=anim(dur3,drawR);};
+$('rk-reset').onclick=()=>{stopR();drawR(0);};
+
+/* ---------- Q4 projectile ---------- */
+const X0=60,Yg=290,VX=180,VY=260,G=200,T=2*VY/G;
+const P=t=>[X0+VX*t, Yg-VY*t+0.5*G*t*t];
+let d='';for(let i=0;i<=60;i++){const [x,y]=P(T*i/60);d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);}
+$('pp').setAttribute('d',d);
+const sg=$('strobe');
+for(let i=0;i<=8;i++){const [x,y]=P(T*i/8);
+  sg.insertAdjacentHTML('beforeend',`<circle class="dot" cx="${x}" cy="${y}" r="5"/><line class="ground" x1="${x}" y1="296" x2="${x}" y2="304"/>`);}
+const k=0.28;
+function setL(id,x1,y1,x2,y2){const e=$(id);e.setAttribute('x1',x1);e.setAttribute('y1',y1);e.setAttribute('x2',x2);e.setAttribute('y2',y2);}
+function drawP(t){
+  const [x,y]=P(t); const vy=-VY+G*t;
+  $('ball').setAttribute('cx',x);$('ball').setAttribute('cy',y);
+  setL('vx',x,y,x+VX*k,y);
+  if(Math.abs(vy)>8){$('vy').style.display='';setL('vy',x,y,x,y+vy*k);} else $('vy').style.display='none';
+  setL('wv',x,y,x,y+48);
+}
+const tStill=T*0.22; drawP(tStill);
+let stopP=()=>{};
+$('p-play').onclick=()=>{stopP();stopP=anim(T*1.6,tt=>drawP(tt/1.6));};
+$('p-ghost').onclick=function(){const on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',on);$('nog').classList.toggle('hide',!on);};
+})();
+</script>
+
+</body>
+</html>
