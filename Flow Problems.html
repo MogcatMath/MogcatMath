@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Flow Match">
+<title>Flow Problems: Match the Graph</title>
+<style>
+:root{--ink:#1c2530;--blue:#1f5f8b;--teal:#0f766e;--orange:#b4530a;--grey:#5f6b76;--line:#d5dde4;--tint:#eaf2f8;--water:#7cc3e8;--good:#15803d;--bad:#b91c1c}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:-apple-system,Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;font-size:16px;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.app{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+header{display:flex;justify-content:space-between;align-items:center;gap:6px 12px;border-bottom:3px solid var(--blue);padding-bottom:5px;flex-wrap:wrap}
+.crumb{color:var(--grey);font-weight:bold}
+h1{color:var(--blue);font-size:22px;line-height:1.15}
+.bar{display:flex;gap:8px;align-items:center}
+.seg{display:flex}
+.seg button{border-radius:0;margin-left:-2px}
+.seg button:first-child{border-radius:8px 0 0 8px;margin:0}
+.seg button:last-child{border-radius:0 8px 8px 0}
+.seg button[aria-pressed="true"]{background:var(--blue);color:#fff}
+button{font:inherit;font-weight:bold;min-height:48px;padding:0 14px;border-radius:8px;border:2px solid var(--blue);background:#fff;color:var(--blue);cursor:pointer;touch-action:manipulation;white-space:nowrap}
+button:active{filter:brightness(.88)}
+button.primary{background:var(--blue);color:#fff}
+button.teal{border-color:var(--teal);background:var(--teal);color:#fff}
+button.orange{border-color:var(--orange);color:var(--orange)}
+button:focus-visible,input:focus-visible{outline:3px solid #f59e0b;outline-offset:1px}
+.msg{background:#f1f8f7;border:1px solid var(--teal);border-radius:8px;padding:4px 12px;height:50px;display:flex;align-items:center;line-height:1.25;overflow:hidden}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:12px}
+section{display:flex;flex-direction:column;min-height:0;min-width:0;gap:4px}
+h2{font-size:16px;color:var(--teal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px}
+.card{position:relative;border:3px solid var(--line);border-radius:10px;background:#fbfdfe;display:flex;flex-direction:column;align-items:stretch;padding:3px;min-width:0;min-height:0;color:var(--ink)}
+.top{display:flex;justify-content:space-between;align-items:center;min-height:28px;gap:3px}
+.tag{font-weight:bold;font-size:21px;color:var(--blue);padding-left:3px}
+.pill{font-weight:bold;font-size:16px;border-radius:20px;padding:2px 8px;background:var(--blue);color:#fff;white-space:nowrap}
+.pill:empty{display:none}
+.pic{flex:1;min-height:0;position:relative}
+.pic svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden}
+.card.sel{border-color:#d97706;background:#fff7e6;box-shadow:0 0 0 3px #fbbf24}
+.card.good{border-color:var(--good);background:#f0fdf4}
+.card.good .pill{background:var(--good)}
+.card.bad{border-color:var(--bad);background:#fef2f2}
+.card.bad .pill{background:var(--bad)}
+footer{display:flex;align-items:center;gap:8px}
+#pour{min-width:104px}
+#clock{font-weight:bold;min-width:84px;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:60px;height:48px;background:transparent;touch-action:none}
+input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:#cfe3e1}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;margin-top:-13px;border-radius:50%;background:var(--teal);border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-track{height:10px;border-radius:5px;background:#cfe3e1}
+input[type=range]::-moz-range-thumb{width:32px;height:32px;border-radius:50%;background:var(--teal);border:3px solid #fff}
+.overlay{position:fixed;inset:0;background:rgba(20,30,40,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:5}
+.overlay.open{display:flex}
+.sheet{background:#fff;border-radius:10px;max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:18px 22px;font-size:18px;line-height:1.4}
+.sheet h3{color:var(--blue);margin:0 0 6px}
+.sheet h3.w{color:var(--orange);margin-top:14px}
+dl{display:grid;grid-template-columns:150px 1fr;border-top:1px solid var(--line)}
+dt,dd{padding:6px 8px;border-bottom:1px solid var(--line)}
+dt{font-weight:bold;color:var(--blue);background:var(--tint)}
+.watch{background:#fdf6ee;border:1px solid var(--orange);border-radius:6px;padding:8px 12px 8px 32px}
+.sheet .close{margin-top:14px;width:100%}
+.sheet{touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+@media (orientation:portrait){
+ main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+ footer{flex-wrap:wrap}
+ input[type=range]{order:-1;flex-basis:calc(100% - 100px)}
+ #clock{order:-1}
+ footer button{flex:1}
+ .msg{height:56px}
+}
+/* phones only: allow scrolling */
+@media (max-width:600px){
+ html,body{overflow:auto}
+ .app{position:static}
+ .bar,.seg{flex-wrap:wrap}
+ .msg{height:auto;min-height:50px}
+ main{grid-template-rows:auto auto}
+ .grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,200px)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+ <div>
+  <div class="crumb">Year 9 · Autumn term · Block 6 – Rates · Step 3 of 5</div>
+  <h1>Flow Problems: Match the Graph</h1>
+ </div>
+ <div class="bar">
+  <div class="seg" id="level" role="group" aria-label="Level">
+   <button data-level="straight" aria-pressed="false">Straight</button>
+   <button data-level="mixed" aria-pressed="true">Mixed</button>
+   <button data-level="curved" aria-pressed="false">Curved</button>
+  </div>
+  <button id="new" class="primary">New set</button>
+  <button id="help" class="orange">Key words</button>
+ </div>
+</header>
+<div class="msg" id="msg" aria-live="polite"></div>
+<main>
+ <section><h2>Containers: SAME constant flow rate</h2><div class="grid" id="cons"></div></section>
+ <section><h2>Depth–time graphs: same scales</h2><div class="grid" id="graphs"></div></section>
+</main>
+<footer>
+ <button id="pour" class="teal">▶ Pour</button>
+ <input type="range" id="time" min="0" max="1000" value="0" aria-label="Time">
+ <span id="clock"></span>
+ <button id="check" class="teal">Check</button>
+ <button id="reveal">Reveal</button>
+ <button id="reset">Clear</button>
+</footer>
+</div>
+
+<div class="overlay" id="overlay">
+ <div class="sheet" role="dialog" aria-modal="true" aria-label="Key words">
+  <h3>Key words</h3>
+  <dl>
+   <dt>flow rate</dt><dd>How much liquid passes a point in a given time, e.g. 200 cm³ per minute.</dd>
+   <dt>constant flow</dt><dd>The liquid flows in at the same rate the whole time.</dd>
+   <dt>cross-section</dt><dd>The shape you see when you slice straight across a solid.</dd>
+   <dt>prism</dt><dd>A 3-D shape with the same cross-section all the way along its length.</dd>
+  </dl>
+  <h3 class="w">Watch out!</h3>
+  <ul class="watch">
+   <li>Each picture is the front of a prism. Every container is the same thickness from front to back.</li>
+   <li>The flow rate stays constant, even when the graph is curved. What changes is how fast the <b>depth</b> rises.</li>
+   <li><b>Vertical</b> sides give a straight line. Sloping or curved sides give a curve.</li>
+   <li>The wider the container, the more slowly the depth rises (a less steep graph).</li>
+   <li>A sudden change in width gives a sudden change in gradient (a corner).</li>
+   <li>Containers of the same height can take very different times to fill.</li>
+  </ul>
+  <button class="close primary" id="close">Close</button>
+ </div>
+</div>
+
+<script>
+"use strict";
+/* Each container is a list of pieces [y0, y1, width(f)], f running 0..1 up the piece.
+   Height is 0..1. The front face is a prism cross-section, so time ∝ area below the water. */
+const lin=(a,b)=>f=>a+(b-a)*f;
+const one=(w)=>[[0,1,w]];
+const PI=Math.PI;
+const BANK=[
+ {id:"narrow",s:1,p:one(lin(.36,.36))},
+ {id:"wide",s:1,p:one(lin(.86,.86))},
+ {id:"widen",s:1,p:one(lin(.28,.96))},
+ {id:"taper",s:1,p:one(lin(.96,.28))},
+ {id:"stepIn",s:1,p:[[0,.5,lin(.94,.94)],[.5,1,lin(.32,.32)]]},
+ {id:"stepOut",s:1,p:[[0,.5,lin(.32,.32)],[.5,1,lin(.94,.94)]]},
+ {id:"threeOut",s:1,p:[[0,.333,lin(.26,.26)],[.333,.667,lin(.6,.6)],[.667,1,lin(.96,.96)]]},
+ {id:"threeIn",s:1,p:[[0,.333,lin(.96,.96)],[.333,.667,lin(.6,.6)],[.667,1,lin(.26,.26)]]},
+ {id:"flask",s:1,p:[[0,.65,lin(.96,.22)],[.65,1,lin(.22,.22)]]},
+ {id:"funnel",s:1,p:[[0,.4,lin(.22,.22)],[.4,1,lin(.22,.96)]]},
+ {id:"diamond",s:1,g:"bulge",p:[[0,.5,lin(.24,.96)],[.5,1,lin(.96,.24)]]},
+ {id:"waist",s:1,g:"pinch",p:[[0,.5,lin(.96,.22)],[.5,1,lin(.22,.96)]]},
+ {id:"midWide",s:1,p:[[0,.3,lin(.3,.3)],[.3,.7,lin(.96,.96)],[.7,1,lin(.3,.3)]]},
+ {id:"midThin",s:1,p:[[0,.3,lin(.9,.9)],[.3,.7,lin(.24,.24)],[.7,1,lin(.9,.9)]]},
+ {id:"round",s:0,g:"bulge",p:one(f=>.28+.7*Math.sin(PI*f))},
+ {id:"hour",s:0,g:"pinch",p:one(f=>.96-.76*Math.sin(PI*f))},
+ {id:"bowl",s:0,p:one(f=>.2+.78*Math.sqrt(Math.max(0,1-(1-f)*(1-f))))},
+ {id:"dome",s:0,p:one(f=>.2+.78*Math.sqrt(Math.max(0,1-f*f)))},
+ {id:"trumpet",s:0,p:one(f=>.2+.78*f*f*f)},
+ {id:"bulbNeck",s:0,p:[[0,.62,f=>.3+.68*Math.sin(PI*(.06+.88*f))],[.62,1,lin(.427,.427)]]},
+ {id:"vase",s:0,p:one(f=>.6+.34*Math.sin(2*PI*f))},
+ {id:"vaseR",s:0,p:one(f=>.6-.34*Math.sin(2*PI*f))}
+];
+
+/* sample outline and cumulative area (= time) */
+for(const c of BANK){
+ const pts=[];let area=0;const table=[[0,0]];
+ for(const [a,b,w] of c.p){
+  const n=240;
+  for(let i=0;i<=n;i++){
+   const y=a+(b-a)*i/n, wd=w(i/n);
+   pts.push([y,wd]);
+   if(i){ area+=(b-a)/n*(wd+w((i-1)/n))/2; table.push([area,y]); }
+  }
+ }
+ c.pts=pts;c.table=table;c.T=area;
+ c.why=explain(c);
+}
+function depthAt(c,t){
+ const tb=c.table;
+ if(t<=0)return 0; if(t>=c.T)return 1;
+ let lo=0,hi=tb.length-1;
+ while(hi-lo>1){const m=(lo+hi)>>1; tb[m][0]<t?lo=m:hi=m;}
+ const [t0,y0]=tb[lo],[t1,y1]=tb[hi];
+ return t1===t0?y1:y0+(y1-y0)*(t-t0)/(t1-t0);
+}
+function explain(c){
+ const T={
+  narrow:"Vertical sides: the depth rises steadily. Narrow, so the line is steep.",
+  wide:"Vertical sides: a straight line. Wide, so the line is less steep and filling takes longer.",
+  widen:"It gets wider, so the depth rises more and more slowly: the curve flattens.",
+  taper:"It gets narrower, so the depth rises faster and faster: the curve steepens.",
+  stepIn:"Two straight parts: shallow while wide, then suddenly steep when narrow.",
+  stepOut:"Two straight parts: steep while narrow, then suddenly shallow when wide.",
+  threeOut:"Three straight parts, each less steep than the one before.",
+  threeIn:"Three straight parts, each steeper than the one before.",
+  flask:"A curve that steepens as it narrows, then a straight line up the neck.",
+  funnel:"A straight line up the narrow stem, then a curve that flattens as it widens.",
+  diamond:"The curve flattens up to the widest point, then steepens again.",
+  waist:"The curve steepens up to the narrowest point, then flattens again.",
+  midWide:"Steep, then shallow through the wide middle, then steep again.",
+  midThin:"Shallow, then steep through the thin middle, then shallow again.",
+  round:"Slowest at the widest part in the middle, faster near the top and bottom.",
+  hour:"Fastest at the narrow waist in the middle, so the graph is steepest there.",
+  bowl:"It widens quickly at first and hardly at all near the top: the curve flattens, then is nearly straight.",
+  dome:"Nearly straight at first, then steeper and steeper as the sides close in.",
+  trumpet:"Almost straight while narrow, then it flattens sharply as the top flares out.",
+  bulbNeck:"Slowest at the widest part of the bulb, then a straight line up the neck.",
+  vase:"Wide first (shallow), then narrow higher up (steep).",
+  vaseR:"Narrow first (steep), then wide higher up (shallow)."
+ };
+ return T[c.id];
+}
+
+/* two graphs are too alike if they never differ by much on shared axes */
+function gap(a,b){
+ const M=Math.max(a.T,b.T);let d=0;
+ for(let i=0;i<=80;i++){const t=M*i/80;d=Math.max(d,Math.abs(depthAt(a,t)-depthAt(b,t)));}
+ return d;
+}
+const MINGAP=.11;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+function choose(level){
+ const pool=BANK.filter(c=>level==="straight"?c.s===1:level==="curved"?!["narrow","wide","stepIn","stepOut","threeOut","threeIn","midWide","midThin"].includes(c.id):true);
+ for(let tries=0;tries<500;tries++){
+  const pick=[];
+  /* always include one vertical-sided tank as an anchor (not in the curved challenge) */
+  if(level!=="curved")pick.push(BANK[Math.random()<.5?0:1]);
+  for(const c of shuffle(pool.slice())){
+   if(pick.length===6)break;
+   if(pick.includes(c))continue;
+   if(pick.every(q=>!(c.g&&q.g===c.g)&&gap(c,q)>MINGAP))pick.push(c);
+  }
+  if(pick.length<6)continue;
+  if(level==="mixed"){const k=pick.filter(c=>!c.s).length;if(k<2||k>3)continue;}
+  return pick;
+ }
+ return BANK.slice(0,6);
+}
+
+const $=id=>document.getElementById(id);
+const L="ABCDEF";
+let level="mixed",cons=[],order=[],match=[],sel=null,marks=[],revealed=false,t=0,Tmax=1,playing=false,last=0,note="";
+
+/* drawn in real screen pixels: graphs fill their cards and text stays 16px */
+let CB={w:180,h:200},GB={w:180,h:200};
+function conSVG(c,i){
+ const W=CB.w,H=CB.h;
+ /* every container gets the same scales, so relative areas (fill times) stay true */
+ let sx=W-16, sy=H-14;
+ sy=Math.min(sy,sx*1.5); sx=Math.min(sx,sy*1.15);
+ const mid=W/2, base=(H+sy)/2;
+ c.base=base;c.sy=sy;
+ const X=w=>w*sx/2, Y=y=>base-y*sy;
+ const left=c.pts.map(([y,w])=>`${(mid-X(w)).toFixed(2)},${Y(y).toFixed(2)}`);
+ const right=c.pts.map(([y,w])=>`${(mid+X(w)).toFixed(2)},${Y(y).toFixed(2)}`).reverse();
+ const open="M"+left.slice().reverse().join(" L")+" L"+right.slice().reverse().join(" L");
+ const closed="M"+left.concat(right).join(" L")+"Z";
+ return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">
+ <defs><clipPath id="clip${i}"><path d="${closed}"/></clipPath></defs>
+ <path d="${closed}" fill="#eaf4fa"/>
+ <rect id="water${i}" x="0" y="${base}" width="${W}" height="0" fill="#7cc3e8" clip-path="url(#clip${i})"/>
+ <path d="${open}" fill="none" stroke="#1f5f8b" stroke-width="3.5" stroke-linejoin="round"/></svg>`;
+}
+const OX=24;
+const GX=v=>OX+v/Tmax*(GB.w-OX-8), GY=y=>GB.h-24-y*(GB.h-36);
+function pathTo(c,end){
+ const pts=[];
+ for(const [v,y] of c.table){ if(v>end)break; pts.push(`${GX(v).toFixed(2)},${GY(y).toFixed(2)}`); }
+ pts.push(`${GX(Math.min(end,c.T)).toFixed(2)},${GY(depthAt(c,end)).toFixed(2)}`);
+ return "M"+pts.join(" L");
+}
+function graphSVG(c,i){
+ const W=GB.w,H=GB.h,x1=W-8,y0=H-24,y1=12;
+ let g="";
+ for(let k=1;k<=6;k++){const x=OX+(x1-OX)*k/6;g+=`<line x1="${x}" y1="${y1}" x2="${x}" y2="${y0}"/>`;}
+ for(let k=1;k<=5;k++){const y=y0-(y0-y1)*k/5;g+=`<line x1="${OX}" y1="${y}" x2="${x1}" y2="${y}"/>`;}
+ const mid=(y0+y1)/2;
+ return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">
+ <g stroke="#dbe3ea" stroke-width="1">${g}</g>
+ <path d="M${OX} 6V${y0}H${W-3}" fill="none" stroke="#33404c" stroke-width="2"/>
+ <text x="17" y="${mid}" font-size="16" fill="#33404c" text-anchor="middle" transform="rotate(-90 17 ${mid})">depth</text>
+ <text x="${x1}" y="${H-5}" font-size="16" fill="#33404c" text-anchor="end">time</text>
+ <path d="${pathTo(c,c.T)}" fill="none" stroke="#0f766e" stroke-width="3.5" stroke-linejoin="round"/>
+ <circle cx="${GX(c.T)}" cy="${GY(1)}" r="4" fill="#0f766e"/>
+ <path id="trace${i}" fill="none" stroke="#e8710a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+ <circle id="dot${i}" r="6" fill="#e8710a" style="display:none"/></svg>`;
+}
+function paint(){
+ if(!cons.length)return;
+ const size=el=>({w:Math.max(80,el.clientWidth),h:Math.max(80,el.clientHeight)});
+ CB=size($("cpic0"));GB=size($("gpic0"));
+ cons.forEach((c,i)=>$("cpic"+i).innerHTML=conSVG(c,i));
+ order.forEach((ci,g)=>$("gpic"+g).innerHTML=graphSVG(cons[ci],g));
+ draw();
+}
+
+function newSet(){
+ stop();
+ cons=shuffle(choose(level));
+ let o;do{o=shuffle([0,1,2,3,4,5]);}while(o.filter((v,i)=>v===i).length>1);
+ order=o; /* order[g] = container index shown on graph g */
+ Tmax=Math.max(...cons.map(c=>c.T))*1.02;
+ $("cons").innerHTML=cons.map((c,i)=>`<button class="card" id="c${i}"><div class="top"><span class="tag">${L[i]}</span><span class="pill" id="cp${i}"></span></div><div class="pic" id="cpic${i}"></div></button>`).join("");
+ $("graphs").innerHTML=order.map((ci,g)=>`<button class="card" id="g${g}"><div class="top"><span class="tag">${g+1}</span><span class="pill" id="gp${g}"></span></div><div class="pic" id="gpic${g}"></div></button>`).join("");
+ for(let i=0;i<6;i++){$("c"+i).onclick=()=>tap("c",i);$("g"+i).onclick=()=>tap("g",i);}
+ clearAll();
+ paint();
+}
+function clearAll(){
+ stop();match=Array(6).fill(null);marks=Array(6).fill("");sel=null;revealed=false;t=0;
+ note="Tap a container, then its graph (or graph first). Explain your choice before you press Check.";
+ render();
+}
+function tap(type,i){
+ /* a correct pair (after Check or Reveal) shows its explanation */
+ const gi=type==="g"?i:match.indexOf(i);
+ if(gi>=0&&marks[gi]==="good"&&!sel){
+  note=`<b>${L[match[gi]]} → graph ${gi+1}.</b> ${cons[match[gi]].why}`;render();return;
+ }
+ if(revealed)return;
+ const locked=(ty,k)=>{const g=ty==="g"?k:match.indexOf(k);return g>=0&&marks[g]==="good";};
+ if(locked(type,i)){note="That one is already correct. Choose another.";render();return;}
+ if(!sel||sel.type===type){
+  sel=(sel&&sel.type===type&&sel.i===i)?null:{type,i};
+  note=sel?(type==="c"?`Container ${L[i]} selected. Now tap its graph.`:`Graph ${i+1} selected. Now tap its container.`):"Selection cancelled.";
+ }else{
+  const c=type==="c"?i:sel.i, g=type==="g"?i:sel.i;
+  const old=match.indexOf(c); if(old>=0){match[old]=null;marks[old]="";}
+  match[g]=c;marks[g]="";sel=null;
+  const n=match.filter(v=>v!==null).length;
+  note=n===6?"All six matched. Press Check.":`${L[c]} matched to graph ${g+1}. ${6-n} to go.`;
+ }
+ render();
+}
+function check(){
+ if(revealed)return;
+ if(match.every(v=>v===null)){note="Make at least one match first.";render();return;}
+ sel=null;
+ marks=match.map((c,g)=>c===null?"":c===order[g]?"good":"bad");
+ const r=marks.filter(m=>m==="good").length,w=marks.filter(m=>m==="bad").length;
+ note=r===6?"All six correct! Tap any pair to see why, then press Pour.":`${r} correct, ${w} to rethink. Tap a green pair to see why. Tap a red one to change it.`;
+ render();
+}
+function reveal(){
+ sel=null;match=order.slice();marks=Array(6).fill("good");revealed=true;
+ note="Answers shown. Tap any pair to see why, then press Pour to watch the graphs being drawn.";
+ render();
+}
+function render(){
+ $("msg").innerHTML="<span>"+note+"</span>";
+ for(let i=0;i<6;i++){
+  const g=match.indexOf(i), c=match[i];
+  const cm=g>=0?marks[g]:"", icon=m=>m==="good"?" ✓":m==="bad"?" ✗":"";
+  $("c"+i).className="card "+cm+(sel&&sel.type==="c"&&sel.i===i?" sel":"");
+  $("g"+i).className="card "+marks[i]+(sel&&sel.type==="g"&&sel.i===i?" sel":"");
+  $("cp"+i).textContent=g>=0?"Graph "+(g+1)+icon(cm):"";
+  $("gp"+i).textContent=c!==null?L[c]+icon(marks[i]):"";
+  $("c"+i).setAttribute("aria-label",`Container ${L[i]} ${$("cp"+i).textContent}`);
+  $("g"+i).setAttribute("aria-label",`Graph ${i+1} ${$("gp"+i).textContent}`);
+ }
+ draw();
+}
+/* water rises in every container; orange traces appear only on correct matches, so pouring never gives away the graphs */
+function draw(){
+ cons.forEach((c,i)=>{
+  const y=depthAt(c,t),w=$("water"+i);
+  if(!w)return;
+  w.setAttribute("y",c.base-y*c.sy);w.setAttribute("height",y*c.sy);
+ });
+ order.forEach((ci,g)=>{
+  const show=marks[g]==="good"&&t>0, tr=$("trace"+g), d=$("dot"+g), c=cons[ci];
+  if(!tr)return;
+  tr.setAttribute("d",show?pathTo(c,Math.min(t,c.T)):"");
+  d.style.display=show?"":"none";
+  if(show){d.setAttribute("cx",GX(Math.min(t,c.T)));d.setAttribute("cy",GY(depthAt(c,t)));}
+ });
+ $("time").value=Math.round(t/Tmax*1000);
+ $("clock").textContent="Time "+(t/Tmax*100).toFixed(0)+"%";
+}
+function stop(){playing=false;$("pour").textContent="▶ Pour";}
+function frame(now){
+ if(!playing)return;
+ const end=Math.max(...cons.map(c=>c.T));
+ t=Math.min(end,t+Math.max(0,now-last)/12000*Tmax);last=now;
+ draw();
+ if(t>=end)stop();else requestAnimationFrame(frame);
+}
+$("pour").onclick=()=>{
+ if(playing){stop();return;}
+ if(t>=Math.max(...cons.map(c=>c.T)))t=0;
+ playing=true;last=performance.now();$("pour").textContent="❚❚ Pause";requestAnimationFrame(frame);
+};
+$("time").oninput=e=>{stop();t=e.target.value/1000*Tmax;draw();};
+$("new").onclick=newSet;
+document.querySelectorAll("#level button").forEach(b=>b.onclick=()=>{
+ level=b.dataset.level;
+ document.querySelectorAll("#level button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+ newSet();
+});
+$("check").onclick=check;
+$("reveal").onclick=reveal;
+$("reset").onclick=clearAll;
+$("help").onclick=()=>$("overlay").classList.add("open");
+$("close").onclick=()=>$("overlay").classList.remove("open");
+$("overlay").onclick=e=>{if(e.target===$("overlay"))$("overlay").classList.remove("open");};
+let queued=0;
+new ResizeObserver(()=>{cancelAnimationFrame(queued);queued=requestAnimationFrame(paint);}).observe(document.querySelector("main"));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("overlay").classList.remove("open");});
+newSet();
+</script>
+</body>
+</html>
